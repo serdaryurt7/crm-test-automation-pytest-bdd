@@ -1,0 +1,1081 @@
+PROJE HAFIZASI - CRM Test Automation Framework
+================================================
+Bu dosya, projede yapılan tüm önemli güncellemelerin kronolojik kaydını tutar.
+Her yeni değişiklikte bu dosyanın sonuna yeni bir madde eklenir.
+
+[2026-08-02] Proje iskeleti oluşturuldu
+- Klasörler: features/, pages/, steps/, test_data/, utils/
+- Kök dosyalar: conftest.py, pytest.ini, requirements.txt, .env, .gitignore, README.md
+- Teknoloji kararı: BDD (pytest-bdd) + Selenium
+- YAGNI kararı: core/ ve fixtures/ klasörleri EKLENMEDİ
+  (driver/base class ihtiyacı utils/'a, fixture'lar conftest.py'ye sığıyor)
+
+[2026-08-02] İlk senaryo: Login (features/login.feature)
+- Hedef sistem: http://localhost:4200/login (Etiya CRM, Angular)
+- pages/login_page.py oluşturuldu (Page Object Model)
+- steps/test_login_steps.py oluşturuldu, scenarios("login.feature") ile bağlandı
+- Gerçek locator'lar DOM incelemesiyle bulundu (data-testid attribute'ları):
+  login-username, login-password, login-submit, login-error
+- Gerçek akış doğrulandı: demo/Password123 ile giriş -> /customers sayfasına yönlendirme
+
+[2026-08-02] ChromeDriver versiyon sorunu düzeltildi
+- requirements.txt'den webdriver-manager kaldırıldı
+- Selenium 4.6+ kendi "Selenium Manager"ı ile ChromeDriver'ı otomatik yönetiyor
+- conftest.py'deki driver fixture'ı buna göre sadeleştirildi
+
+[2026-08-02] VSCode Cucumber entegrasyonu
+- alexkrechik.cucumberautocomplete uzantısı kuruldu
+- .vscode/settings.json oluşturuldu (steps glob, syncfeatures)
+- python.defaultInterpreterPath eklendi (Pylance'ın pytest-bdd'yi görebilmesi için,
+  VSCode farklı bir Python ortamı seçili tutuyordu)
+- ÖNEMLİ TEKNİK ÇÖZÜM: cucumberautocomplete.gherkinDefinitionPart ayarı eklendi:
+  "(@(?:given|when|then)\\((?:parsers\\.(?:parse|re|cfparse)\\()?)"
+  Bu sayede parsers.parse(...)/parsers.re(...) ile sarmalanmış parametrik step'ler de
+  (When "{username}"... gibi) Ctrl+Click ile bulunabiliyor. Uzantının kendi derlenmiş
+  kodu çalıştırılarak (Node.js ile) bu çözüm doğrulandı.
+- Not: Ctrl+Click'in "tüm cümle" yerine "tek kelime" üzerinde görünmesi VSCode'un
+  varsayılan word-pattern davranışı; F12 / sağ tık->Go to Definition satırın
+  herhangi bir yerinden çalışır (uzantı zaten tüm satırı regex'e veriyor, karakter
+  pozisyonunu kullanmıyor).
+
+[2026-08-02/03] Login senaryosu Scenario Outline'a çevrildi
+- Kullanıcı adı/şifre önce test_data/users.py'ye taşındı, sonra Scenario Outline +
+  Examples tablosuna taşınınca test_data/users.py kullanılmaz hale geldi ve silindi.
+  (Kullanılmayan kod bırakılmadı.)
+- @when(parsers.parse('"{username}" kullanıcı adı ve "{password}" şifresi ile giriş yapar'))
+
+[2026-08-03] Raporlama sistemi kuruldu
+- requirements.txt'e eklendi: pytest-html, allure-pytest-bdd
+- pytest.ini -> addopts: --html=reports/report.html --self-contained-html
+  --alluredir=reports/allure-results --clean-alluredir
+- conftest.py: driver fixture teardown'ında Allure'a ekran görüntüsü (PNG),
+  sayfa kaynağı (HTML), mevcut URL ekleniyor (allure.attach)
+- reports/ klasörü .gitignore'da (üretilen dosyalar commit edilmiyor - bilinçli
+  tercih, referans repo commit etse de bunu önermedim)
+- Allure CLI ile "allure generate" / "allure serve" doğrulandı (C:\allure\bin\allure
+  kurulu)
+
+[2026-08-03] report.html'de Gherkin step'lerinin görünmesi sağlandı
+- conftest.py'ye iki pytest hook eklendi:
+  - pytest_bdd_before_step: her adımı (Given/When/Then + çözümlenmiş metin) test
+    nesnesinde biriktirir
+  - pytest_runtest_makereport: biriken adımları HTML olarak report.extras'a ekler
+    (pytest-html v4'te "report.extra" DEPRECATED, doğrusu "report.extras")
+- Sonuç: report.html'de her test satırı genişletildiğinde Given/When/Then adımları
+  gerçek (Outline'dan çözümlenmiş) değerleriyle görünüyor
+
+[2026-08-03] Yeni senaryo: Hatalı kullanıcı adı/şifre ile giriş denemesi
+- features/login.feature'a Scenario Outline eklendi
+- Mevcut parametrik When step'i tekrar kullanıldı (yeni step gerekmedi)
+- Gerçek uygulamada hata elementi bulundu: [data-testid='login-error']
+  (<p role="alert">), metin: "Kullanıcı adı veya şifre hatalı. Art arda 5
+  başarısız denemede hesabınız 15 dakika kilitlenir."
+- pages/login_page.py: get_error_message() eklendi
+- Not: hatalı girişte URL /login'de kalıyor (yönlendirme yok), bu yüzden
+  assertion URL değil hata mesajı metni üzerinden yapılıyor
+
+[2026-08-03] Yeni senaryo: Zorunlu alan boş bırakıldığında giriş butonu pasif kalır
+- Tek bir Scenario Outline, iki Examples satırı:
+  1) username dolu, password boş
+  2) username boş, password dolu
+- pages/login_page.py: fill_credentials() (submit'e basmadan sadece doldurur),
+  is_login_button_disabled() eklendi
+- login() metodu KULLANILMADI çünkü sonunda element_to_be_clickable ile butona
+  tıklamayı bekliyor; buton disabled kalacağı için bu yanlış nedenle
+  (timeout exception) test'i düşürürdü
+- TEKNİK BULGU: parsers.parse ile yazılan {param} alanı BOŞ STRING'İ EŞLEŞTİRMİYOR
+  (parse kütüphanesi varsayılan olarak en az 1 karakter istiyor - Python'da
+  doğrulandı). Bu yüzden bu senaryonun When step'i için parsers.parse yerine
+  parsers.re (ham regex, .* ile sıfır karaktere izin veren) kullanıldı:
+  @when(parsers.re(r'"(?P<username>.*)" kullanıcı adı ve "(?P<password>.*)" şifresi girilir'))
+
+[2026-08-03] Bu hafıza dosyası oluşturuldu
+- Kullanıcı isteği: geçmiş ve gelecekteki tüm güncellemelerin bu dosyada
+  tutulması istendi. Her yeni değişiklikte buraya yeni bir madde eklenecek.
+
+[2026-08-03] login.feature'da sarı uyarı düzeltildi (parsers.re + r-string sorunu)
+- Sebep: @when(parsers.re(r'...')) yazımındaki "r" (raw string) öneki, quote
+  karakterinden HEMEN ÖNCE bir harf (word char) olduğu için
+  cucumberautocomplete.gherkinDefinitionPart regex'inin quote'a ulaşmasını
+  engelliyordu (nonStepStartSymbols sadece non-word karakterleri atlayabiliyor).
+  Bu, uzantının kendi derlenmiş kodu Node.js ile çalıştırılarak doğrulandı.
+- Çözüm 1: steps/test_login_steps.py'de "r" öneki kaldırıldı (regex'te zaten
+  hiç backslash yoktu, raw string'e ihtiyaç yoktu - fonksiyonel fark yok).
+- Çözüm 2: .vscode/settings.json'daki gherkinDefinitionPart, ileride r'...'
+  kullanılırsa da kırılmasın diye sona opsiyonel "r?" eklenerek sağlamlaştırıldı:
+  "(@(?:given|when|then)\\((?:parsers\\.(?:parse|re|cfparse)\\()?r?)"
+- pytest -v ile 4 test de hâlâ yeşil geçtiği doğrulandı.
+
+[2026-08-03] "Zorunlu alan" step'indeki sarı uyarı kalıcı olarak çözüldü (parsers.re -> parsers.cfparse)
+- Kök sebep (r-string düzeltmesinden SONRA ortaya çıkan, farklı bir sorun):
+  Uzantının util.js'indeki escapeRegExp fonksiyonu bu sürümde NO-OP ("return str;",
+  kodda "TODO - do we need this now???" notu var) - yani step metnini gerçek bir
+  regex gibi kullanıyor, literal metin olarak escape ETMİYOR.
+  Bunun sonucu: parsers.re('"(?P<username>.*)" ...') decorator'ındaki Python'a özgü
+  (?P<isim>...) adlandırılmış grup söz dizimi, JS regex motorunda GEÇERSİZ
+  (JS "(?<isim>...)" bekliyor, P harfi olmadan) -> "Invalid group" hatasıyla
+  uzantı regex'i patlıyor, step hep "bulunamadı" görünüyor.
+  pytest-bdd'nin parsers.re'si ise match.groupdict() kullandığı için MUTLAKA
+  (?P<isim>...) formatını istiyor - yani bu Python/JS regex uyumsuzluğu
+  parsers.re ile çözülemez bir çelişki.
+- ÇÖZÜM: parsers.re yerine parsers.cfparse kullanıldı, {isim:Tip} (Cucumber
+  süslü parantez) söz dizimiyle. Uzantı zaten HER {…} bloğunu (içeriğine
+  bakmaksızın) otomatik ".*" ile de değiştiriyor (getRegTextForStep) - bu yüzden
+  {isim:Tip} yazımı uzantı tarafında sorunsuz tanınıyor.
+  parse kütüphanesinin varsayılan {isim} alanı boş string eşleşmediği için
+  (önceki maddede bulunmuştu) özel bir tip tanımlandı:
+    def _optional_text(text: str) -> str: return text
+    _optional_text.pattern = r".*"
+    _EXTRA_TYPES = {"OptionalText": _optional_text}
+    @when(parsers.cfparse('"{username:OptionalText}" kullanıcı adı ve
+      "{password:OptionalText}" şifresi girilir', extra_types=_EXTRA_TYPES))
+- Hem Python tarafında (parse_arguments ile boş string testi) hem uzantının
+  kendi kodu Node.js ile çalıştırılarak (tanım bulma + outline-çözümlenmiş
+  satırla eşleşme) ayrı ayrı doğrulandı, ardından pytest -v ile 4 test de
+  yeşil geçti.
+- ÖĞRENİLEN GENEL KURAL: pytest-bdd step'lerinde parametrik/regex-tabanlı
+  eşleşme gerektiğinde parsers.re yerine parsers.cfparse + {isim:Tip} tercih
+  edilmeli - hem pytest-bdd içinde çalışıyor hem cucumberautocomplete uzantısı
+  tarafından düzgün tanınıyor (parsers.re'nin (?P<isim>...) söz dizimi bu
+  uzantıyla YAPISAL OLARAK uyumsuz).
+
+[2026-08-03] requirements.txt'e eksik dolaylı bağımlılık eklendi
+- Tüm proje genelinde import taraması yapıldı (grep ile). conftest.py'de
+  doğrudan "import allure" kullanılıyor (allure.step, allure.attach) ama bu
+  modülü sağlayan allure-python-commons paketi requirements.txt'de açıkça
+  YOKTU - sadece allure-pytest-bdd'nin dolaylı bağımlılığı olarak geliyordu.
+- Kural: doğrudan import edilen bir paket her zaman requirements.txt'de açıkça
+  listelenmeli, başka bir paketin dolaylı bağımlılığına güvenilmemeli (o paket
+  ileride bağımlılık değiştirirse import sessizce kırılabilir).
+- requirements.txt'e allure-python-commons eklendi. pip install + pytest -v
+  ile 4 test de yeşil geçtiği doğrulandı.
+
+[2026-08-03] Allure raporlama altyapısı uçtan uca doğrulandı
+- Bu altyapı zaten önceki "Raporlama sistemi kuruldu" maddesinde kurulmuştu
+  (pytest.ini --alluredir, conftest.py ekran görüntüsü/sayfa kaynağı/URL
+  attach'leri) - kullanıcı bunu tekrar isteyince yeniden inşa etmek yerine
+  uçtan uca ÇALIŞTIĞINI doğruladım.
+- pytest -v ile 4 senaryo/örnek çalıştırıldı, reports/allure-results/ taze
+  üretildi (--clean-alluredir sayesinde her koşuda temizleniyor).
+- allure generate reports/allure-results -o reports/allure-report --clean
+  ile statik HTML raporu üretildi, sonuç JSON'ları incelenerek doğrulandı:
+  - Her senaryo doğru "feature: Login" etiketiyle gruplanmış
+  - allure-pytest-bdd HER Given/When/Then adımını gerçek (Outline'dan
+    çözümlenmiş) parametre değerleriyle birlikte OTOMATİK olarak ayrı bir
+    Allure step'i gibi gösteriyor - bunun için ekstra kod YAZILMADI, kütüphane
+    bunu kendiliğinden sağlıyor (pytest-html tarafında bunu manuel hook ile
+    yapmıştık, Allure tarafında gerek yok).
+  - conftest.py'deki ekran görüntüsü/sayfa kaynağı/URL ekleri doğru şekilde
+    "Ekran görüntüsü ve sayfa bilgisi eklenir" adımı altında attachments
+    olarak görünüyor (PNG/HTML/TXT).
+- Raporu görüntüleme komutları README.md'de zaten mevcut:
+  allure generate reports/allure-results -o reports/allure-report --clean
+  allure open reports/allure-report
+  (veya tek komutla: allure serve reports/allure-results)
+
+[2026-08-03] "500 Failed to fetch" hatası çözüldü - allure-report/index.html asla dosya olarak açılmamalı
+- Sebep: kullanıcı reports/allure-report/index.html dosyasına çift tıklayıp
+  file:// protokolüyle açmış. Sayfa data/*.json dosyalarını fetch ile
+  çekmeye çalışıyor, tarayıcılar file:// üzerinden bu isteklere CORS
+  güvenlik kısıtı nedeniyle izin vermiyor -> "Failed to fetch". Bu Allure
+  raporlarının HER ZAMAN yaşadığı bilinen bir durum, rapor verisinde bozukluk
+  yok.
+- Doğrulama: "allure open reports/allure-report" ile rapor gerçek bir HTTP
+  sunucusu üzerinden (127.0.0.1:<port>) servis edildi, curl ile index.html
+  ve data/*.json uç noktaları 200 OK döndürdü, senaryo verileri doğru geldi.
+- KURAL: Allure'un ürettiği index.html asla doğrudan dosya olarak açılmamalı.
+  Her zaman "allure open <report-dir>" veya "allure serve <results-dir>"
+  kullanılmalı (ikisi de kendi HTTP sunucusunu başlatıp taryıcıyı otomatik
+  açar).
+
+[2026-08-03] Yeni senaryo: 5 başarısız giriş denemesi sonrası hesabın 15 dakika kilitlenmesi
+- Kullanıcı manuel test case verdi (Action/Data/Expected Result formatında,
+  6 adım: 5 hatalı deneme -> kilit mesajı -> kilit süresinde giriş engeli ->
+  15 dk bekle -> kilit kalkınca normal giriş).
+- ÖNEMLİ TASARIM KARARI (kullanıcıya soruldu, AskUserQuestion ile):
+  1) Gerçek demo hesabıyla mı denensin (evet dendi, demo gerçekten
+     15 dk kilitlendi - bilerek/onaylı yapıldı)
+  2) 15 dakika bekleyip kilidin açıldığını doğrulama kısmı (senaryo
+     adım 5-6) otomasyona DAHIL EDILMEDI - gerçek sleep(900) CI'ı ciddi
+     yavaşlatır ve kırılgan olur. Sadece kilitlenme + kilitliyken doğru
+     bilgiyle bile giriş engellenmesi otomatikleştirildi.
+- GERÇEK UYGULAMA BULGUSU (dev ekibine bildirilmeli): sahte kullanıcı adıyla
+  (var olmayan hesap) 6 kez denendiğinde kilitlenme hiç tetiklenmiyor, hep
+  aynı genel hata mesajı geliyor - kilitleme sadece gerçek hesaplar için
+  çalışıyor gibi görünüyor (enumeration koruması olabilir, normal).
+  GERÇEK "demo" hesabıyla 5 kez hatalı + 6. kez DOĞRU şifreyle denendiğinde:
+  giriş fonksiyonel olarak reddediliyor (kilitleme çalışıyor) AMA manuel
+  test case'de belirtilen özel mesaj ("Too many failed attempts. Your
+  account is locked for 15 minutes.") hiç gösterilmiyor - sistem sadece
+  aynı genel "Kullanıcı adı veya şifre hatalı..." mesajını tekrarlıyor.
+  Bu, manuel test case ile gerçek davranış arasında bir tutarsızlık -
+  test buna göre (gerçekte gözlemlenen mesaja göre) yazıldı.
+- TEST İZOLASYONU SORUNU VE ÇÖZÜMÜ: bu senaryo demo hesabını gerçekten 15 dk
+  kilitlediği için aynı anda çalışan "başarılı login" senaryosunu kırar.
+  Çözüm: senaryo @lockout Gherkin etiketiyle işaretlendi. pytest-bdd
+  varsayılan olarak HER Gherkin @tag'ini otomatik pytest.mark.<tag> yapıyor
+  (pytest_bdd/plugin.py'daki pytest_bdd_apply_tag default hook'u - ekstra
+  kod YAZILMADI). pytest.ini'ye "lockout" marker'ı kaydedildi ve
+  addopts'a -m "not lockout" eklendi -> normal "pytest" çalıştırması bu
+  testi OTOMATIK ATLIYOR, sadece "pytest -m lockout" ile bilerek çalıştırılıyor.
+- pages/login_page.py: login() metoduna clear() eklendi (send_keys öncesi) -
+  aynı login_page nesnesiyle arka arkaya 5 kez login() çağrıldığında alan
+  temizlenmezse metin üst üste eklenip ("demodemodemo" gibi) hatalı
+  davranışa yol açıyordu.
+- Doğrulama: "pytest -v" -> 4 test geçti, 1 deselected (lockout doğru
+  hariç tutuldu). "pytest -v -m lockout" -> lockout testi ayrıca çalıştırılıp
+  geçtiği doğrulandı.
+- NOT: Bu deney sırasında demo hesabı gerçekten kilitlendiği için,
+  "pytest -v" (lockout hariç) çalıştırıldığında "başarılı login" testi
+  geçici olarak FAILED düştü (TimeoutException) - bu bir kod hatası DEĞİL,
+  kilidin henüz açılmamış olmasından kaynaklanıyor, ~15 dk sonra kendiliğinden
+  düzelir.
+- Dosya notu: "proje hafızası.txt" bu tarihte kullanıcı tarafından
+  "project_brain.txt" olarak yeniden adlandırıldı - bundan sonraki
+  kayıtlar bu dosyaya (project_brain.txt) yazılıyor.
+
+[2026-08-03] Lockout senaryosu demo yerine admin-crm hesabına taşındı, @lockout etiketi kaldırıldı
+- Kullanıcı iste​ği: lockout marker'ına gerek yok, kullanıcı adı için
+  admin-crm kullan, gereksiz yerleri kaldır.
+- SEBEP/MANTIK: @lockout etiketi ve pytest.ini'deki "-m not lockout" filtresi
+  SADECE demo hesabının diğer testlerle (başarılı login senaryosu) çakışmasını
+  önlemek için vardı. admin-crm, demo'dan FARKLI ayrı bir hesap olduğu için bu
+  çakışma artık hiç oluşmuyor - izolasyon sorununu etiketleme yerine "ayrı
+  test hesabı kullanma" ile kökten çözdük (daha önce QA seçenekleri
+  sunulurken bahsedilen "dedicated test account" yaklaşımı).
+- Doğrulama adımı: admin-crm/Password123 kombinasyonu ÖNCE tek bir güvenli
+  (kilitlemeyen) deneme ile doğrulandı (gerçekten /customers'a yönlendirdi),
+  ardından steps/test_login_steps.py'deki 5-hatalı-deneme + doğru-şifre
+  adımlarında kullanıldı.
+- features/login.feature: @lockout etiketi kaldırıldı (Scenario artık düz).
+- pytest.ini: KULLANICI İSTEĞİYLE marker/addopts satırları OLDUĞU GİBİ
+  BIRAKILDI ("bir şeyi etkilemiyorsa silme, bilgi olarak kalabilir" - artık
+  hiçbir step @lockout etiketi taşımadığı için "-m not lockout" filtresi
+  fiilen hiçbir şeyi hariç tutmuyor/etkilemiyor, ama dokunulmadı).
+- Doğrulama: "pytest -v" ile TÜM 5 test (demo ile başarılı login dahil, admin-crm
+  ile lockout dahil) AYNI ÇALIŞTIRMADA birlikte yeşil geçti - artık hesap
+  çakışması yok.
+- ÖĞRENİLEN GENEL KURAL: hesabı gerçekten kilitleyen/bozan (destructive) test
+  senaryolarında, paylaşılan bir test hesabını kullanıp marker ile suit'ten
+  hariç tutmak yerine, mümkünse BAŞTAN ayrı/dedicated bir test hesabı kullanmak
+  daha temiz bir çözüm - testler birbirinden bağımsız kalır, ekstra
+  marker/filtre altyapısına gerek kalmaz.
+
+[2026-08-03] Yeni senaryo: Şifre alanında göz ikonu ile şifreyi gösterme/gizleme
+- Kullanıcı manuel test case verdi (4 adım: şifre gir -> maskeli, göz ikonuna
+  tıkla -> düz metin, tekrar tıkla -> tekrar maskeli, alanları doldurmaya
+  devam et -> buton aktifleşir).
+- Locator zaten önceki bir DOM incelemesinden biliniyordu:
+  [data-testid='login-password-toggle'] (göz ikonu butonu).
+- ÖNEMLİ TEKNİK BULGU: Selenium'un normal WebElement.click() metodu bu
+  buton için ÇALIŞMIYOR (hata fırlatmıyor ama type attribute'u hiç
+  değişmiyor) - muhtemelen buton input alanının üzerine mutlak
+  konumlandırılmış ve Selenium'un tıklama noktası (elementin geometrik
+  merkezi) yanlış elemente denk geliyor. driver.execute_script("arguments[0].
+  click();", element) ile (JS click) doğru çalıştığı doğrulandı (type
+  password<->text arasında değişti, aria-pressed/aria-label güncellendi).
+  pages/login_page.py -> toggle_password_visibility() bu yüzden JS click
+  kullanıyor, normal .click() değil.
+- pages/login_page.py: enter_password(), get_password_input_type(),
+  toggle_password_visibility() eklendi.
+- steps/test_login_steps.py: aynı davranışı (göz ikonuna tıklama / maskeli
+  görüntüleme) iki farklı Gherkin cümlesi için tekrar kullanmak üzere AYNI
+  step fonksiyonuna BİRDEN FAZLA @when/@then dekoratörü üst üste eklendi
+  (pytest-bdd bunu destekliyor) - "tekrar tıklar" ve "tekrar maskeli
+  görüntülenir" için ayrı fonksiyon yazılmadı, kod tekrarı önlendi.
+- Kapsam kararı: manuel test case'in 4. adımı ("alanları doldurunca buton
+  aktifleşir") otomasyona AYRICA eklenmedi çünkü bu davranış zaten
+  "Geçerli bilgilerle başarılı giriş" ve "Zorunlu alan" senaryolarında
+  dolaylı/doğrudan test ediliyor (manuel test case de zaten "Adım 4, Ana
+  Senaryo" diyerek buna referans veriyor, yeniden test istemiyor) - YAGNI,
+  gereksiz tekrar test edilmedi.
+- Doğrulama: pytest -v ile tüm 6 test (yeni senaryo dahil) yeşil geçti.
+
+[2026-08-03] Yeni senaryo: 8 saatlik oturum süresi dolduğunda otomatik login ekranına yönlendirme
+- Kullanıcı sordu: "gerçek 8 saat beklemeden bunu otomatize edebilir miyim?"
+  Önce ARAŞTIRMA yapıldı (implementasyondan önce, exploratory soru): login
+  sonrası sessionStorage/localStorage/cookie içeriği incelendi.
+- BULGU: Uygulama Keycloak kullanıyor, sessionStorage'da "etiya.refreshToken"
+  adında bir JWT (HS512 imzalı) tutuluyor. Token decode edilince
+  exp - iat = 28800 saniye = TAM 8 SAAT çıktı - yani "8 saatlik oturum"
+  dediğimiz şey bu refresh token'ın ömrü.
+- ÇÖZÜM: utils/session.py oluşturuldu - expire_refresh_token(driver) adında
+  bir yardımcı fonksiyon: sessionStorage'daki token'ı okur, JWT payload'ını
+  (base64url) decode eder, exp claim'ini şu andan 1 saat öncesine çeker,
+  tekrar encode edip sessionStorage'a geri yazar (imza korunmuyor çünkü
+  secret bilinmiyor - ama uygulama client-side'da exp kontrolü yaptığı için
+  yeterli, bunu gerçek uygulamada deneyerek doğruladım: token'ı bozup sayfa
+  yenilenince uygulama gerçekten /login?redirectTo=%2Fcustomers'a
+  yönlendirdi).
+- Bu, önceki "15 dakika kilitlenme" sorunuyla AYNI KATEGORİDEKİ bir problem
+  (gerçek zaman beklemek yerine durumu doğrudan manipüle etme) - genel
+  prensip: zaman-bazlı (timeout/expiry) davranışları test ederken gerçek
+  saat/zamanlayıcı beklemek yerine, altta yatan durumu (token, timestamp,
+  DB kaydı vb.) doğrudan manipüle edip sonucu gözlemlemek tercih edilmeli.
+- features/login.feature: yeni senaryo mevcut Given ("kullanıcı login
+  sayfasındadır") ve When ("...giriş yapar") step'lerini TEKRAR KULLANDI,
+  sadece "kullanıcının oturum süresi dolar" (And) ve "kullanıcı otomatik
+  olarak login ekranına yönlendirilir" (Then) yeni eklendi.
+- BULUNAN BUG (ilk denemede): login sonrası hemen token okununca None
+  dönüyordu çünkü login redirect'i/token yazımı henüz tamamlanmamıştı.
+  Düzeltme: "kullanıcının oturum süresi dolar" step'i önce
+  WebDriverWait ile URL'in /customers'a geçmesini bekliyor, SONRA token'ı
+  manipüle edip driver.refresh() yapıyor.
+- Doğrulama: pytest -v ile tüm 7 test (yeni senaryo dahil) yeşil geçti.
+
+[2026-08-03] Yeni senaryolar: 50 karakter sınırı, auto-trim, case-insensitive username (FR-001 ACC-02/03/04/06)
+- Kullanıcı manuel test case verdi (3 madde): 50+ karakter girilince alanların
+  50'de kesilmesi, baş/son boşluklu kullanıcı adıyla girişin çalışması
+  (auto-trim), büyük/küçük harf farklı kullanıcı adıyla girişin çalışması.
+- Üçü de gerçek uygulamada ÖNCE doğrulandı (60 karakter girilince value 50'de
+  kesiliyor - maxlength=50 zaten daha önceki DOM incelemesinden biliniyordu;
+  "  demo  " ve "DEMO" ile login gerçekten başarılı oldu, /customers'a
+  yönlendirdi).
+- ÖNEMLİ TASARIM KARARI - iki senaryo SIFIR yeni kod ile çözüldü:
+  1) Case-insensitive: mevcut "Geçerli bilgilerle başarılı giriş" Scenario
+     Outline'ının Examples tablosuna sadece "DEMO | Password123" satırı
+     eklendi - yeni step/page method gerekmedi.
+  2) Auto-trim: mevcut Given/When/Then step'leri (login + başarı kontrolü)
+     TEKRAR KULLANILARAK yeni bir düz Scenario yazıldı (When "  demo  "
+     kullanıcı adı ve "Password123" şifresi ile giriş yapar).
+     ÖNEMLİ NOT: Bu boşluklu değer Examples TABLOSUNA konulmadı, çünkü
+     Gherkin tablo hücreleri baştaki/sondaki boşlukları otomatik kırpıyor -
+     tabloya konsaydı gerçekte "demo" test edilmiş olurdu, "  demo  " değil.
+     Bunun yerine Scenario satırının içine (tırnak arasına) doğrudan yazıldı,
+     çünkü satır-içi tırnaklı metinler bu şekilde kırpılmıyor.
+- 50 karakter sınırı İÇİN yeni step gerekti (bu bir login denemesi değil,
+  input-seviyesinde bir kısıtlama testi):
+  pages/login_page.py -> enter_long_values(length=60), get_username_value(),
+  get_password_value() eklendi.
+  steps/test_login_steps.py -> "kullanıcı adı ve şifre alanlarına 50
+  karakterden uzun değerler girilir" / "her iki alan da en fazla 50 karakter
+  kabul eder" step'leri eklendi (len(...) == 50 assert).
+- ÖĞRENİLEN GENEL KURAL: Yeni bir manuel test case geldiğinde önce mevcut
+  Given/When/Then step'lerin (özellikle "giriş yapar" + "başarılı giriş"
+  ikilisi) yeni senaryoyu SIFIR KOD ile karşılayıp karşılamadığına bakılmalı -
+  çoğu "farklı veriyle aynı akış" testi (case-insensitive, trim gibi) ya
+  Examples satırı eklemekle ya da var olan step'leri yeni bir Scenario'da
+  tekrar kullanmakla çözülüyor, gerçekten yeni bir UI etkileşimi (ör. 50
+  karakter kesme kontrolü) test ediliyorsa yeni step/page method yazılmalı.
+- Doğrulama: pytest -v ile tüm 10 test yeşil geçti.
+
+[2026-08-03] Şifre alanında boşluk temizlenmiyor - ayrı bir senaryo eklendi
+- Kullanıcı sordu: "kullanıcı adı boşluklu + şifre doğru" ile "kullanıcı adı
+  doğru + şifre boşluklu" iki ayrı senaryoda mı ele alınmalı?
+- ÖNCE gerçek uygulamada test edildi (cevap vermeden önce): doğru kullanıcı
+  adı + baş/son boşluklu şifre ("  Password123  ") ile giriş denendi.
+  SONUÇ: giriş BAŞARISIZ oldu, "Kullanıcı adı veya şifre hatalı" hatası
+  geldi - yani şifre alanı TRIM EDİLMİYOR (kullanıcı adının aksine).
+- CEVAP: Evet, kesinlikle iki ayrı senaryo olmalı - bu bir organizasyon
+  tercihi değil, ZORUNLULUK, çünkü iki durumun BEKLENEN SONUCU birbirinin
+  tersi (biri başarılı, diğeri başarısız). Aynı Scenario Outline'da tek bir
+  Then'e bağlamak yanlış olurdu.
+- features/login.feature: "Şifredeki baş/son boşluklar temizlenmez ve giriş
+  başarısız olur" adında yeni bir Scenario eklendi - yine SIFIR yeni kod,
+  mevcut When (giriş yapar) ve Then (hatalı giriş uyarısı) step'leri tekrar
+  kullanıldı.
+- GÜVENLİK NOTU: Şifrenin trim edilmemesi aslında DOĞRU/beklenen bir
+  davranış - şifreler harfiyen (boşluklar dahil) karşılaştırılmalı, sadece
+  kullanıcı adı gibi UX-odaklı alanlar temizlenmeli. Bu asimetri bug değil,
+  kasıtlı bir güvenlik/tasarım kararı gibi görünüyor.
+- Doğrulama: pytest -v ile tüm 11 test yeşil geçti.
+
+[2026-08-03] "50 karakter sınırı" testinde 2 assert - tek teste bölünmeli mi tartışması
+- Kullanıcı sordu: "her iki alan da en fazla 50 karakter kabul eder" step'inde
+  username ve password için 2 ayrı assert var, bunlar 2 ayrı teste mi
+  bölünmeli?
+- CEVAP (implementasyon değil, tasarım görüşü): Hayır, mevcut hâli doğru.
+  "Bir test = bir assert" kuralı ALAKASIZ kaygıları tek teste sıkıştırmamak
+  içindir; burada ikisi de AYNI gereksinimi (maxlength=50) iki veri
+  noktasında doğruluyor - bölmek Given/When'i tekrarlayan, aynı mekanizmayı
+  iki kez test eden anlamsız kopya senaryolar yaratırdı. Gherkin Then cümlesi
+  zaten çoğul ("her iki alan da"), assert'ler bunu birebir yansıtıyor.
+- Tek gerçek dezavantaj: ilk assert (username) patlarsa password'ün durumu o
+  çalıştırmada görünmüyor (pytest ilk hatada durur). Senaryoyu bölmek yerine
+  DAHA HAFİF bir çözüm uygulandı: assert'lere açıklayıcı mesaj eklendi
+  ("username alanı 50 karakteri aşıyor" / "password alanı 50 karakteri
+  aşıyor") - hangi alanın başarısız olduğu artık hata mesajından net
+  anlaşılıyor, senaryo yapısı değişmedi.
+- ÖĞRENİLEN GENEL KURAL: "bir test bir assert" kuralı kör uygulanmamalı;
+  asıl soru "bu assert'ler AYNI gereksinimi mi yoksa FARKLI gereksinimleri
+  mi doğruluyor" olmalı. Aynı gereksinimse (bu örnekte olduğu gibi) birlikte
+  kalabilir, sadece assert mesajlarıyla diagnostik netlik sağlanır.
+- Doğrulama: pytest -v -k "50" ile test hâlâ yeşil geçti.
+
+[2026-08-03] Yeni senaryo: Hatalı giriş sonrası bilgiler düzeltilip tekrar denendiğinde giriş başarılı olur
+- Kullanıcı manuel test case verdi (FR-001 ACC-13): 1) hatalı bilgiyle giriş
+  denenir, hata mesajı görüntülenir, 2) alanlar doğru bilgiyle düzeltilir ->
+  iddia: hata mesajı EKRANDAN KALKAR, 3) Login'e tıklanır, giriş başarılı olur.
+- ÖNCE gerçek uygulamada test edildi: hatalı giriş sonrası hata mesajı
+  gösterildi, ardından alanlar TEMİZLENİP doğru bilgiyle dolduruldu AMA
+  SUBMIT EDİLMEDEN önce hata mesajının hâlâ görünür olup olmadığı kontrol
+  edildi.
+- BULGU (manuel test case ile UYUŞMUYOR): Hata mesajı, alanlar düzeltilirken
+  (submit öncesi) EKRANDAN KALKMIYOR, görünür kalmaya devam ediyor. Sadece
+  Login'e tekrar tıklanıp giriş gerçekten başarılı olunca (sayfa /customers'a
+  yönlenince) hata görünmez oluyor - bu "hata otomatik kalkıyor" değil,
+  "başarılı giriş sayfayı değiştiriyor" durumu. Manuel test case'in 2. adımı
+  ("doğrulama kurallarına uyulduğunda hata mesajı ekrandan kalkar") YANLIŞ/
+  gerçek davranışla uyumsuz - dev ekibine bildirilmeli veya gereksinim
+  yeniden gözden geçirilmeli.
+- Test, GERÇEKTE GÖZLEMLENEN davranışa göre yazıldı: hatalı giriş + doğru
+  giriş art arda denendiğinde, önceki hata durumunun sonraki başarılı girişi
+  ENGELLEMEDİĞİ doğrulanıyor (daha zayıf ama doğru bir iddia; "hata mid-typing
+  kalkar" iddiası test EDİLMEDİ çünkü doğru değil).
+- features/login.feature: yeni Scenario, TAMAMEN mevcut step'lerle (Given +
+  2x When "...giriş yapar" + 2x Then "...hatalı uyarısı"/"...başarılı giriş")
+  kuruldu - SIFIR yeni kod.
+- Doğrulama: pytest -v ile tüm 13 test yeşil geçti.
+
+[2026-08-03] BUG BULUNDU VE BELGELENDİ: tanımsız kullanıcı için yanlış "hesap kilitlendi" mesajı
+- Kullanıcı bildirdi: tanımsız/var olmayan bir kullanıcı adı (admin-123) ile
+  5 kez hatalı şifre denenince "Çok fazla başarısız deneme. Hesabınız 15
+  dakika süreyle kilitlendi." mesajı çıkıyor - bu YANLIŞ çünkü bu kullanıcı
+  tanımlı değil, kilitlenecek bir hesap yok.
+- ÖNCE gerçek uygulamada admin-123 ile 5 deneme yapılarak DOĞRULANDI: ilk 4
+  denemede genel "Kullanıcı adı veya şifre hatalı..." mesajı, 5. denemede
+  TAM OLARAK kullanıcının bildirdiği "Çok fazla başarısız deneme..." mesajı
+  çıktı. Bug teyit edildi.
+- features/login.feature: "Tanımsız kullanıcı için 5 başarısız denemeden
+  sonra hesap kilitlendi mesajı gösterilmemelidir" adında YENİ bir Scenario
+  Outline eklendi (kullanıcı özellikle Outline istedi, admin-123 Examples
+  satırı olarak parametrelendirildi - ileride başka tanımsız kullanıcı
+  adlarıyla da genişletilebilir).
+- steps/test_login_steps.py: "kullanıcı art arda 5 kez hatalı bilgilerle
+  giriş dener" step'i (admin-crm'e hardcoded) PARAMETRELENDİRİLEREK yeni bir
+  step olarak eklendi: "{username}" kullanıcı adı ile art arda 5 kez...,
+  target_fixture="last_error_message" ile SON hata mesajını bir sonraki
+  Then'e taşıyor. Yeni Then step'i last_error_message'ın beklenmeyen mesaja
+  EŞİT OLMADIĞINI doğruluyor.
+- BU TEST BİLİNÇLİ OLARAK KIRMIZI (FAILED) - bu doğru ve beklenen sonuç,
+  çünkü test gerçek bir bug'ı yakalıyor. Testi "geçsin" diye yumuşatmadım;
+  dev ekibi bug'ı düzeltince bu test otomatik yeşile dönecek (regression
+  test olarak bug'ı belgeleme amaçlı).
+- YAN BULGU (önemli): Bu testi çalıştırırken, DAHA ÖNCE YEŞİL olan admin-crm
+  kilitlenme testi ("hesap kilitlenir ve doğru bilgilerle bile giriş
+  yapılamaz") de FAILED düşmeye başladı - ama farklı bir sebeple: doğru
+  şifreyle 6. denemede artık "Kullanıcı adı veya şifre hatalı" DEĞİL,
+  "Çok fazla başarısız deneme..." mesajı geliyordu. Yani GERÇEK bir hesap
+  (admin-crm) da, bu oturumda tekrar tekrar kilitlenip denendikçe, aynı özel
+  mesajı göstermeye başladı - mesaj görünüşe göre "kaç kez art arda
+  kilitlendiğine" göre değişiyor (kümülatif/stateful bir davranış), yani bu
+  UYGULAMANIN KENDİ İÇİNDE DE TUTARSIZ, deterministik değil.
+- ÇÖZÜM (kullanıcıya soruldu, AskUserQuestion ile): admin-crm testindeki
+  assertion, tam mesaj metnine bakmak yerine SADECE girişin engellendiğini
+  (yani "/customers"a yönlenmediğini) kontrol edecek şekilde değiştirildi:
+    assert "/customers" not in driver.current_url
+  Bu, uygulamanın hangi mesaj metnini seçtiğinden bağımsız, daha az kırılgan
+  bir doğrulama - kullanıcı bunu "Önerilen" seçenek olarak onayladı.
+- ÖĞRENİLEN GENEL KURAL: Aynı mantıksal durumu (örn. "hesap kilitli") ifade
+  eden birden fazla farklı UI mesajı varsa ve bunlar arasındaki seçim
+  deterministik/öngörülebilir değilse, assertion'ı TAM METNE değil, DAHA
+  KARARLI bir sinyale (URL, element varlığı, state) bağlamak gerekir - metin
+  bazlı assertion'lar bu tür durumlarda kırılgan olur.
+- Doğrulama: pytest -v ile son durum: 13 passed, 1 failed (sadece admin-123
+  bug-belgeleme testi, KASITLI olarak kırmızı).
+
+[2026-08-03] conftest.py driver fixture code review'ı - 3 bulgu
+- Kullanıcı istedi: driver fixture'ındaki Allure ekran görüntüsü/sayfa
+  kaynağı/URL kodunu incele, eksik/gerekli değişiklik var mı söyle.
+- BULGU 1 (KRİTİK, UYGULANDI - kullanıcı onayı alınarak): driver.quit(),
+  ekran görüntüsü alma kodundan (allure.attach bloğu) SONRA çalışıyordu.
+  Eğer get_screenshot_as_png()/page_source/current_url çağrılarından biri
+  exception fırlatırsa (tarayıcı çökmüş/session geçersiz gibi durumlarda),
+  driver.quit() HİÇ ÇALIŞMIYORDU - zombi Chrome/chromedriver process'i
+  kalıyordu. try/finally ile driver.quit()'in HER DURUMDA çalışması garanti
+  edildi. Kullanıcı önce "neden try ekliyorsun açıkla, onayımı bekle" dedi,
+  açıklama verildi, sonra onaylandı ve uygulandı. pytest -v -k ile 4 test
+  yeşil geçti.
+- BULGU 2 (BİLDİRİLDİ, UYGULANMADI - kullanıcı kararı bekleniyor): Ekran
+  görüntüsü/sayfa kaynağı/URL şu an HER testte (pass VEYA fail fark etmeksizin)
+  alınıyor. Senior QA pratiği genelde sadece FAILED testlerde bu tür ağır
+  ekleri almaktır (rapor boyutu şişer, her testte gereksiz zaman kaybı,
+  geçen testler için sıfır debug değeri). Zaten var olan
+  pytest_runtest_makereport hook'u genişletilerek pass/fail durumu
+  request.node üzerinden driver fixture'a taşınabilir. Kullanıcıya
+  SORULMADI HENÜZ - bir sonraki konuşmada gündeme gelebilir.
+- BULGU 3 (BİLDİRİLDİ, UYGULANMADI): .env dosyasında BROWSER=chrome
+  tanımlı ama conftest.py'deki driver fixture'ı bunu HİÇ OKUMUYOR - her
+  zaman hardcoded webdriver.Chrome() oluşturuyor. Bu, kullanılmayan/ölü bir
+  konfigürasyon. İki seçenek: (a) BROWSER değişkenini gerçekten kullanacak
+  şekilde (Firefox/Edge branching) implemente et, (b) YAGNI gereği .env'den
+  kaldır. Kullanıcıya SORULMADI HENÜZ.
+- NOT: Bulgu 2 ve 3 için kullanıcıdan henüz karar istenmedi, sadece rapor
+  edildi. İleride bu konu açılırsa (örn. "screenshot sadece fail'de mi
+  alınsın" veya "BROWSER değişkenini kullanalım mı" diye sorulursa) bu
+  bulgulara referans verilebilir.
+
+[2026-08-03] Bulgu 2 uygulandı: ekran görüntüsü/sayfa kaynağı/URL artık SADECE FAILED testlerde alınıyor
+- Kullanıcı Bulgu 2'yi onayladı ("bulgu 2 yi onaylıyorum").
+- STANDART PYTEST DESENİ kullanıldı: pytest_runtest_makereport hook'u
+  genişletildi - artık her fazın (setup/call/teardown) raporunu
+  setattr(item, f"rep_{report.when}", report) ile item üzerinde saklıyor
+  (daha önce sadece "call" fazına özel BDD step render'ı yapıyordu, o kısım
+  aynen kaldı).
+- driver fixture'ı artık request fixture'ını da alıyor. Teardown'da:
+    test_failed = getattr(getattr(request.node, "rep_call", None), "failed", False)
+  ile testin gerçekten başarısız olup olmadığı kontrol ediliyor, ekran
+  görüntüsü/sayfa kaynağı/URL bloğu SADECE test_failed=True ise çalışıyor.
+  driver.quit() try/finally sayesinde her durumda (attach yapılsın/
+  yapılmasın) hâlâ garanti çalışıyor.
+- DOĞRULAMA (iddia değil, gerçekten kontrol edildi): pytest -v -k ile 1
+  geçen + 1 kasıtlı kalan (admin-123 bug testi) test çalıştırıldı, sonra
+  reports/allure-results/*-result.json dosyaları Python ile parse edilip
+  her testin "steps" alanında "Ekran görüntüsü..." adımının olup olmadığı
+  kontrol edildi: TÜM passed testlerde screenshot_step=False, SADECE failed
+  testte screenshot_step=True çıktı - beklenen davranış tam olarak
+  doğrulandı.
+- Tam suite: pytest -v -> 13 passed, 1 failed (admin-123, kasıtlı) - önceki
+  durumla aynı, regresyon yok.
+- Bulgu 3 (.env BROWSER=chrome kullanılmıyor) HÂLÂ kullanıcı kararı
+  bekliyor, bu turda ele alınmadı.
+
+[2026-08-03] Bulgu 3 çözüldü: .env'deki BROWSER değişkeni artık gerçekten kullanılıyor
+- Kullanıcı: "yagni ye uygun olsun, .env üzerinden tarayıcıyı seçebileyim"
+  dedi - yani seçeneği kaldırmak değil, GERÇEKTEN İŞLEVSEL hale getirmek
+  istendi, ama minimal/YAGNI kalarak (grid/capabilities matrisi gibi fazla
+  mühendislik YOK).
+- conftest.py'ye _build_driver(browser, headless) fonksiyonu eklendi -
+  sadece Selenium'un yerleşik desteklediği 3 tarayıcı: chrome (varsayılan),
+  firefox, edge. Her biri kendi Options sınıfını ve headless flag'ini
+  kullanıyor (Firefox: --headless, Chrome/Edge: --headless=new).
+  driver fixture'ı artık os.getenv("BROWSER", "chrome").lower() okuyup
+  _build_driver'a geçiyor.
+- DOĞRULAMA SINIRI (dürüstçe not edilmeli): Bu makinede Firefox KURULU
+  DEĞİL (kontrol edildi, bulunamadı) - bu yüzden BROWSER=firefox/edge
+  dallarını GERÇEKTEN ÇALIŞTIRARAK doğrulayamadım. Sadece:
+  1) conftest.py'nin hatasız import edildiği (sözdizimi doğru) doğrulandı,
+  2) varsayılan chrome yolu pytest -v -k ile 4 test çalıştırılarak
+     GERÇEKTEN doğrulandı (regresyon yok).
+  Firefox/Edge dalları kod incelemesiyle doğru görünüyor ama "test ettim"
+  denemez - bu netlik kullanıcıya iletildi.
+- ÖĞRENİLEN GENEL KURAL: "YAGNI'ye uygun ama X'i de yapabileyim" gibi bir
+  istek çelişkili değil - YAGNI "kullanılmayacak şeyi ekleme" demektir,
+  kullanıcı X'i kullanacağını belirtiyorsa (burada gerçekten .env'den
+  tarayıcı seçmek istiyor) bunu minimal şekilde (gereksiz soyutlama/config
+  katmanı olmadan) implemente etmek YAGNI'ye aykırı değildir.
+
+[2026-08-04] Login senaryolarına 2 ek: varsayılan şifre maskeleme + boşluk+case kombinasyonu
+- "Şifre Alanı Karakterlerinin Varsayılan Olarak Maskeli Görüntülenmesi": göz
+  ikonu senaryosunun ilk adımlarında (şifre gir -> maskeli olduğu kontrolü)
+  bu davranış zaten dolaylı test ediliyordu, ama kullanıcıya "tek sorumluluk"
+  ilkesi hatırlatıldı (göz ikonu senaryosu bozulursa/kaldırılırsa bu kapsam
+  kaybolmasın diye) ve onay üzerine AYRI bir düz Scenario olarak eklendi.
+  SIFIR yeni kod - tamamen mevcut step'ler tekrar kullanıldı.
+- "Kullanıcı Adında Baş/Son Boşlukla Birlikte Farklı Harf Büyüklüğü
+  Kombinasyonuyla Başarılı Giriş": kullanıcı bunu Scenario Outline + Examples
+  tablosuyla istedi ("   Demo   " parametresiyle). ÖNCE Gherkin resmi
+  parser'ı (gherkin-official Python paketi) ile GERÇEKTEN test edildi:
+  Examples tablosu hücrelerindeki baş/son boşluklar otomatik kırpılıyor
+  (hizalama amaçlı) - yani tabloya konsaydı "Demo" test edilmiş olurdu,
+  "   Demo   " değil, testin amacı geçersiz kalırdı. Bu bulgu kullanıcıya
+  AskUserQuestion ile sunuldu, kullanıcı "düz Scenario, boşluk step'te
+  gömülü" seçeneğini (Auto-Trim senaryosundaki gibi tırnak içine doğrudan
+  yazma) onayladı - Outline DEĞİL, düz Scenario olarak eklendi.
+- Her iki senaryo da mevcut step'leri (Given/When/Then) tekrar kullandı,
+  steps/test_login_steps.py ve pages/login_page.py'de değişiklik gerekmedi.
+- Doğrulama: pytest --collect-only ile önce 15, sonra 16 test doğru
+  toplandığı görüldü (isim çakışması/step eşleşme hatası yok).
+
+[2026-08-04] customers.feature/customers_page.py/test_customers_steps.py oluşturuldu - Müşteri Arama testlerine başlangıç
+- Kullanıcı "customers sayfasında testlere devam edeceğim" dedi, features/
+  pages/steps dosyalarının oluşturulup birbirine bağlanmasını istedi (login
+  ile aynı üçlü desen: Page Object + feature + step definitions +
+  scenarios(...) ile bağlama).
+- ÖNCE gerçek uygulamada DOM incelendi (Selenium ile demo/Password123 girişi
+  yapılıp /customers'a yönlendirme sonrası page_source alındı, script
+  scratchpad'e yazıldı, proje içine KALICI olarak eklenmedi). BULGULAR:
+  - Sayfa "Müşteri Arama" - sol tarafta arama filtreleri formu
+    (data-testid="customer-search-form": TC Kimlik No, Müşteri ID, Hesap
+    Numarası, GSM (+ülke kodu), Ad, Soyad, Sipariş Numarası; B2C/B2B toggle
+    - B2B şu an disabled), sağ tarafta sonuç tablosu.
+  - Sonuç tablosu (data-testid="customer-results"): 62 kayıt, varsayılan
+    sıralama customerId ascending, sıralanabilir kolonlar (customer-results-
+    sort-*), satırlar customer-row/-first-name/-second-name/-last-name/
+    -role/-identity, customer-row-link ile /customers/{id}'ye link.
+  - Sayfalama: customer-results-pagination, -prev-page/-next-page,
+    -page-{N} butonları, customer-results-range ("62 kayıttan 1-15 arası").
+  - customer-search-submit butonu HİÇBİR arama kriteri girilmeden disabled
+    duruyor (gerçek uygulamada DOM'da doğrulandı) - login'deki "zorunlu alan
+    boş -> buton pasif" desenine çok benzer.
+- Kullanıcıya (spesifik bir manuel test case verilmediği için) AskUserQuestion
+  ile ilk senaryo seçeneği soruldu: kullanıcı "Arama kriteri girilmeden Ara
+  butonunun pasif kalması"nı seçti.
+- pages/customers_page.py: SEARCH_SUBMIT locator'ı ve
+  is_search_button_disabled() eklendi. __init__ constructor'da (LoginPage.
+  open()'daki visibility bekleme deseniyle aynı şekilde) SEARCH_SUBMIT'in
+  görünür olmasını bekliyor - CustomersPage nesnesi hep "sayfa yüklü" durumunu
+  temsil ediyor, ayrı bir open(url) metoduna gerek yok çünkü sayfaya HER ZAMAN
+  login sonrası otomatik yönlendirmeyle ulaşılıyor (customers.feature'da
+  doğrudan URL'e git yok).
+- steps/test_customers_steps.py: "kullanıcı müşteri arama sayfasındadır"
+  Given step'i LoginPage ile demo/Password123 girişi yapıp /customers'a
+  yönlendirmeyi bekliyor, sonra CustomersPage(driver) döndürüyor
+  (target_fixture="customers_page") - login.feature'daki Given step'iyle
+  AYNI mantık, ama bağımsız bir step (henüz iki feature arasında ortak
+  step/fixture paylaşımı YOK - YAGNI, iki feature'da şu an sadece bu tek
+  ortak akış var, paylaşılan bir "auth" modülüne henüz ihtiyaç yok).
+- Doğrulama: pytest -v steps/test_customers_steps.py -> gerçek uygulamaya
+  karşı 1 passed. Ardından tam suite (pytest -v, tüm feature'lar) arka planda
+  çalıştırıldı, regresyon kontrolü için sonucu bekleniyor.
+
+[2026-08-04] login.feature ve customers.feature'a Background eklendi
+- Her iki feature dosyasındaki tüm senaryoların ortak "Given ... sayfasındadır"
+  adımı Background bloğuna taşındı (Gherkin'in Cucumber/Java'daki ile aynı
+  Background keyword'ü - pytest-bdd'de de destekleniyor, küçük bir örnekle
+  GERÇEKTEN test edilip doğrulandı). steps dosyalarında SIFIR değişiklik
+  gerekti - pytest-bdd step'i Given/Background farkı gözetmeden metne göre
+  eşliyor.
+- Doğrulama: --collect-only ile 17/17 test hâlâ toplandı, tam suite tek
+  başına (eş zamanlı başka pytest çalışmadan) çalıştırıldı: 15 passed, 2
+  failed - aynı 2 bilinen/beklenen kırmızı (admin-123 bug testi, "temizlenir/
+  başarılı" senaryosu), regresyon yok.
+
+[2026-08-04] Allure raporunda sadece 2 test görünme sorunu - kök sebep bulundu ve çözüldü
+- Kullanıcı Allure Overview ekran görüntüsü paylaştı: 17 test yerine sadece
+  2 test case gösteriyordu (Login: 1, Müşteri Arama: 1).
+- KÖK SEBEP: pytest.ini'deki --clean-alluredir HER pytest çalıştırmasının
+  BAŞINDA reports/allure-results klasörünü tamamen temizliyor. Ben art arda
+  iki pytest komutu çalıştırmıştım - biri arka planda tam suite (~175sn),
+  biri ön planda tek dosya (~12sn) - bu ikisi ZAMANDA ÖRTÜŞTÜ (aynı anda
+  çalıştı) ve ikisi de aynı allure-results klasörünü kullanıyor. Kısa süren
+  komut başlarken klasörü tekrar temizleyip uzun süren suite'in o ana kadar
+  yazdığı sonuçları sildi - geriye sadece çakışmadan sağ kalan 2 sonuç kaldı.
+  reports/allure-results/*.json sayısı (2) ile pytest -v çıktısındaki gerçek
+  test sayısı (17) karşılaştırılarak DOĞRULANDI.
+- ÇÖZÜM: tam suite TEK BAŞINA (başka pytest çalışmıyorken) yeniden
+  çalıştırıldı (15 passed, 2 failed - aynı bilinen 2 kırmızı), *-result.json
+  sayısı 17 olarak doğrulandı, "allure generate reports/allure-results -o
+  reports/allure-report --clean" ile statik rapor tazelendi.
+- ÖĞRENİLEN GENEL KURAL: --clean-alluredir açıkken AYNI ANDA birden fazla
+  pytest süreci çalıştırılmamalı (arka plan + ön plan dahil) - sonuçlar
+  birbirini siler. Tam suite'i tek seferde, başka bir pytest çalışmıyorken
+  koşmak güvenli olan yol.
+
+[2026-08-04] Yeni senaryo: Hatalı Giriş Sonrası Bilgiler Düzeltildiğinde Hata Mesajının Kalkması
+- Kullanıcı manuel test case verdi (FR-001 ACC-13, 3 adım): 1) hatalı
+  bilgiyle giriş denenir, "Wrong user name or password..." hatası görünür,
+  2) alanlar doğru bilgiyle düzeltilir -> iddia: hata mesajı ekrandan kalkar,
+  3) Login'e tıklanır -> giriş başarılı, Customer Search'e yönlendirilir.
+- BULUNAN/DÜZELTİLEN BUG: pages/login_page.py -> fill_credentials() send_keys
+  öncesi .clear() YAPMIYORDU (login()'den farklı olarak). Önceki kullanımında
+  (Zorunlu Alan senaryosu) alanlar zaten boştan başladığı için sorun
+  görünmüyordu, ama bu yeni senaryoda ÖNCEKİ adımda alanlara "yanlis_kullanici"
+  yazılmış oluyor - clear() olmadan send_keys("demo") sonucu alan
+  "yanlis_kullanicidemo" olurdu. login()'deki AYNI desenle (username_field.
+  clear(); password_field.clear(); sonra send_keys) düzeltildi.
+- pages/login_page.py: wait_for_error_message_to_disappear() eklendi
+  (EC.invisibility_of_element_located ile, sabit sleep DEĞİL, wait tabanlı).
+- steps/test_login_steps.py: "hata mesajı ekrandan kalkar" Then step'i
+  eklendi. Diğer tüm step'ler (giriş yapar / hatalı uyarı / "...şifresi
+  girilir") mevcut step'lerin tekrar kullanılmasıyla karşılandı.
+- features/login.feature: yeni Scenario, Background sayesinde ayrıca Given
+  yazmaya gerek kalmadan eklendi.
+- SONUÇ (gerçek uygulamada doğrulandı, ÖNCEDEN TAHMİN EDİLMEDİ - kullanıcı
+  kendi script'imle önceden doğrulamamı reddetti, manuel test case'i
+  doğrudan verip "ona göre ilerle" dedi): senaryo GERÇEKTEN KIRMIZI çıktı -
+  hata mesajı, alanlar submit edilmeden önce düzeltilirken ekrandan
+  KALKMIYOR (10sn timeout). Bu, [2026-08-03] tarihli önceki bulgunun
+  (o zaman farklı bir senaryo içinde dolaylı fark edilmişti) bu kez
+  BAĞIMSIZ, kendi başına bir senaryoyla TEKRAR TEYİT edilmiş hali.
+- KULLANICI KARARI (AskUserQuestion ile soruldu): admin-123 senaryosundaki
+  gibi KASITLI KIRMIZI bırakıldı - test değiştirilmedi, bug belgeleme amaçlı
+  regresyon testi olarak duruyor. Dev ekibi FR-001 ACC-13'ü düzeltince bu
+  test otomatik yeşile dönecek.
+- Doğrulama: pytest -k (ascii-safe substring) ile senaryo izole çalıştırılıp
+  gerçek TimeoutException traceback'i görüldü, fill_credentials düzeltmesi
+  sayesinde "Zorunlu Alan" senaryosunun regresyona uğramadığı ayrıca teyit
+  edildi (tam suite: 15 passed, 3 failed - üçü de bilinen/kasıtlı kırmızı,
+  admin-123 + "temizlenir/başarılı" + bu yeni senaryo, ekstra kırılma yok).
+
+[2026-08-04] Yeni senaryo: Her İki Alan Dolu Olduğunda Login Butonunun Aktif Hale Gelmesi
+- Kullanıcı manuel test case verdi (FR-001 ACC-09, 2 adım): 1) sadece
+  Username doldurulur, Password boş kalır -> buton pasif, 2) Password de
+  doldurulur (iki alan da dolu) -> buton aktif hale gelir.
+- SIFIR yeni page method - mevcut "kullanıcı adı ve şifresi girilir" step'i
+  (fill_credentials, artık .clear() ile düzeltilmiş hali) iki kez art arda
+  kullanıldı: önce password="" ile (buton pasif kontrolü), sonra aynı
+  username + gerçek password ile (buton aktif kontrolü). Mevcut "giriş
+  butonu pasif kalır" Then'i tekrar kullanıldı; sadece YENİ bir Then step'i
+  eklendi: "giriş butonu aktif hale gelir" - is_login_button_disabled()'ın
+  tersini assert ediyor, yeni bir page method YAZILMADI.
+- Doğrulama: pytest -k "aktif" ile gerçek uygulamaya karşı izole çalıştırıldı,
+  1 passed.
+
+[2026-08-04] Yeni senaryo: Giriş İşlemi Sırasında Login Butonunun Pasifleşmesi
+- Kullanıcı manuel test case verdi (3 adım): 1) demo/Password123 girilir,
+  2) Login butonuna tıklanır, 3) giriş işlemi başlarken butonun pasif
+  duruma geçtiği (in-flight/loading state) doğrulanır.
+- pages/login_page.py: click_login_button() eklendi (sadece tıklama,
+  navigasyon beklemiyor) - login() metodu BİLEREK değiştirilmedi/refactor
+  edilmedi (kapsam dışı risk, mevcut testleri etkilememek için minimal
+  değişiklik tercih edildi).
+- steps/test_login_steps.py: "kullanıcı Login butonuna tıklar" yeni When,
+  "Login butonu pasif duruma geçer" yeni Then metni EKLENDİ ama YENİ bir
+  fonksiyon YAZILMADI - mevcut "giriş butonu pasif kalır" Then'inin
+  fonksiyonuna (login_button_disabled) ikinci bir @then dekoratörü olarak
+  üst üste eklendi (göz ikonu senaryosundaki "tekrar tıklar" deseniyle
+  AYNI teknik) - ikisi de aynı is_login_button_disabled() assert'ini yapıyor.
+- ZAMANLAMA RİSKİ NOTU: bu senaryo "tıkla -> hemen ardından disabled
+  kontrolü yap" şeklinde çalışıyor, butonun disabled durumu ile
+  /customers'a yönlendirme arasındaki pencere çok kısa olabilir
+  (flaky olma riski). Bu yüzden GÜVENİLİRLİĞİ DOĞRULAMAK için izole halde
+  ARKA ARKAYA 3 KEZ çalıştırıldı, üçü de gerçek uygulamaya karşı passed -
+  flaky olmadığı teyit edildi (buton disabled state'i submit click
+  handler'ında senkron olarak set ediliyor gibi görünüyor).
+- Doğrulama: pytest -k "pasifle and Login" ile 3/3 run passed, ardından
+  tam suite (tek başına) ile genel regresyon kontrolü yapıldı.
+
+[2026-08-04] 50 karakter sınırı testi 2 ayrı sınır değer analizi (BVA) senaryosuna bölündü: =50 ve 51
+- Kullanıcı önce (kendi elleriyle, IDE'de) mevcut tek senaryoyu 60 karakterden
+  (sınırın ÜZERİ) tam 50 karaktere (sınırın KENDİSİ) çevirdi ve
+  "Tam 50 Karakter Uzunluğunda Kullanıcı Adı ile Sınır Değeri" olarak
+  yeniden adlandırdı - yani =50 girildiğinde HİÇ kırpılmadan tam kabul
+  edildiğini doğrulayan ayrı bir BVA senaryosu haline geldi.
+- Sonra kullanıcı ADI GEÇEN "Username ve Password Alanının 50 Karakter
+  Sınırı Doğrulaması" adıyla YENİ bir senaryo istedi: aynı mantığı (eskiden
+  60 karakterle yapılan "sınırın üzeri girilince 50'ye kırpılır" testi)
+  bu kez 51 karakterle (sınırın TAM BİR FAZLASI) yapan bir BVA senaryosu -
+  klasik "tam sınırda" + "sınır+1" çifti tamamlanmış oldu.
+- İLK DENEMEDE HATA YAPILDI VE DÜZELTİLDİ: mevcut paylaşılan step'i
+  (length=50 -> length=51) DOĞRUDAN değiştirdim, bu "Tam 50 Karakter..."
+  senaryosunun step'ini KIRDI (undefined step olurdu, çünkü feature'daki
+  metin hâlâ "50 karaktere eşit" diyordu ama step tanımı 51'e çevrilmişti).
+  Kullanıcının feature dosyasını AYNI ANDA kendi elleriyle düzenlediği fark
+  edilip (system-reminder'daki dosya diff'leriyle) iki senaryonun AYRI
+  kalması gerektiği anlaşıldı, DÜZELTİLDİ: iki bağımsız step fonksiyonu
+  eklendi (user_enters_values_of_exactly_50_characters ->
+  enter_long_values(length=50), user_enters_values_of_51_characters ->
+  enter_long_values(length=51)), her ikisi de AYNI Then step'ini
+  ("her iki alan da en fazla 50 karakter kabul eder", len==50 assert)
+  paylaşıyor - SIFIR yeni page method, sadece enter_long_values'a farklı
+  length argümanı geçiliyor.
+- ÖĞRENİLEN GENEL KURAL: Kullanıcı bir dosyayı IDE'de kendisi düzenlerken
+  ben de aynı dosyaya (veya ona bağlı step dosyasına) dokunuyorsam,
+  system-reminder'daki "dosya değişti" diff'lerini DİKKATLİCE okuyup
+  kullanıcının asıl niyetini (burada: TEK senaryoyu değiştirmek değil,
+  İKİ AYRI BVA senaryosu oluşturmak) anlamadan mekanik bir "değeri
+  güncelle" yaklaşımıyla ilerlemek yanlış sonuca götürüyor.
+- Doğrulama: --collect-only ile 21/21 test (çakışma/undefined step yok)
+  toplandı, pytest -k "50_karakter" ile iki senaryo da izole gerçek
+  uygulamaya karşı çalıştırıldı: 2 passed (51 karakter -> tam 50'ye
+  kırpılıyor, 50 karakter -> hiç kırpılmadan kabul ediliyor). Ardından
+  tam suite (tek başına) ile genel regresyon kontrolü yapıldı.
+
+[2026-08-04] customers_page.py'ye sayfadaki TÜM locator'lar eklendi (id-öncelikli, hız sıralamalı, unique doğrulanmış)
+- Kullanıcı istedi: gerçek uygulamaya giriş yapılıp customers sayfasındaki
+  TÜM HTML elementleri için, önce id varsa id, yoksa "locator hız
+  sıralaması"na göre (id > name > class > css > xpath - burada name/class
+  kullanılabilir olmadığı için pratikte id > css selector) locator
+  eklensin, her biri unique olduğu doğrulanarak.
+- Sayfa TEKRAR gerçek uygulamada (demo/Password123 ile) açılıp page_source
+  alındı, Python'da regex+Counter ile TÜM id="..." ve data-testid="..."
+  değerlerinin sayısı çıkarıldı (varsayım değil, gerçek DOM'dan ölçüldü):
+  - 8 gerçek HTML id: app-sidebar (kabuk, kapsam dışı) + 7 form alanı
+    (identityNumber, customerId, accountNumber, gsm, firstName, lastName,
+    orderNumber) - hepsi count=1, unique.
+  - data-testid'lerin TAMAMI unique (count=1), TEK istisna: customer-row ve
+    6 alt kolonu (customer-row-link/-first-name/-second-name/-last-name/
+    -role/-identity) - bunlar sayfadaki satır sayısı kadar (bu çalıştırmada
+    15x) TEKRAR ediyor, TEK BAŞINA unique DEĞİL.
+- KAPSAM KARARI (kullanıcıya bildirildi, sorulmadı): sidebar/topbar/user-menu/
+  language-switcher/theme-switcher gibi genel uygulama kabuğu elementleri
+  (her authenticated sayfada aynı, customers'a özgü değil) locator listesine
+  DAHIL EDİLMEDİ - sadece customers sayfasına özgü içerik (page-title/
+  page-subtitle, arama formu, sonuç tablosu, sayfalama, satır şablonu)
+  eklendi. Bu YAGNI/single-responsibility gerekçesiyle yapıldı (paylaşılan
+  shell elementleri ileride ayrı bir ortak page object'e ait olmalı).
+- pages/customers_page.py TAMAMEN yeniden yazıldı: 7 form alanı CSS
+  selector'dan By.ID'ye çevrildi (gerçek id'leri olduğu için - hız
+  sıralamasında en üstte), geri kalan ~20 tekil element By.CSS_SELECTOR
+  ([data-testid='...']) ile eklendi. customer-row ailesi ROW_* olarak
+  eklendi ama yorumla "tek başına unique değil, find_elements veya <tr>
+  WebElement'i üzerinden relative kullanılmalı" diye NET olarak işaretlendi.
+  Sayfa numarası butonları (page-1, page-2, page-4...) sonuç sayısına göre
+  DEĞİŞTİĞİ için sabit locator yerine page_button(n) adında dinamik bir
+  metotla üretiliyor (hardcode edilmedi).
+- Mevcut SEARCH_FIELDS/clear_all_search_fields/is_search_button_disabled
+  davranışsal olarak DEĞİŞMEDİ (aynı elementleri hedefliyorlar, sadece
+  locator stratejisi CSS'ten ID'ye geçti).
+- Doğrulama: pytest -v steps/test_customers_steps.py -> gerçek uygulamaya
+  karşı 1 passed (ID'ye çevrilen form alanı locator'ları dahil, regresyon
+  yok). Diğer yeni eklenen locator'ların (henüz hiçbir step tarafından
+  kullanılmayan) uniqueness'i canlı Selenium ile değil, gerçek sunucudan
+  alınan HTML üzerinde regex+Counter analiziyle doğrulandı.
+
+[2026-08-04] Yeni senaryo: Ekran Açıldığında B2C Segmentinin Varsayılan Seçili Gelmesi ve Filtre Formunun Görüntülenmesi
+- Kullanıcı manuel test case verdi: 1) Customer Search ekranı açılır
+  (Background zaten sağlıyor), 2) 7 arama alanı (ID Number, Customer ID,
+  Account Number, GSM, First Name, Last Name, Order Number) görüntülenir,
+  3) Search ve Clear butonları görüntülenir, 4) B2C sekmesi aktif
+  (turuncu/dolu), B2B sekmesi pasif stilde görüntülenir.
+- ÖNCE gerçek uygulamada B2C/B2B toggle butonlarının DOM'u incelendi:
+  B2C butonu aria-pressed="true", B2B butonu disabled + aria-disabled="true"
+  taşıyor. BİLİNÇLİ TASARIM KARARI: "aktif/pasif" kontrolü CSS class
+  string'ine (örn. "bg-etiya-orange") DEĞİL, semantik aria-pressed/disabled
+  attribute'larına bağlandı - Tailwind class'ları arasında zaten bir
+  önceki incelemeye göre küçük bir isim değişikliği (text-slate-300 ->
+  text-ink-subtle) olduğu GÖZLEMLENDİ, bu da class bazlı assertion'ların
+  kırılgan olacağını doğruladı; aria attribute'ları böyle bir refactor'dan
+  etkilenmez.
+- pages/customers_page.py: are_all_search_fields_visible(),
+  are_search_buttons_visible(), is_b2c_active() (aria-pressed=="true"),
+  is_b2b_inactive() (not is_enabled()) eklendi - hepsi bir önceki turda
+  eklenen locator sabitlerini (SEARCH_FIELDS, SEARCH_SUBMIT, SEARCH_CLEAR,
+  TYPE_B2C, TYPE_B2B) kullanıyor, YENİ locator gerekmedi.
+- steps/test_customers_steps.py: 3 yeni Then step'i eklendi. features/
+  customers.feature: Background zaten "ekranı açar" adımını sağladığı için
+  senaryo sadece 3 Then/And ile yazıldı, ekstra Given/When gerekmedi.
+- Doğrulama: pytest -v steps/test_customers_steps.py -> gerçek uygulamaya
+  karşı 2 passed (mevcut + yeni senaryo).
+
+[2026-08-04] Yeni senaryo: B2B Sekmesinin Prototipte Pasif (Disabled) ve İşlevsiz Olması
+- Kullanıcı manuel test case verdi: 1) B2B sekmesine tıklamayı dener,
+  2) buton disabled olduğundan tıklanamaz, 3) segmentin değişip
+  değişmediği kontrol edilir.
+- ÖNCE gerçek uygulamada .click() davranışı DENEYLE doğrulandı (varsayım
+  YAPILMADI): B2B butonu HTML disabled="" olmasına rağmen Selenium'un
+  normal .click()'i BEKLENENİN AKSİNE hiçbir exception FIRLATMADI (Selenium/
+  Chrome bu durumda tıklamayı sessizce yutuyor, buton kendi disabled
+  davranışı nedeniyle hiçbir şey olmuyor) - bu yüzden test exception
+  YAKALAMAYA DAYANMIYOR, sadece tıklama sonrası state DEĞİŞMEDİĞİNİ
+  (B2C hâlâ aktif, B2B hâlâ pasif) doğruluyor - gerçekte gözlemlenen
+  davranışa göre yazıldı.
+- pages/customers_page.py: try_click_b2b() eklendi (düz .click(), JS click
+  gerekmedi - toggle_password_visibility'deki JS click ihtiyacından FARKLI
+  bir buton, normal click sorunsuz çalışıyor).
+- steps/test_customers_steps.py: sadece 1 yeni When step'i eklendi
+  ("kullanıcı B2B sekmesine tıklamayı dener"). Then tarafı SIFIR yeni kod -
+  bir önceki senaryoda yazılan "B2C sekmesi aktif, B2B sekmesi pasif
+  görüntülenir" Then'i AYNEN tekrar kullanıldı (assertion birebir aynı:
+  segment değişmemiş olması = B2C aktif + B2B pasif).
+- Doğrulama: pytest -v steps/test_customers_steps.py -> gerçek uygulamaya
+  karşı 3 passed (tüm customers.feature senaryoları).
+
+[2026-08-04] ID Number alanı için 3 senaryo verildi, biri kapsam dışı bırakıldı
+- Kullanıcı 3 manuel test case verdi: 1) geçerli 11 haneli ID ile tam eşleşen
+  müşteri bulma, 2) 11 haneden az rakamda validasyon hatası (FR-002 ACC-03),
+  3) yalnızca rakam kabulü + 11 hane sınırı.
+- ÖNCE gerçek uygulamada ÜÇÜ DE deneysel olarak doğrulandı (varsayım
+  YAPILMADI, ayrı bir keşif script'iyle):
+  - Senaryo 1: "10000000146" (gerçek kayıt, Ahmet Yılmaz) girilip Search'e
+    basıldığında sonuç tablosu TAM 1 kayıtla (aynı identity) güncelleniyor -
+    UYUŞUYOR. Loading göstergesi için DOM'da "load"/"spin" içeren HİÇBİR
+    element bulunamadı - böyle bir UI elementi yok, bu yüzden ~1.2sn'lik
+    yükleme göstergesi iddiası hiç TEST EDİLMEDİ (zaten süre bazlı assertion
+    da kırılgan olurdu).
+  - Senaryo 2: 10 haneli değer girilip blur edildiğinde Angular formu HÂLÂ
+    "ng-valid" kalıyor - KIRMIZI ÇERÇEVE YOK, "Please enter a valid
+    11-digit ID number." mesajı DOM'da HİÇ render edilmiyor, Search butonu
+    ENABLED kalıyor. UYUŞMUYOR - FR-002 ACC-03 uygulamada implemente
+    edilmemiş.
+  - Senaryo 3: "abc!@#123" girildiğinde alanda sadece "123" kalıyor (harf/
+    özel karakterler input masking ile reddediliyor), 15 haneli değer
+    girildiğinde maxlength=11 sayesinde ilk 11 hanede kesiliyor - UYUŞUYOR.
+- KULLANICIYA SORULDU (AskUserQuestion): Senaryo 2'nin tutarsızlığı
+  bildirildi, kullanıcı "şimdilik atla" dedi - bu senaryo İMPLEMENTE
+  EDİLMEDİ (ne kasıtlı kırmızı ne gerçek davranışa göre yazıldı, sadece
+  ertelendi).
+- pages/customers_page.py: enter_identity_number() (her çağrıda .clear()
+  ile - bu session'da tekrar tekrar keşfedilen "clear önce" kuralına
+  uygun, ayrıca son girilen değeri self._last_identity_number'da saklıyor),
+  get_identity_number_value(), submit_search(), wait_for_matching_customer()
+  (ROW_IDENTITY template locator'ını find_elements ile kullanıp TEK
+  satırın son girilen identity ile birebir eşleştiğini bekliyor) eklendi.
+- steps/test_customers_steps.py: parsers import edildi (ilk kez bu dosyada
+  kullanıldı). "kullanıcı ID Number alanına ... girer" / "...girmeyi dener"
+  AYNI fonksiyona iki @when dekoratörüyle bağlandı (proje genelinde
+  kullanılan "eşdeğer Türkçe ifadeleri tek fonksiyona bağlama" deseni).
+  wait_for_matching_customer() sayesinde Then step'i parametre bile
+  almıyor - son girilen değeri page object kendi hatırlıyor, Gherkin'de
+  "girilen ID Number'a sahip müşteri kaydı..." diye TEKRAR yazmaya gerek
+  kalmadı.
+- Doğrulama: pytest -v steps/test_customers_steps.py -> gerçek uygulamaya
+  karşı TÜM 5 senaryo (mevcut 3 + yeni 2) passed.
+
+[2026-08-04] Ertelenen Senaryo 2 implement edildi: ID Number Alanına 11 Haneden Az Rakam Girildiğinde Validasyon Hatası Gösterilmesi
+- Kullanıcı, daha önce "şimdilik atla" dediği senaryoyu, AYNI manuel test
+  case adımlarıyla ve AYNI senaryo adıyla implement etmemi istedi.
+- İLK DENEME YANLIŞ ÇIKTI VE 2 KEZ DÜZELTİLDİ:
+  1) İlk yazımda IDENTITY_NUMBER_FIELD_CONTAINER adında GEREKSİZ yeni bir
+     locator eklemeye çalıştım - kullanıcı haklı olarak "IDENTITY_NUMBER
+     zaten var, neden yeni element ekliyoruz?" diye sorguladı. DÜZELTME:
+     yeni locator yerine mevcut IDENTITY_NUMBER (aria-invalid için) ve
+     SEARCH_FORM ([role='alert'] için) kullanıldı.
+  2) Bu haliyle gerçek uygulamada test edildiğinde is_identity_number_
+     marked_invalid() False döndü (aria-invalid hiç set edilmiyor) - bunu
+     "kasıtlı kırmızı, bug belgeleme" olarak project_brain.txt'ye kaydetmeye
+     çalıştım. KULLANICI BUNU REDDETTİ: "bug olarak belgeleme, istediğimiz
+     Search butonunun pasif kalması ve search etmemesi" dedi - yani asıl
+     istenen daha dar bir iddiaydı (sadece Search-disabled kısmı).
+  3) O daha dar iddiayı da izole olarak GERÇEK uygulamada test ettim:
+     Search butonu YİNE enabled kalıyor, tıklanınca arama GERÇEKTEN
+     tetikleniyor (engellenmiyor) - yani "Search pasif kalır / arama
+     tetiklenmez" iddiası da doğrulanmadı. Bu YENİ bulgu kullanıcıya
+     AÇIKÇA raporlandı, AskUserQuestion ile soruldu (bug olarak DEĞİL,
+     "gerçek davranışa göre mi yazalım" diye), kullanıcı "gerçekte
+     gözlemlenen davranışa göre yaz" seçeneğini onayladı.
+  4) BU ARADA ÖNEMLİ BİR KEŞİF YAPILDI: arama sonucu panelinin tam HTML'i
+     incelendiğinde, "Please enter a valid 11-digit ID number." mesajının
+     GERÇEKTEN VAR OLDUĞU görüldü - ama manuel test case'in tarif ettiği
+     gibi alan üzerinde inline/kırmızı-çerçeve hatası olarak DEĞİL,
+     [data-testid='empty-state-message'] elementinde, sonuç tablosunun
+     YERİNE geçen bir "boş durum" (empty-state) paneli olarak, ve SADECE
+     Search'e tıklandıktan SONRA (blur'da değil) görüntüleniyor. Yani
+     manuel test case'in doğrulama mesajı iddiası aslında DOĞRU, sadece
+     UI'da FARKLI bir yerde/tetiklemede implemente edilmiş.
+- pages/customers_page.py: EMPTY_STATE_MESSAGE locator'ı (data-testid=
+  'empty-state-message', gerçek DOM'dan doğrulandı) ve
+  wait_for_empty_state_message(expected_text) eklendi. Yanlış çıkan
+  is_identity_number_marked_invalid()/get_identity_number_error_text()
+  SİLİNDİ (kullanılmayan/yanlış kod bırakılmadı).
+- TEKNİK BULGU (flaky'yi önledi): wait_for_empty_state_message ilk yazımda
+  EC.visibility_of_element_located kullanıyordu ve İLK ÇALIŞTIRMADA
+  "Sonuçlar yükleniyor…" (geçici yükleme metni) yakalanıp assert FAILED
+  oldu - AYNI data-testid'li element önce loading metni, sonra final mesajı
+  gösteriyor. ÇÖZÜM: visibility_of_element_located yerine metnin TAM
+  OLARAK beklenen değere ulaşmasını bekleyen bir lambda wait'e geçildi
+  (self.wait.until(lambda d: ...text == expected_text)) - sabit sleep
+  DEĞİL, bu proje genelindeki "her zaman wait-tabanlı, sleep değil"
+  kuralına uygun.
+- steps/test_customers_steps.py: "Search butonu pasif kalır" gibi yanlış
+  bir iddia YAZILMADI - tek yeni Then step'i: '"{message}" mesajı
+  görüntülenir' (parsers.parse ile parametrize).
+- Doğrulama: pytest -v steps/test_customers_steps.py -> gerçek uygulamaya
+  karşı TÜM 6 senaryo passed (regresyon yok, önceki 5 + bu senaryo).
+- ÖĞRENİLEN GENEL KURAL: bir manuel test case'in doğrulama mesajı DOM'da
+  bulunamadığında hemen "implemente edilmemiş" sonucuna varıp kasıtlı
+  kırmızı yazmak yerine, sonuç panelinin/sayfanın TAMAMINI (sadece
+  beklenen konumu değil) incelemek gerekir - mesaj burada olduğu gibi
+  FARKLI bir UI deseninde (inline hata yerine post-submit empty-state)
+  gerçekten var olabilir.
+
+[2026-08-04] Yeni senaryo: Customer ID Aramasının Tam Eşleşme (Exact Match) ile Çalışması (2. adım atlandı)
+- Kullanıcı manuel test case verdi (2 adım): 1) kayıtlı bir müşterinin tam
+  Customer ID'si girilip Search'e tıklanır -> yalnızca o ID'ye tam eşleşen
+  tek kayıt döner, 2) aynı müşterinin ID'sinin SADECE baş kısmı (prefix)
+  girilir -> "sonuç dönmez, 'No customer found! Would you like to create
+  the customer?' mesajı görüntülenir" beklentisi.
+- ÖNCE gerçek uygulamada 2. adım deneysel olarak test edildi, İKİ AYRI
+  BULGU ortaya çıktı:
+  1) VERİ SETİ KISITI: customerId'ler 1'den (bu oturumda gözlenen) 62'ye
+     kadar ARDIŞIK ve BOŞLUKSUZ dolu. Herhangi bir 2 haneli ID'nin (örn.
+     "10") tek haneli prefix'i (örn. "1") HER ZAMAN gerçek, var olan BAŞKA
+     bir müşteriye (customer 1) TAM eşleşiyor - yani manuel case'in tarif
+     ettiği "prefix gir, sonuç dönmez" senaryosu GERÇEK bir prefix ile
+     KURULAMIYOR (deneyerek doğrulandı: "1" girilince customer 1 tam
+     eşleşti, boş sonuç değil). Bu YAN ETKİ OLARAK exact-match'in doğru
+     çalıştığını da kanıtlıyor (prefix-match olsaydı 1,10,11,12... hepsi
+     dönerdi, sadece "1" dönmezdi).
+  2) MESAJ METNİ FARKLI: gerçekten var olmayan bir Customer ID ("999999")
+     ile arandığında gerçek "sonuç yok" mesajı "Arama kriterlerine uygun
+     müşteri bulunamadı." çıktı - manuel case'teki İngilizce "No customer
+     found! Would you like to create the customer?" metni ve "müşteri
+     oluştur" teklifi YOK.
+- Kullanıcıya İKİ AYRI AskUserQuestion soruldu: 1) prefix testi yerine var
+  olmayan bir ID kullanılsın mı -> kullanıcı "2. adımı ŞİMDİLİK ATLA" dedi
+  (var olmayan ID'yle ikame ETMEDİ, sadece adımı ertelemeyi seçti).
+  2) mesaj metni gerçek Türkçe metne göre mi yazılsın -> "gerçek metne göre
+     yaz" seçildi (bu soru aslında CEVAPSIZ KALDI çünkü 2. adımın kendisi
+     implement edilmediği için mesaj assertion'ı da hiç yazılmadı - ileride
+     2. adım ele alınırsa bu tercih hatırlanmalı: "Arama kriterlerine uygun
+     müşteri bulunamadı." kullanılacak, İngilizce metin DEĞİL).
+- SADECE 1. adım implement edildi: pages/customers_page.py'ye
+  enter_customer_id() (self._last_customer_id saklıyor, identity number
+  ile AYNI desen) ve wait_for_matching_customer_id() (ROW_LINK template
+  locator'ını find_elements ile kullanıp tek satırın son girilen customer
+  ID ile birebir eşleştiğini bekliyor - wait_for_matching_customer'daki
+  AYNI desen, sadece ROW_IDENTITY yerine ROW_LINK) eklendi.
+  steps/test_customers_steps.py: 1 yeni When + 1 yeni Then step'i eklendi,
+  "kullanıcı Search butonuna tıklar" MEVCUT step'i tekrar kullanıldı.
+- Doğrulama: pytest -v steps/test_customers_steps.py -> gerçek uygulamaya
+  karşı TÜM 7 senaryo passed (mevcut 6 + bu yeni senaryo).
+
+[2026-08-04] Yeni senaryo: Customer ID Alanının Yalnızca Rakam Kabul Etmesi ve 20 Hane Sınırı
+- Kullanıcı manuel test case verdi (2 adım): 1) harf/özel karakter girmeyi
+  dener -> yalnızca rakam karakterleri alana yansır, 2) 20 haneden fazla
+  rakam girmeyi dener -> alan en fazla 20 haneyi kabul eder. Kullanıcı
+  Then metnini özellikle "fazlası kesilir" yerine "20 üzeri karakter
+  alamaz" olarak istedi.
+  NOT: bu sefer önce gerçek uygulamada DOĞRULAMA script'i ÇALIŞTIRMADAN
+  (kullanıcı reddetti) doğrudan implement edildi - ID Number alanında AYNI
+  appdigitsonly/maxlength mekanizması zaten daha önce doğrulanmıştı, bu
+  alan (customerId, maxlength=20) sadece farklı bir maxlength değeriyle
+  AYNI mekanizmayı kullandığı için düşük riskli kabul edildi.
+- pages/customers_page.py: SIFIR yeni locator - mevcut CUSTOMER_ID ve
+  enter_customer_id() (zaten Exact Match senaryosunda vardı, clear()+
+  send_keys() zaten "dener" semantiğiyle uyumlu) tekrar kullanıldı.
+  Sadece get_customer_id_value() eklendi (ID Number'daki get_identity_
+  number_value ile AYNI desen).
+- steps/test_customers_steps.py: "kullanıcı Customer ID alanına ... girer"
+  MEVCUT step'i (Exact Match senaryosundan) tekrar kullanıldı - yeni bir
+  "girmeyi dener" varyantı YAZILMADI çünkü tek fonksiyon zaten hem "gir"
+  hem "girmeyi dene" senaryolarını karşılıyor (ID Number'da 2 ayrı @when
+  dekoratörü stacklenmişti, burada TEK decorator yeterli oldu çünkü
+  Gherkin'de "girer" kelimesi kullanıldı, "girmeyi dener" değil). 2 yeni
+  Then step'i eklendi: "Customer ID alanında {value} değeri görüntülenir"
+  ve "Customer ID alanı 20 üzeri karakter alamaz" (len==20 assert, ID
+  Number'daki 11-hane testiyle AYNI desen).
+- FLAKY TEST NOTU: doğrulama sırasında "ID Number Alanına 11 Haneden Az
+  Rakam..." senaryosu (bu turda DOKUNULMAYAN, önceden zaten yeşil olan bir
+  senaryo) BİR KEZ chromedriver çökmesiyle (GetHandleVerifier stack trace,
+  assertion hatası DEĞİL) FAILED düştü. İZOLE tekrar çalıştırıldığında
+  SORUNSUZ geçti - bu günkü oturumda çok sayıda arka arkaya headless Chrome
+  süreci başlatılmasından kaynaklanan GEÇİCİ bir ortam kararsızlığı olarak
+  değerlendirildi, kod/test mantığıyla ilgisi yok. Tüm customers.feature
+  tekrar çalıştırılıp 8/8 TEMİZ geçtiği doğrulandı.
+- Doğrulama: pytest -v steps/test_customers_steps.py -> gerçek uygulamaya
+  karşı TÜM 8 senaryo passed (mevcut 7 + bu yeni senaryo).
+
+[2026-08-04] Yeni senaryo: GSM Alanının Yalnızca Rakam Kabul Etmesi ve Ülkelere Göre Karakter Sınırı + ÖNCEKİ "flaky" testin GERÇEK kök sebebi bulunup düzeltildi
+- Kullanıcı manuel test case verdi (2 adım, FR-002 ACC-04): 1) harf/özel
+  karakter girmeyi dener -> yalnızca rakam kabul edilir, 2) 10 haneden
+  fazla rakam girmeyi dener -> alan en fazla 10 haneyi kabul eder.
+  GSM alanı zaten appdigitsonly + maxlength="10" kullanıyor (ID Number/
+  Customer ID ile AYNI mekanizma, önceden 2 kez doğrulanmıştı) - bu yüzden
+  önceden doğrulama script'i çalıştırılmadan DOĞRUDAN implement edildi.
+- pages/customers_page.py: enter_gsm(), get_gsm_value() eklendi (ID Number/
+  Customer ID'deki AYNI clear()+send_keys() deseni). steps/
+  test_customers_steps.py: "kullanıcı GSM alanına ... girer" When + "GSM
+  alanında ... değeri görüntülenir" / "GSM alanı en fazla 10 haneyi kabul
+  eder" Then'leri (aynı len==N deseni) eklendi.
+- ÖNEMLİ: bu turda tam suite çalıştırılırken, DAHA ÖNCE "geçici/ortam
+  kararsızlığı" diye değerlendirilen "ID Number Alanına 11 Haneden Az
+  Rakam..." testinin flaky FAILED'ı TEKRAR (2. kez) görüldü - bu yüzden
+  "geçici" varsayımı YANLIŞTI, ASIL KÖK SEBEP ARANDI ve BULUNDU:
+  --tb=long ile tam traceback incelendiğinde gerçek hata
+  selenium.common.exceptions.StaleElementReferenceException (steps\
+  test_customers_steps.py:84, wait_for_empty_state_message içinde)
+  olduğu görüldü - chromedriver çökmesi/GetHandleVerifier stack trace'i
+  SADECE bu exception'ın ekrana yazdırılma şekliydi, gerçek bir
+  browser/driver çökmesi DEĞİLDİ.
+  KÖK SEBEP: wait_for_empty_state_message'daki lambda
+  (d.find_element(*EMPTY_STATE_MESSAGE).text == expected_text) Angular
+  aynı testid'li elementi (loading metninden final mesaja) yeniden
+  render ederken ARA SIRA find_element ile .text erişimi arasında element
+  DOM'dan kaldırılıp StaleElementReferenceException fırlatıyor.
+  Selenium'un WebDriverWait'i VARSAYILAN olarak SADECE
+  NoSuchElementException'ı yutup tekrar dener - StaleElementReference
+  YUTULMUYOR, doğrudan test'i patlatıyor. Python kaynağı incelenerek
+  (inspect.getsource) DOĞRULANDI: WebDriverWait'in ignored_exceptions
+  parametresi varsayılanların YERİNE DEĞİL, ÜZERİNE EKLENİYOR
+  (exceptions = list(IGNORED_EXCEPTIONS); exceptions.extend(...)) - yani
+  StaleElementReferenceException eklemek NoSuchElementException'ı
+  yutmayı BOZMUYOR.
+- ÇÖZÜM: CustomersPage.__init__'teki self.wait (TÜM CustomersPage
+  metotlarının paylaştığı TEK WebDriverWait) artık
+  ignored_exceptions=(StaleElementReferenceException,) ile oluşturuluyor -
+  yerel/tek-metoda özel bir çözüm DEĞİL, GENEL bir sağlamlaştırma
+  (Angular gibi sık DOM-yeniden-render eden SPA'larda tüm wait.until()
+  çağırıları için aynı riske açık olduğundan).
+- DOĞRULAMA (iddia değil, gerçekten tekrarlanarak test edildi): önceden
+  flaky olan test İZOLE olarak ARKA ARKAYA 3 KEZ çalıştırıldı, ÜÇÜ DE
+  passed. Ardından tam customers.feature suite'i tekrar çalıştırıldı:
+  9/9 passed (8 önceki + bu yeni GSM senaryosu), TEMİZ.
+- ÖĞRENİLEN GENEL KURAL: bir Selenium testi "flaky/geçici ortam sorunu"
+  gibi görünen ama tam olarak AYNI testte TEKRARLANAN bir hatayla
+  düşüyorsa, "ortam kararsızlığı" diye geçiştirilmeden --tb=long ile TAM
+  traceback (chromedriver'ın kendi C++ stack trace'inin ALTINDA kalan
+  gerçek Python exception satırı) incelenmeli - burada olduğu gibi asıl
+  sebep genellikle chromedriver'da değil, kendi wait/polling kodumuzdaki
+  gerçek, deterministik bir race condition olabiliyor.
