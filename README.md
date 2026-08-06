@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # CRM Test Automation Framework
 
 Selenium + pytest-bdd ile UI test otomasyon iskeleti.
@@ -55,3 +56,7 @@ allure serve reports/allure-results
 ## Not
 
 `core/` ve `fixtures/` klasörleri bilinçli olarak eklenmedi (YAGNI): driver/base class ihtiyacı `utils/`'a, fixture'lar `conftest.py`'ye sığıyor. Gerçek ihtiyaç doğduğunda eklenebilir.
+=======
+# crm-test-automation-pytest-bdd
+CRM test automation framework built with Python, Pytest, pytest-bdd, Selenium, Requests, and Allure Reports.
+>>>>>>> 6b40b8db2e65bc794f312e3ae3c04e7a666178b1

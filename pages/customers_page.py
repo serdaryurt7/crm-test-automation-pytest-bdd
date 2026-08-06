@@ -1,5 +1,8 @@
+import random
 from selenium.common.exceptions import StaleElementReferenceException
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
@@ -38,7 +41,9 @@ class CustomersPage:
     RESULTS_TABLE = (By.CSS_SELECTOR, "[data-testid='customer-results']")
     RESULTS_COUNT = (By.CSS_SELECTOR, "[data-testid='customer-results-count']")
     RESULTS_RANGE = (By.CSS_SELECTOR, "[data-testid='customer-results-range']")
+    EMPTY_STATE = (By.CSS_SELECTOR, "[data-testid='empty-state']")
     EMPTY_STATE_MESSAGE = (By.CSS_SELECTOR, "[data-testid='empty-state-message']")
+    CREATE_CUSTOMER_BUTTON = (By.CSS_SELECTOR, "a[data-testid='customer-results-create']")
     SORT_CUSTOMER_ID = (By.CSS_SELECTOR, "[data-testid='customer-results-sort-customerId']")
     SORT_FIRST_NAME = (By.CSS_SELECTOR, "[data-testid='customer-results-sort-firstName']")
     SORT_SECOND_NAME = (By.CSS_SELECTOR, "[data-testid='customer-results-sort-secondName']")
@@ -62,6 +67,9 @@ class CustomersPage:
     ROW_LAST_NAME = (By.CSS_SELECTOR, "[data-testid='customer-row-last-name']")
     ROW_ROLE = (By.CSS_SELECTOR, "[data-testid='customer-row-role']")
     ROW_IDENTITY = (By.CSS_SELECTOR, "[data-testid='customer-row-identity']")
+
+    # Müşteri Detayı (Customer Info) ekranı
+    CUSTOMER_DETAIL_HEADER = (By.CSS_SELECTOR, "[data-testid='customer-detail-header']")
 
     def __init__(self, driver):
         self.driver = driver
@@ -120,6 +128,10 @@ class CustomersPage:
     def wait_for_empty_state_message(self, expected_text):
         self.wait.until(lambda d: d.find_element(*self.EMPTY_STATE_MESSAGE).text == expected_text)
 
+    def wait_for_no_results_state(self):
+        self.wait.until(EC.visibility_of_element_located(self.EMPTY_STATE))
+        assert self.get_row_count() == 0, "Sonuç bulunamadı durumu beklenirken hâlâ satırlar görüntüleniyor"
+
     def enter_customer_id(self, value):
         field = self.driver.find_element(*self.CUSTOMER_ID)
         field.clear()
@@ -141,3 +153,154 @@ class CustomersPage:
 
     def get_gsm_value(self):
         return self.driver.find_element(*self.GSM).get_attribute("value")
+
+    def enter_long_first_last_name(self, length=60):
+        long_text = "a" * length
+        self.driver.find_element(*self.FIRST_NAME).send_keys(long_text)
+        self.driver.find_element(*self.LAST_NAME).send_keys(long_text)
+
+    def get_first_name_value(self):
+        return self.driver.find_element(*self.FIRST_NAME).get_attribute("value")
+
+    def get_last_name_value(self):
+        return self.driver.find_element(*self.LAST_NAME).get_attribute("value")
+
+    def enter_last_name(self, value):
+        field = self.driver.find_element(*self.LAST_NAME)
+        field.clear()
+        field.send_keys(value)
+
+    def wait_for_last_name_results(self, expected_last_name):
+        self.wait.until(
+            lambda d: bool(d.find_elements(*self.ROW_LAST_NAME))
+            and all(e.text.strip() == expected_last_name for e in d.find_elements(*self.ROW_LAST_NAME))
+        )
+
+    def enter_first_name(self, value):
+        field = self.driver.find_element(*self.FIRST_NAME)
+        field.clear()
+        field.send_keys(value)
+
+    def wait_for_first_name_results(self, expected_first_name):
+        self.wait.until(
+            lambda d: bool(d.find_elements(*self.ROW_FIRST_NAME))
+            and all(e.text.strip() == expected_first_name for e in d.find_elements(*self.ROW_FIRST_NAME))
+        )
+
+    def wait_for_last_name_results_starting_with(self, prefix):
+        self.wait.until(
+            lambda d: bool(d.find_elements(*self.ROW_LAST_NAME))
+            and all(e.text.strip().startswith(prefix) for e in d.find_elements(*self.ROW_LAST_NAME))
+        )
+
+    def wait_for_first_name_results_starting_with(self, prefix):
+        self.wait.until(
+            lambda d: bool(d.find_elements(*self.ROW_FIRST_NAME))
+            and all(e.text.strip().startswith(prefix) for e in d.find_elements(*self.ROW_FIRST_NAME))
+        )
+
+    def wait_for_results_matching_first_and_last_name(self, first_name_prefix, last_name_prefix):
+        self.wait.until(
+            lambda d: bool(d.find_elements(*self.ROW_LINK))
+            and all(e.text.strip().startswith(first_name_prefix) for e in d.find_elements(*self.ROW_FIRST_NAME))
+            and all(e.text.strip().startswith(last_name_prefix) for e in d.find_elements(*self.ROW_LAST_NAME))
+        )
+
+    def wait_for_results_matching_first_name_or_customer_id(self, first_name_prefix, customer_id):
+        def check(d):
+            links = d.find_elements(*self.ROW_LINK)
+            firsts = d.find_elements(*self.ROW_FIRST_NAME)
+            if not links:
+                return False
+            matches = [
+                fn.text.strip().startswith(first_name_prefix) or link.text.strip() == customer_id
+                for link, fn in zip(links, firsts)
+            ]
+            return (
+                all(matches)
+                and any(link.text.strip() == customer_id for link in links)
+                and any(fn.text.strip().startswith(first_name_prefix) for fn in firsts)
+            )
+
+        self.wait.until(check)
+
+    def get_row_count(self):
+        return len(self.driver.find_elements(*self.ROW))
+
+    def get_result_customer_ids(self):
+        return [e.text.strip() for e in self.driver.find_elements(*self.ROW_LINK)]
+
+    def is_customer_id_column_sorted_ascending(self):
+        ids = [int(value) for value in self.get_result_customer_ids()]
+        return ids == sorted(ids)
+
+    def is_pagination_active(self):
+        pagination = self.driver.find_elements(*self.PAGINATION)
+        next_buttons = self.driver.find_elements(*self.NEXT_PAGE)
+        return bool(pagination) and bool(next_buttons) and next_buttons[0].is_enabled()
+
+    def capture_current_page_customer_ids(self):
+        self._first_page_ids = set(self.get_result_customer_ids())
+
+    def go_to_next_page(self):
+        self.wait.until(EC.element_to_be_clickable(self.NEXT_PAGE)).click()
+
+    def verify_next_page_records_are_new(self):
+        self.wait.until(
+            lambda d: set(e.text.strip() for e in d.find_elements(*self.ROW_LINK)) != self._first_page_ids
+        )
+        next_page_ids = set(self.get_result_customer_ids())
+        assert next_page_ids, "Sonraki sayfada hiç kayıt yok"
+        assert not (next_page_ids & self._first_page_ids), (
+            "Sonraki sayfada önceki sayfayla çakışan (tekrarlanan) kayıtlar var"
+        )
+
+    def is_create_customer_button_visible(self):
+        button = self.wait.until(EC.visibility_of_element_located(self.CREATE_CUSTOMER_BUTTON))
+        return button.is_displayed() and button.is_enabled()
+
+    def click_create_customer_button(self):
+        self.wait.until(EC.element_to_be_clickable(self.CREATE_CUSTOMER_BUTTON)).click()
+
+    def click_customer_row_link(self):
+        # Not: sticky topbar (position: sticky, top: 0) satırın üzerine
+        # binip normal .click()'i ElementClickIntercepted ile engelliyor -
+        # elementi viewport ortasına kaydırıp (topbar'ın arkasından çıkararak)
+        # sonra normal .click() ile tıklıyoruz.
+        self._window_handle_count_before_click = len(self.driver.window_handles)
+        link = self.wait.until(EC.element_to_be_clickable(self.ROW_LINK))
+        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", link)
+        link.click()
+
+    def verify_navigated_to_customer_detail_same_tab(self, customer_id):
+        self.wait.until(lambda d: f"/customers/{customer_id}" in d.current_url)
+        assert len(self.driver.window_handles) == self._window_handle_count_before_click, (
+            "Müşteri detayına geçişte yeni bir sekme/pencere açıldı"
+        )
+        assert f"/customers/{customer_id}" in self.driver.current_url
+        self.wait.until(EC.visibility_of_element_located(self.CUSTOMER_DETAIL_HEADER))
+
+    def fill_all_search_fields_via_tab_navigation(self):
+        identity_number = "".join(random.choices("0123456789", k=11))
+        self.driver.find_element(*self.IDENTITY_NUMBER).click()
+        actions = ActionChains(self.driver)
+        actions.send_keys(identity_number).send_keys(Keys.TAB)  # identityNumber
+        actions.send_keys("5").send_keys(Keys.TAB)  # customerId
+        actions.send_keys("1234567890").send_keys(Keys.TAB)  # accountNumber
+        actions.send_keys(Keys.TAB)  # gsm-country butonu - metin girilmiyor
+        actions.send_keys("5551234567").send_keys(Keys.TAB)  # gsm
+        actions.send_keys("Ahmet").send_keys(Keys.TAB)  # firstName
+        actions.send_keys("Yilmaz").send_keys(Keys.TAB)  # lastName
+        actions.send_keys("12345678")  # orderNumber
+        actions.perform()
+
+    def click_clear_button(self):
+        self.wait.until(EC.element_to_be_clickable(self.SEARCH_CLEAR)).click()
+
+    def verify_all_search_fields_empty(self):
+        for locator in self.SEARCH_FIELDS:
+            value = self.driver.find_element(*locator).get_attribute("value")
+            assert value == "", f"Alan temizlenmedi: {locator} = {value!r}"
+
+    def verify_results_reset_to_default(self):
+        self.wait.until(lambda d: len(d.find_elements(*self.ROW)) == 15)

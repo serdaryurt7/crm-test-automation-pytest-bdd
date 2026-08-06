@@ -1079,3 +1079,435 @@ Her yeni değişiklikte bu dosyanın sonuna yeni bir madde eklenir.
   gerçek Python exception satırı) incelenmeli - burada olduğu gibi asıl
   sebep genellikle chromedriver'da değil, kendi wait/polling kodumuzdaki
   gerçek, deterministik bir race condition olabiliyor.
+
+[2026-08-04] Yeni senaryo: (Var olmayan kullanıcı için) GSM Alanının Geçerli Değer Girilse Dahi Arama Sonuçlarını Filtrelememesi
+- Kullanıcı manuel test case verdi (3 adım): 1) sadece GSM alanına geçerli
+  formatta (10 hane) bir değer girilir, diğer alanlar boş -> değer
+  görüntülenir, hata yok, Search aktif olur, 2) Search'e tıklanır -> arama
+  tetiklenir, 3) sonuçlarda hiç kullanıcı listelenmez (girilen GSM gerçekte
+  hiçbir müşteriye ait değil).
+- ÖNCE gerçek uygulamada rastgele (var olmayan) bir 10 haneli GSM
+  ("5551234567") ile doğrulandı: değer doğru görüntülendi, Search enabled
+  kaldı, tıklanınca "Arama kriterlerine uygun müşteri bulunamadı." mesajı
+  çıktı (0 satır) - Customer ID'nin var olmayan değer testinde bulunan AYNI
+  genel "sonuç yok" mesajı, ID Number'ın kendine özgü validasyon mesajından
+  FARKLI olarak (GSM formatı zaten geçerli, bu yüzden format hatası değil,
+  gerçek "eşleşme yok" durumu).
+- SIFIR YENİ KOD: bu senaryonun ihtiyaç duyduğu TÜM step'ler (GSM'e değer
+  gir/değer görüntülenir - GSM masking senaryosundan, Search butonu aktif
+  hale gelir - ID Number exact-match senaryosundan, Search'e tıklar - ortak,
+  "{message}" mesajı görüntülenir - ID Number validasyon senaryosundan)
+  ZATEN VARDI, sadece feature dosyasına yeni Scenario eklendi.
+- Doğrulama: pytest -v steps/test_customers_steps.py -> gerçek uygulamaya
+  karşı TÜM 10 senaryo passed (mevcut 9 + bu yeni senaryo).
+
+[2026-08-06] 3 yeni senaryo: First/Last Name Alanlarının 50 Karakter Sınırı, Auto-Trim ve Büyük/Küçük Harf Duyarsızlığı
+- Kullanıcı 3 manuel test case verdi (FR-002 ACC-08/ACC-09): 1) 50 karakter
+  sınırı, 2) baş/son boşluklu arama -> auto-trim ile boşluksuz değerle
+  çalışması, 3) "YILMAZ" ve "yılmaz" aynı sonuç kümesini döndürmesi
+  (case-insensitive arama). Kullanıcı bunları TEK bir "Scenario Outline"
+  başlığı altında istedi.
+- ÖNCE gerçek uygulamada (customer 1 = Ahmet Yılmaz, ve ikinci bir Yılmaz
+  soyadlı müşteri = customer 41 kullanılarak) HEPSİ doğrulandı - BU SEFER
+  HİÇBİR TUTARSIZLIK BULUNMADI: 60 karakter girilince 50'ye kırpılıyor,
+  "  Yılmaz  " (boşluklu) arandığında AYNI 2 sonuç (customer 1, 41)
+  dönüyor (trim çalışıyor), "YILMAZ" VE "yılmaz" İKİSİ DE AYNI 2 sonucu
+  döndürüyor (case-insensitive çalışıyor - ÖZELLİKLE Türkçe dotless-ı/İ
+  locale hatası riski vardı, o da YOK çıktı, güvenlik amaçlı özellikle
+  test edildi).
+- TASARIM KARARI: kullanıcı "Scenario Outline" dediği halde 3 farklı
+  Then assertion'ı TEK bir Outline'da birleştirilemez (Outline aynı
+  assertion'ı farklı veriyle tekrarlamak içindir). Ayrıca ÖNEMLİ: login
+  auto-trim senaryosunda daha önce keşfedilen kural (Gherkin Examples
+  tablosu hücrelerindeki baş/son boşlukları OTOMATİK KIRPIYOR) burada da
+  geçerli - bu yüzden "  Yılmaz  " (boşluklu) değeri bir Examples
+  tablosuna KONULMADI, kendi başına düz bir Scenario'da tırnak içine
+  gömüldü. SONUÇ: 3 ayrı yapı kullanıldı:
+  1) "First Name ve Last Name Alanlarının 50 Karakter Sınırı" - düz
+     Scenario (login'deki "Username ve Password Alanının 50 Karakter
+     Sınırı" ile AYNI desen: tek When iki alanı birden doldurur, tek Then
+     ikisini birden len==50 ile kontrol eder, açıklayıcı assert mesajları).
+  2) "Last Name Alanında Baş/Son Boşlukların Otomatik Temizlenmesi
+     (Auto-Trim)" - düz Scenario, boşluk tırnak içinde gömülü.
+  3) "Last Name Aramasının Büyük/Küçük Harf Duyarsız Olması" - GERÇEK bir
+     Scenario Outline (YILMAZ/yılmaz Examples, boşluk içermediği için
+     tablo kırpma sorunu YOK) - 2) ve 3) AYNI Given/When/Then step'lerini
+     paylaşıyor (case-insensitivity Outline'ı SIFIR yeni step ile,
+     sadece yeni Examples satırlarıyla çözüldü).
+- pages/customers_page.py: enter_long_first_last_name() (login'deki
+  enter_long_values ile AYNI desen, iki alana birden), get_first_name_
+  value(), get_last_name_value(), enter_last_name(), ve
+  wait_for_last_name_results(expected_last_name) (ROW_LAST_NAME template
+  locator'ını find_elements ile kullanıp TÜM dönen satırların last name
+  kolonunun beklenen değere eşit olduğunu VE en az 1 sonuç olduğunu
+  bekliyor - identity/customerId'deki "tek eşleşme" desenlerinden FARKLI
+  olarak burada BİRDEN FAZLA sonuç meşru, bu yüzden "== [tek_değer]"
+  yerine "hepsi eşit VE boş değil" mantığı kullanıldı) eklendi.
+- Doğrulama: 120 saniyelik ön plan zaman aşımına takılıp arka planda
+  tamamlandı (13 senaryo/14 test artık suite'te) - TÜMÜ (14/14) gerçek
+  uygulamaya karşı passed, Türkçe "yılmaz" dahil.
+
+[2026-08-06] First Name için Auto-Trim ve Büyük/Küçük Harf Duyarsızlığı eklendi (Last Name'in eşdeğeri) + YİLMAZ (noktalı büyük İ) varyantı doğrulandı
+- Kullanıcı: bir önceki turda Last Name için yazılan Auto-Trim + Case-
+  Insensitive senaryolarının First Name için de yazılmasını istedi. Ayrıca
+  kullanıcı KENDİSİ (IDE'de, benim tool call'larım DIŞINDA) Last Name
+  Outline'ına 3. bir Examples satırı eklemişti: "YİLMAZ" (noktalı büyük İ -
+  önceki "YILMAZ" noktasız büyük I'dan farklı) - klasik "Turkish I problem"
+  (İ/I/ı/i Unicode case-folding) locale hatasını hedefleyen bilinçli bir
+  ek test verisi.
+- ÖNCE gerçek uygulamada HEM YENİ First Name senaryoları HEM de kullanıcının
+  eklediği YİLMAZ varyantı BİRLİKTE doğrulandı (ayrı bir keşif script'i
+  ile, "İbrahim" ismi kasıtlı seçildi çünkü kendisi de baş harfi noktalı
+  büyük İ olan bir isim - Last Name'deki "Yılmaz" (noktasız ı) ile SİMETRİK
+  bir test senaryosu kurmak için): trim, IBRAHIM (noktasız büyük I),
+  ibrahim (küçük harf), İBRAHİM (noktalı büyük İ) - HEPSİ AYNI 2 sonucu
+  (customer 7, 37) döndürdü. Last Name tarafında da YİLMAZ dahil 4 varyant
+  AYNI 2 sonucu (customer 1, 41) döndürdü. YANİ TURKISH I PROBLEM BU
+  UYGULAMADA YOK - arama muhtemelen locale-aware/case-folding'i doğru
+  yapan bir backend/DB collation kullanıyor.
+- pages/customers_page.py: enter_first_name(), wait_for_first_name_results()
+  eklendi - wait_for_last_name_results ile BİREBİR AYNI desen (ROW_FIRST_NAME
+  template locator'ı, "hepsi eşit VE boş değil" mantığı).
+- steps/test_customers_steps.py: "kullanıcı First Name alanına ... girer"
+  When + '"{first_name}" adına sahip müşteri kayıtları sonuç listesinde
+  görüntülenir' Then eklendi (Last Name'deki "soyadına sahip..." ile AYNI
+  desen, farklı kelime).
+- features/customers.feature: "First Name Alanında Baş/Son Boşlukların
+  Otomatik Temizlenmesi (Auto-Trim)" düz Scenario + "First Name
+  Aramasının Büyük/Küçük Harf Duyarsız Olması" Scenario Outline (3
+  Examples: IBRAHIM/ibrahim/İBRAHİM) eklendi - Last Name'deki İKİ yapı ile
+  BİREBİR simetrik.
+- Doğrulama: pytest -v steps/test_customers_steps.py -> gerçek uygulamaya
+  karşı TÜM 19 test passed (mevcut 14 + First Name'in 5 yeni testi:
+  1 trim + 3 case-outline + YİLMAZ'ın kendisi zaten mevcut Last Name
+  Outline'ının 3. Examples satırı olarak sayılıyordu, ayrıca doğrulandı).
+
+[2026-08-06] Yeni senaryolar: First/Last Name Aramasının Baştan Eşleşme (Starts-With) ile Çalışması
+- Kullanıcı manuel test case verdi (2 adım): 1) bir baş kısım (prefix)
+  girilince o prefix ile BAŞLAYAN tüm kayıtların dönmesi (örnek: "Kara"),
+  2) sadece İÇERİDE geçen bir alt dize (örnek: "taş") girilince başlangıç
+  eşleşmesi kuralı gereği sonuç dönmemesi.
+- ÖNCE gerçek uygulamada TÜM veri seti (62 müşterinin tüm first/last
+  name'leri, sayfalama gezilerek) toplanıp incelendi. BULGU: kullanıcının
+  verdiği "Kara"/"taş" örnekleri veri setinde ayrımı GÖSTEREMİYOR - çünkü
+  "taş" içeren TEK soyad zaten "Taş"ın kendisi (o da baştan eşleşiyor,
+  "sadece içeren ama başlamayan" bir örnek YOK). Bu durum kullanıcıya
+  raporlandı (soru sorulmadan, çünkü çözüm nettir - gerçek veriyle çalışan
+  alternatif örnekler bulundu):
+  - Last Name: "Kar" (gerçek prefix, "Kara"yı buluyor) + "ılmaz" ("Yılmaz"ın
+    ORTASINDAN alınan substring, hiç sonuç DÖNMÜYOR - gerçek uygulamada
+    doğrulandı) kullanıldı.
+  - First Name: "Em" (prefix, "Emre"+"Emine" - FARKLI iki isim aynı
+    prefix'i paylaşıyor, çoğul eşleşme de doğrulanmış oldu) + "mine"
+    ("Emine"nin ORTASINDAN substring, hiç sonuç DÖNMÜYOR) kullanıldı.
+  - İKİSİ DE gerçek uygulamada ayrı ayrı doğrulandı: prefix aramaları
+    sonuç döndürüyor, orta-substring aramaları "Arama kriterlerine uygun
+    müşteri bulunamadı." ile 0 sonuç dönüyor - starts-with-only davranışı
+    KESİN olarak kanıtlandı (contains/substring matching YOK).
+- pages/customers_page.py: wait_for_last_name_results_starting_with(prefix)
+  ve wait_for_first_name_results_starting_with(prefix) eklendi
+  (wait_for_last_name_results/wait_for_first_name_results'daki "hepsi
+  eşit VE boş değil" deseninin "hepsi prefix ile BAŞLIYOR VE boş değil"
+  varyantı - str.startswith kullanıldı, Türkçe case-folding'e GEREK
+  yoktu çünkü test girdileri zaten doğru case'de).
+- steps/test_customers_steps.py: 2 yeni Then step'i eklendi ('"{prefix}"
+  ile başlayan soyadına/adına sahip müşteri kayıtları...'). Diğer TÜM
+  step'ler (alana değer gir, Search'e tıkla, "{message}" mesajı
+  görüntülenir) MEVCUT step'lerden tekrar kullanıldı.
+- Doğrulama: pytest -v steps/test_customers_steps.py -> gerçek uygulamaya
+  karşı TÜM 21 test passed (mevcut 19 + 2 yeni starts-with senaryosu).
+
+[2026-08-06] Yeni senaryo: First Name ve Last Name Birlikte Girildiğinde AND Mantığıyla Değerlendirilmesi (FR-002 ACC-14)
+- Kullanıcı manuel test case verdi (2 adım): First Name ve Last Name
+  BİRLİKTE doldurulup arandığında, sadece HER İKİ kritere de (baştan
+  eşleşme) uyan müşterilerin listelenmesi; yalnızca birine uyanların
+  listelenmemesi (AND mantığı, OR değil).
+- ÖNCE gerçek uygulamada, KESİŞİMİ net gösterecek 3 gerçek müşteri
+  kullanılarak doğrulandı: customer 1 = Ahmet Yılmaz, customer 31 = Ahmet
+  Tekin (AYNI ad, FARKLI soyad), customer 41 = Emre Yılmaz (FARKLI ad,
+  AYNI soyad). firstName="Ahmet" tek başına 2 sonuç (1, 31) döndürüyor,
+  lastName="Yılmaz" tek başına 2 sonuç (1, 41) döndürüyor, AMA ikisi
+  BİRLİKTE girilince sadece 1 sonuç (customer 1) dönüyor - TAM AND mantığı,
+  BU SEFER TUTARSIZLIK YOK, manuel case'in beklediğiyle birebir uyuşuyor.
+- pages/customers_page.py: wait_for_results_matching_first_and_last_name
+  (first_prefix, last_prefix) eklendi - dönen TÜM satırların HEM
+  ROW_FIRST_NAME HEM ROW_LAST_NAME için ilgili prefix ile başladığını VE
+  en az 1 sonuç olduğunu bekliyor (starts-with metodlarının "AND"
+  birleşimi - iki ayrı koşulun ikisinin de HER satırda doğru olması
+  gerektiği için "sadece kesişim döner" iddiasını genel/parametrik olarak
+  kanıtlıyor, spesifik customer ID'lere bağımlı değil).
+- steps/test_customers_steps.py: "kullanıcı First Name alanına ... ve Last
+  Name alanına ... değerlerini girer" (mevcut enter_first_name/
+  enter_last_name'i BİRLİKTE çağıran YENİ bir When) ve "yalnızca hem ...
+  hem ... kriterine uyan müşteriler..." Then eklendi. "kullanıcı Search
+  butonuna tıklar" MEVCUT step'i tekrar kullanıldı.
+- Doğrulama: pytest -v steps/test_customers_steps.py -> gerçek uygulamaya
+  karşı TÜM 22 test passed (mevcut 21 + bu yeni AND-mantığı senaryosu).
+
+[2026-08-06] Yeni senaryo: İsim Kriteri ile Diğer Arama Kriterlerinin OR Mantığıyla Değerlendirilmesi (FR-002 ACC-15)
+- Kullanıcı manuel test case verdi: First Name ve (kullanıcının "ID
+  Number" dediği ama netleştirme cümlesinde "1 numaralı customer id"
+  dediği) alan BİRLİKTE doldurulunca, isim kriterine VEYA diğer kritere
+  uyan TÜM müşterilerin listelenmesi (OR mantığı) - bir önceki First
+  Name+Last Name AND senaryosunun TAM TERSİ bir kombinasyon kuralı.
+  BELİRSİZLİK: "ID Number" (TC Kimlik No alanı, 11 haneli) mi yoksa
+  "Customer ID" (Müşteri ID alanı) mi kastedildiği netleştirme cümlesinden
+  ("1 numaralı customer id aratılır") ÇÖZÜLDÜ - customerId alanı + "1"
+  değeri kullanıldı (identityNumber olsaydı "1" tek başına 11 hane
+  kuralına uymazdı, customerId ile tutarlı).
+- ÖNCE gerçek uygulamada 2 BAĞIMSIZ (kesişimsiz) kriter kullanılarak
+  doğrulandı: firstName="İbrahim" tek başına 2 sonuç (customer 7, 37),
+  customerId="1" tek başına 1 sonuç (customer 1, Ahmet) - bu ikisi
+  ARASINDA hiç örtüşme YOK. İkisi BİRLİKTE girilince 3 sonuç (1, 7, 37) -
+  TAM BİRLEŞİM (UNION), yani TAM OR mantığı. BU SEFER DE TUTARSIZLIK YOK,
+  manuel case'in iddiası doğrulandı.
+  ÖNEMLİ MİMARİ BULGU: uygulama, alan KOMBİNASYONUNA göre FARKLI mantıksal
+  operatör kullanıyor - First Name+Last Name (ikisi de "isim" kategorisi)
+  AND ile birleşiyor, ama First Name+Customer ID (isim + tanımlayıcı
+  kategorisi farklı) OR ile birleşiyor. Bu, gelecekte yeni alan
+  kombinasyonu senaryoları yazılırken HER kombinasyonun AYRI AYRI gerçek
+  uygulamada doğrulanması gerektiğini gösteriyor - "diğer kombinasyon
+  AND'di, bu da AND'dir" gibi bir varsayım YAPILAMAZ.
+- pages/customers_page.py: wait_for_results_matching_first_name_or_
+  customer_id(first_name_prefix, customer_id) eklendi - AND metodundan
+  FARKLI olarak: (a) her satırın EN AZ BİRİNİ sağlaması (OR) VE (b) HER
+  İKİ kriterin de EN AZ BİR sonuçta gerçekten karşılığının olması
+  (customer_id eşleşen en az 1 satır VE first_name eşleşen en az 1 satır)
+  kontrol ediliyor - bu ikinci koşul olmadan, "tüm sonuçlar tek bir
+  kritere uyuyor" durumu da (yanlışlıkla) OR testini geçerdi, bu yüzden
+  BİLİNÇLİ olarak eklendi.
+- steps/test_customers_steps.py: "kullanıcı First Name alanına ... ve
+  Customer ID alanına ... değerlerini girer" When + "... VEYA ...
+  Customer ID'sine uyan tüm müşteriler..." Then eklendi.
+- Doğrulama: pytest -v steps/test_customers_steps.py -> gerçek uygulamaya
+  karşı TÜM 23 test passed (mevcut 22 + bu yeni OR-mantığı senaryosu).
+
+[2026-08-06] Yeni senaryo (HENÜZ GERÇEK UYGULAMADA DOĞRULANMADI): 50 Kaydı Aşan Sonuç Kümesinde İlk Sayfada 50 Kayıt ve Sayfalama (FR-002 ACC-18/19)
+- Kullanıcı manuel test case verdi (2 adım): 1) 50'den fazla sonuç dönen
+  bir durumda (varsayılan/filtresiz listeleme - 62 kayıt) ilk sayfada
+  EN FAZLA 50 kayıt gösterilmesi, kayıtların Customer ID'ye göre ARTAN
+  sırada listelenmesi, sayfalama kontrollerinin aktif olması; 2) sayfalama
+  ile diğer sayfalara geçildiğinde her sayfada doğru sayıda kayıt
+  gösterilmesi, hiçbir kaydın kaybolmaması veya tekrarlanmaması.
+- ÖNEMLİ UYARI: bu turda dev server (localhost:4200) ERİŞİLEMEZ durumdaydı
+  (net::ERR_CONNECTION_REFUSED, curl ile de doğrulandı) - bu yüzden GERÇEK
+  UYGULAMADA DOĞRULAMA YAPILAMADI. Kullanıcı özellikle "bekle, tüm testleri
+  çalıştır komutu verdiğimde deneriz... fakat senaryo ve adımları şimdiden
+  yaz" dedi - yani BİLEREK doğrulamasız yazıldı, ileride kullanıcı testleri
+  çalıştırdığında BİRLİKTE doğrulanacak.
+  ÖNCEKİ OTURUM BOYUNCA TEKRARLANAN GÖZLEM (bu senaryoyla POTANSİYEL
+  ÇELİŞKİ): bu session'daki TÜM önceki sayfalama/sonuç-sayısı gözlemlerinde
+  ("customer-results-range" metni) varsayılan listeleme HEP "62 kayıttan
+  1–15 arası" göstermişti - yani GERÇEK sayfa boyutu 15 GİBİ GÖRÜNÜYORDU,
+  50 DEĞİL. Bu, manuel case'in "ilk sayfada en fazla 50 kayıt" (FR-002
+  ACC-18) iddiasıyla ÇELİŞEBİLİR - ama şu an DOĞRULANAMADI, sadece önceki
+  gözlemlere dayanan bir ÖN UYARI. Sunucu tekrar ayağa kalkınca bu MUTLAKA
+  kontrol edilmeli.
+- pages/customers_page.py: get_row_count(), get_result_customer_ids(),
+  is_customer_id_column_sorted_ascending(), is_pagination_active(),
+  capture_current_page_customer_ids(), go_to_next_page(),
+  verify_next_page_records_are_new() eklendi. İlk kontrol (satır sayısı)
+  BİLEREK "<=50" (manuel case'in LİTERAL "en fazla 50" ifadesine sadık
+  kalınarak) yazıldı, "==50" DEĞİL - eğer gerçek sayfa boyutu 15 çıkarsa
+  bu assert YİNE DE geçer (15<=50), yani bu haliyle test ZAYIF bir
+  koruma sağlıyor; sunucu ayağa kalkınca GERÇEK satır sayısına bakılıp
+  bu assert'in daha katı (örn. tam olarak 50 mi, yoksa gerçekten 15 mi ve
+  bu durumda kullanıcıyla nasıl ilerleneceği) yeniden değerlendirilmeli.
+- steps/test_customers_steps.py: 1 yeni Then (3 assert birleşik, 50-karakter
+  senaryosundaki gibi açıklayıcı mesajlarla), 1 yeni When (sayfa geçişi
+  öncesi mevcut ID'leri saklıyor), 1 yeni Then (sonraki sayfanın yeni/
+  çakışmasız olduğunu doğruluyor) eklendi.
+- Doğrulama: SADECE --collect-only ile yapıldı (24/24 test, undefined step
+  hatası yok) - GERÇEK TARAYICI/UYGULAMA DOĞRULAMASI YAPILMADI, bu net
+  şekilde işaretleniyor. Sunucu ayağa kalkınca (kullanıcının "tüm testleri
+  çalıştır" komutuyla) ÖNCELİKLE bu senaryo kontrol edilmeli.
+
+[2026-08-06] ÖNCEKİ UYARI DOĞRULANDI VE SENARYO DÜZELTİLDİ: gerçek sayfa boyutu 50 DEĞİL, 15
+- Sunucu tekrar ayağa kalkınca ("login ve customer'ı birlikte çalıştır"
+  isteğiyle) tam suite çalıştırıldı. Gerçek sayfa boyutu DOĞRUDAN
+  ölçüldü: customer-results-range metni "61 kayıttan 1–15 arası" çıktı,
+  row count = 15. Önceki turdaki UYARI (sayfa boyutu muhtemelen 15,
+  manuel case'in 50 iddiasıyla çelişebilir) DOĞRULANMIŞ oldu.
+  Önceki "<=50" ZAYIF assert bu yüzden yanlışlıkla yeşil geçmişti (15<=50
+  trivially true) - GERÇEĞİ test etmiyordu.
+- Kullanıcı KARARI: manuel case'in "50" iddiasına göre kasıtlı kırmızı
+  bırakmak yerine, senaryoyu GERÇEK davranışa (15) göre güncellememi
+  istedi. features/customers.feature: senaryo adı "50 Kaydı Aşan..." ->
+  "15 Kaydı Aşan Sonuç Kümesinde İlk Sayfada 15 Kayıt ve Sayfalama" olarak
+  değiştirildi, Then metni "en fazla 50" -> "en fazla 15" oldu.
+  steps/test_customers_steps.py: assert artık "<=50" (zayıf) DEĞİL,
+  "==15" (KESİN, gerçek ölçülmüş değere dayalı) - pages/customers_page.py
+  DEĞİŞMEDİ (get_row_count() zaten genel/parametrik, sadece step'teki
+  karşılaştırma değeri ve mesajı güncellendi).
+- Doğrulama: pytest -k ile izole çalıştırıldı, gerçek uygulamaya karşı
+  passed (==15 ile).
+- BU TURDA AYRICA ÖNEMLİ 2 BULGU (raporlandı, kod DEĞİŞTİRİLMEDİ):
+  1) Daha önce kasıtlı kırmızı bırakılan 2 login senaryosu ("Şifredeki
+     boşluklar temizlenir/başarılı", "Hata mesajının kalkması") ARTIK
+     TUTARLI ŞEKİLDE (4+ kez tekrar test edilerek) YEŞİL - gerçek
+     uygulamada bir düzeltme yapılmış görünüyor. admin-123 HÂLÂ kırmızı
+     (değişmedi).
+  2) "Giriş İşlemi Sırasında Login Butonunun Pasifleşmesi" testi tam
+     suite içinde BİR KEZ flaky FAILED düştü, izole 4/4 tekrar denemede
+     hep PASSED - önceden zaten "zamanlamaya duyarlı, flaky olabilir"
+     diye not edilen riskin gerçekleştiği doğrulandı, kod DEĞİŞTİRİLMEDİ.
+  Bu iki bulgu kullanıcıya raporlandı, Word bug dokümanındaki 2 ve 3
+  numaralı bug'ların artık GÜNCEL OLMAYABİLECEĞİ belirtildi (kullanıcı
+  henüz dokümanı güncellememi İSTEMEDİ, sadece bilgilendirildi).
+- TEKRAR DOĞRULANAN KURAL: --clean-alluredir açıkken pytest'i art arda/
+  paralel çalıştırmak sonuçları siliyor - bu turda 2 kez yanlışlıkla
+  tekrar yaşandı (izole doğrulama koşuları tam suite'in Allure verisini
+  sildi), her seferinde suite'i tek başına yeniden çalıştırarak
+  düzeltildi.
+
+[2026-08-06] Sayfalama senaryosunda Gherkin metni ile assert arasındaki tutarsızlık düzeltildi
+- Kullanıcı fark etti: Then metni "en fazla 15 kayıt" diyordu ama assert
+  "== 15" (tam olarak) kontrol ediyordu - "en fazla" (at most) ifadesi,
+  kodun yaptığı KESİN eşitlik kontrolünü doğru yansıtmıyordu.
+- features/customers.feature ve steps/test_customers_steps.py: "en fazla
+  15 kayıt" -> "tam 15 kayıt" olarak düzeltildi (fonksiyon adı
+  first_page_shows_max_15... -> first_page_shows_exactly_15... olarak
+  güncellendi). pages/customers_page.py'de değişiklik gerekmedi.
+- Doğrulama: pytest -k "sayfalama" ile gerçek uygulamaya karşı izole
+  çalıştırıldı, passed.
+
+[2026-08-06] Yeni senaryo: Sonuç Listesinin Varsayılan Olarak Customer ID'ye Göre Artan Sıralanması
+- Kullanıcı istedi: login olunup customers sayfasında Customer ID'nin
+  varsayılan olarak artan sırada geldiğinin ayrı bir senaryo olarak
+  test edilmesi.
+- SIFIR yeni page kodu - is_customer_id_column_sorted_ascending()
+  (sayfalama senaryosunda zaten vardı ve kullanılıyordu) AYNEN tekrar
+  kullanıldı. Background zaten login+customers sayfası state'ini
+  sağladığı için ekstra Given/When gerekmedi, sadece 1 yeni Then step'i
+  eklendi.
+- Doğrulama: pytest -k "artan_s" ile gerçek uygulamaya karşı izole
+  çalıştırıldı, passed.
+
+[2026-08-06] Yeni senaryo: "No Customer Found" Mesajının ve Create Customer Butonunun Görüntülenmesi
+- Kullanıcı manuel test case verdi (4 adım, ID Number: 00000000000
+  kullanılarak): eşleşmeyen kriterle arama -> "No customer found!"
+  başlığı + Create Customer butonu görüntülenir -> butona tıklanınca
+  müşteri yaratma akışına yönlendirilir.
+- ÖNCE gerçek uygulamada 2 ayrı script ile doğrulandı:
+  1) Mesaj metni: "No customer found!" DEĞİL, önceki turlarda zaten
+     bulunan AYNI genel mesaj: "Arama kriterlerine uygun müşteri
+     bulunamadı." - ayrı bir başlık+alt metin YAPISI da yok, TEK bir
+     empty-state-message paragrafı var.
+  2) Create Customer butonu GERÇEKTEN VAR: data-testid=
+     "customer-results-create", <a href="/customers/new">, metin
+     "Müşteri Oluştur". İLK deneme ElementNotInteractableException
+     verdi çünkü CSS seçici [data-testid*='create'] DOM'da ÖNCE gelen
+     wrapper elementini (<app-button-link data-testid="...">, custom
+     element, tıklanabilir değil) buluyordu - iç <a> etiketini DEĞİL.
+     DÜZELTİLDİ: locator'ı "a[data-testid='customer-results-create']"
+     olarak (tag adı belirtilerek) daralttım, bu şekilde is_displayed/
+     is_enabled=True çıktı ve tıklanınca GERÇEKTEN /customers/new'e
+     yönlendirdiği doğrulandı.
+- pages/customers_page.py: CREATE_CUSTOMER_BUTTON locator'ı (a[data-testid=
+  'customer-results-create'] - bilinçli olarak "a" tag'iyle daraltıldı,
+  wrapper'la karışmasın diye), is_create_customer_button_visible(),
+  click_create_customer_button() eklendi.
+- steps/test_customers_steps.py: 3 yeni step (buton görüntülenir Then,
+  tıklama When, yönlendirme Then). ID Number girme/Search'e tıklama/
+  "{message}" mesajı görüntülenir step'leri MEVCUTTAN tekrar kullanıldı.
+- Doğrulama: pytest -k "no_customer_found" ile gerçek uygulamaya karşı
+  izole çalıştırıldı, passed.
+
+[2026-08-06] "No Customer Found" senaryosu dile bağımlı olmaktan çıkarıldı (İngilizce'ye dayanıklı hale getirildi)
+- Kullanıcı sordu (exploratory): uygulama İngilizce yapılırsa bu son
+  senaryo (hardcoded "Arama kriterlerine uygun müşteri bulunamadı."
+  metin kontrolü) patlar mı? CEVAP: evet - uygulamada gerçek bir
+  language-switcher-toggle var, dil değişirse/varsayılan dil değişirse
+  exact-text assert kırılır.
+- ÖNERİ (kullanıcı onayladı, "uygula" dedi): testin AMACINA göre ikiye
+  ayır - "mesajın İÇERİĞİNİ doğrulamak" asıl amaç olan senaryolarda
+  (örn. ID Number validasyon senaryosu, FR-002 ACC-03'e bağlı) tam metin
+  kontrolü KALSIN; ama bu "No Customer Found" senaryosunun asıl amacı
+  Create Customer buton akışı olduğu için, mesaj kontrolü dil-bağımsız
+  YAPISAL bir kontrole çevrildi (empty-state elementi görünür VE satır
+  sayısı 0) - SADECE BU senaryo değiştirildi, diğer "{message}" mesajı
+  görüntülenir kullanımları (ID Number validasyonu, GSM var olmayan
+  kullanıcı) BİLİNÇLİ OLARAK dokunulmadı çünkü onların amacı zaten mesaj
+  İÇERİĞİNİ doğrulamak.
+- pages/customers_page.py: EMPTY_STATE locator'ı ([data-testid=
+  'empty-state'], EMPTY_STATE_MESSAGE'dan farklı - konteyner, mesaj
+  paragrafı değil) ve wait_for_no_results_state() (EC.visibility_of_
+  element_located + get_row_count()==0 assert) eklendi.
+- steps/test_customers_steps.py: "sonuç bulunamadı durumu görüntülenir"
+  Then step'i eklendi. features/customers.feature: senaryodaki tam metin
+  Then'i bu yeni dil-bağımsız Then ile DEĞİŞTİRİLDİ.
+- Doğrulama: pytest -k "no_customer_found" ile gerçek uygulamaya karşı
+  izole çalıştırıldı, passed.
+
+[2026-08-06] Yeni senaryo: Customer ID Linkiyle Customer Info Ekranına Aynı Sekmede Geçiş
+- Kullanıcı manuel test case verdi (3 adım, Customer ID=1 kullanılarak):
+  1) geçerli kriterle arama, en az 1 kayıt listelenir, 2) satırdaki
+  Customer ID linkine tıklanır, varsayılan link davranışı (yeni sekme)
+  engellenir/dahili navigasyon tetiklenir, 3) Customer Info ekranı AYNI
+  sekmede açılır.
+- ÖNCE gerçek uygulamada doğrulandı: link'in target attribute'u boş
+  (yeni sekme AÇMIYOR), tıklanınca window_handles say��sı 1'de sabit
+  kalıyor (aynı sekme), URL /customers -> /customers/1'e değişiyor, ve
+  gerçek bir Customer Info ekranı (customer-detail-header, customer-info-
+  value-first-name/last-name/identity-number vb. + tab-info/tab-account/
+  tab-address/tab-contact) açılıyor - manuel case'in iddiasıyla BİREBİR
+  uyuşuyor.
+- BULUNAN BUG/ENGEL VE DÜZELTME: normal .click() ile ElementClickIntercepted
+  hatası alındı - satır, sticky (position: sticky, top: 0) app-topbar
+  tarafından örtülüyordu (Selenium'un hesapladığı tıklama noktası topbar'a
+  denk geliyordu). Bu, login sayfasındaki göz ikonu butonundaki AYNI
+  KATEGORİDE bir sorun. İLK ÇÖZÜM DENEMEM (doğrudan JS click, göz
+  ikonundaki gibi) kullanıcı tarafından REDDEDİLDİ, kullanıcı verdiği
+  gerçek element HTML'ine göre çözüm istedi - DAHA STANDART bir yaklaşım
+  uygulandı: driver.execute_script ile SADECE scrollIntoView({block:
+  'center'}) yapılıp elementi topbar'ın arkasından çıkarmak, ardından
+  NORMAL .click() çağırmak (JS click ile tıklamayı simüle etmek yerine).
+- İLGİNÇ YAN GÖZLEM: kullanıcının paylaştığı gerçek element HTML'inde
+  aria-label İNGİLİZCE'ydi ("Open customer detail: 1"), benim kendi
+  script'imde YAKALADIĞIM aynı element Türkçe'ydi ("Müşteri detayını aç:
+  1") - yani uygulamanın dili SEANSLAR ARASINDA (muhtemelen varsayılan
+  tarayıcı dili/localStorage ayarına göre) değişebiliyor. Bu, önceki
+  turda konuşulan "dile dayanıklı test" ihtiyacını SOMUT olarak
+  doğruladı - locator'ların (data-testid tabanlı) ve bu senaryonun
+  assertion'larının (URL + data-testid tabanlı customer-detail-header
+  varlığı) zaten dilden TAMAMEN bağımsız olması sayesinde bu dil farkı
+  testi hiç ETKİLEMEDİ.
+- pages/customers_page.py: CUSTOMER_DETAIL_HEADER locator'ı, click_customer_
+  row_link() (window handle sayısını önce kaydedip scrollIntoView+click
+  yapıyor), verify_navigated_to_customer_detail_same_tab(customer_id)
+  (URL kontrolü + window handle sayısının DEĞİŞMEDİĞİNİ + detay
+  sayfasının gerçekten yüklendiğini kontrol ediyor) eklendi.
+- steps/test_customers_steps.py: 1 yeni When + 1 yeni Then eklendi.
+  Customer ID girme/Search'e tıklama step'leri MEVCUTTAN tekrar kullanıldı.
+- Doğrulama: pytest -k "info_ekran" ile gerçek uygulamaya karşı izole
+  çalıştırıldı, passed (düzeltmeden sonra).
+
+[2026-08-06] Yeni senaryo: Clear Butonuyla Tüm Filtrelerin ve Sonuçların Sıfırlanması (ActionChains + Tab navigasyonu)
+- Kullanıcı istedi: ActionChains kullanarak elementler arası Tab ile
+  gezip sırayla tüm arama alanlarına değer girilsin, sonra Clear'a
+  tıklanıp hem alanların hem sonuçların sıfırlandığı doğrulansın.
+- ÖNCE gerçek uygulamada Tab SIRASI ölçüldü (document.activeElement'i
+  Tab'lar arasında okuyarak): identityNumber -> customerId ->
+  accountNumber -> customer-search-gsm-country (buton, ARA DURAK, metin
+  girilmez) -> gsm -> firstName -> lastName -> orderNumber -> Clear
+  butonu (Search butonu bu noktada DISABLED olduğu için tab sırasında
+  ATLANIYOR - native davranış, doğrulanmış).
+- SONRA Clear butonunun GERÇEK davranışı ölçüldü: 7 alan ActionChains ile
+  dolduruldu, Search'e basılıp filtrelenmiş sonuç (2 kayıt) elde edildi,
+  Clear'a basılınca: TÜM 7 alan boşaldı VE sonuç listesi sıfıra DEĞİL,
+  VARSAYILAN/filtresiz listeye (61 kayıttan 1-15 arası, 15 satır) geri
+  döndü, Search butonu tekrar disabled oldu - "Tüm Filtrelerin ve
+  Sonuçların Sıfırlanması" iddiası TAM doğrulandı, tutarsızlık yok.
+- pages/customers_page.py: ActionChains, Keys, random import edildi.
+  fill_all_search_fields_via_tab_navigation() (rastgele 11 haneli
+  identityNumber + sabit dummy değerler, ölçülen GERÇEK tab sırasına
+  birebir uygun şekilde .send_keys(...).send_keys(Keys.TAB) zinciri
+  kurup tek seferde .perform() ediyor), click_clear_button(),
+  verify_all_search_fields_empty() (SEARCH_FIELDS tuple'ını tekrar
+  kullanıyor), verify_results_reset_to_default() (satır sayısının TAM
+  15 - sabit sayfa boyutu - olmasını bekliyor) eklendi.
+- steps/test_customers_steps.py: 3 yeni step (Tab ile doldurma When,
+  Clear'a tıklama When, birleşik doğrulama Then). "Search butonuna
+  tıklar" MEVCUT step'i tekrar kullanıldı.
+- Doğrulama: pytest -k "clear_butonuyla" ile gerçek uygulamaya karşı
+  izole çalıştırıldı, passed.
