@@ -1,14 +1,13 @@
 import random
-
 from faker import Faker
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 
 fake = Faker("tr_TR")
-
 
 class CreateCustomerPage:
     PAGE_TITLE = (By.CSS_SELECTOR, "[data-testid='page-title']")
@@ -41,13 +40,20 @@ class CreateCustomerPage:
     ADDRESS_FORM_CANCEL = (By.CSS_SELECTOR, "[data-testid='address-cancel']")
     ADDRESS_SAVE = (By.CSS_SELECTOR, "[data-testid='address-save']")
     ADDRESS_CARD = (By.CSS_SELECTOR, "[data-testid='address-card']")
+    ADDRESS_CARD_TITLE = (By.CSS_SELECTOR, "[data-testid='address-card-title']")
+    ADDRESS_CARD_DETAIL = (By.CSS_SELECTOR, "[data-testid='address-card-detail']")
+    ADDRESS_CARD_MENU = (By.CSS_SELECTOR, "[data-testid='address-card-menu']")
+    ADDRESS_CARD_EDIT = (By.CSS_SELECTOR, "[data-testid='address-card-edit']")
+    ADDRESS_CARD_DELETE = (By.CSS_SELECTOR, "[data-testid='address-card-delete']")
 
     # --- Adım 3: İletişim Kanalı ---
     EMAIL = (By.ID, "new-contact-email")
+    EMAIL_ERROR = (By.ID, "new-contact-email-error")
     HOME_PHONE_COUNTRY = (By.CSS_SELECTOR, "[data-testid='customer-create-home-phone-country']")
     HOME_PHONE = (By.ID, "new-contact-home")
     MOBILE_PHONE_COUNTRY = (By.CSS_SELECTOR, "[data-testid='customer-create-country-code']")
     MOBILE_PHONE = (By.ID, "new-contact-mobile")
+    MOBILE_PHONE_ERROR = (By.ID, "new-contact-mobile-error")
     FAX_COUNTRY = (By.CSS_SELECTOR, "[data-testid='customer-create-fax-country']")
     FAX = (By.ID, "new-contact-fax")
     CONTACT_BACK = (By.CSS_SELECTOR, "[data-testid='customer-create-contact-back']")
@@ -61,6 +67,7 @@ class CreateCustomerPage:
         self.driver = driver
         self.wait = WebDriverWait(driver, 10, ignored_exceptions=(StaleElementReferenceException,))
         self.wait.until(EC.visibility_of_element_located(self.FIRST_NAME))
+        self._entered_addresses = []
 
     # --- Adım 1: Demografik Bilgi ---
     def enter_first_name(self, value):
@@ -87,6 +94,35 @@ class CreateCustomerPage:
         field = self.driver.find_element(*self.BIRTH_DATE)
         field.clear()
         field.send_keys(f"{month}/{day}/{year}")
+
+    def is_birth_date_native_date_picker(self):
+        # Birth Date gerçek uygulamada native <input type="date"> - tıklanınca
+        # açılan takvim tarayıcı/OS seviyesinde render ediliyor, DOM'a
+        # hiçbir calendar/datepicker paneli eklenmiyor (ampirik olarak
+        # doğrulandı). Bu yüzden Selenium'la gerçek takvim gün hücrelerine
+        # tıklamak mümkün değil - type="date" olması native picker'ın var
+        # olacağının garantisi.
+        return self.driver.find_element(*self.BIRTH_DATE).get_attribute("type") == "date"
+
+    def enter_birth_date_with_faker(self):
+        birth_date = fake.date_of_birth(minimum_age=18, maximum_age=90).strftime("%d/%m/%Y")
+        self.enter_birth_date(birth_date)
+        self._last_entered_birth_date = birth_date
+        return birth_date
+
+    def get_birth_date_iso_value(self):
+        return self.driver.find_element(*self.BIRTH_DATE).get_attribute("value")
+
+    def is_birth_date_displayed_correctly(self):
+        day, month, year = self._last_entered_birth_date.split("/")
+        expected_iso = f"{year}-{month}-{day}"
+        return self.get_birth_date_iso_value() == expected_iso
+
+    def click_gender_field(self):
+        self.driver.find_element(*self.GENDER).click()
+
+    def get_gender_options(self):
+        return [o.text for o in Select(self.driver.find_element(*self.GENDER)).options]
 
     def select_gender(self, value):
         Select(self.driver.find_element(*self.GENDER)).select_by_visible_text(value)
@@ -133,6 +169,25 @@ class CreateCustomerPage:
         self.fill_demographic_step(first_name, last_name, birth_date, gender, identity_number)
         return first_name, last_name, birth_date, identity_number
 
+    def fill_demographic_step_without_last_name(self):
+        # Last Name (Soyad) BİLEREK boş bırakılıyor - "Next butonu pasif
+        # kalmalı" senaryosu için diğer tüm zorunlu alanlar (First Name,
+        # Birth Date, Gender, Nationality ID) doldurulup sadece Soyad
+        # atlanıyor.
+        first_name = fake.first_name()
+        birth_date = fake.date_of_birth(minimum_age=18, maximum_age=90).strftime("%d/%m/%Y")
+        gender = fake.random_element(elements=("Kadın", "Erkek"))
+        identity_number = fake.numerify("###########")
+        self.enter_first_name(first_name)
+        self.enter_birth_date(birth_date)
+        self.select_gender(gender)
+        self.enter_identity_number(identity_number)
+
+    def fill_missing_last_name(self):
+        last_name = fake.last_name()
+        self.enter_last_name(last_name)
+        return last_name
+
     def get_first_name_value(self):
         return self.driver.find_element(*self.FIRST_NAME).get_attribute("value")
 
@@ -159,8 +214,23 @@ class CreateCustomerPage:
     def click_demographic_next(self):
         self.wait.until(EC.element_to_be_clickable(self.DEMOGRAPHIC_NEXT)).click()
 
+    def is_demographic_next_disabled(self):
+        return not self.driver.find_element(*self.DEMOGRAPHIC_NEXT).is_enabled()
+
+    def fill_some_demographic_fields(self):
+        first_name = fake.first_name()
+        last_name = fake.last_name()
+        identity_number = fake.numerify("###########")
+        self.enter_first_name(first_name)
+        self.enter_last_name(last_name)
+        self.enter_identity_number(identity_number)
+        return first_name, last_name, identity_number
+
     def click_demographic_cancel(self):
-        self.driver.find_element(*self.DEMOGRAPHIC_CANCEL).click()
+        self.wait.until(EC.element_to_be_clickable(self.DEMOGRAPHIC_CANCEL)).click()
+
+    def wait_for_navigated_to_customer_list(self):
+        self.wait.until(lambda d: d.current_url.rstrip("/").endswith("/customers"))
 
     # --- Adım 2: Adres ---
     def click_add_address(self):
@@ -207,6 +277,37 @@ class CreateCustomerPage:
         self.enter_address_building_no(building_no)
         self.enter_address_description(description)
         self.click_address_save()
+        self._entered_addresses.append((city, street, building_no, description))
+
+    def fill_address_form(self, city, street, building_no, description):
+        # add_address()'ten farklı olarak Save'e TIKLAMIYOR - manuel case'in
+        # "form doldurulmuştur" (Given) ile "Save'e tıklar" (When) adımlarını
+        # ayrı ayrı test edebilmesi için doldurma ve kaydetme birbirinden
+        # ayrıştırıldı.
+        self.click_add_address()
+        self.select_address_city(city)
+        self.enter_address_street(street)
+        self.enter_address_building_no(building_no)
+        self.enter_address_description(description)
+        self._pending_address = (city, street, building_no, description)
+        self._pending_address_is_edit = False
+
+    def update_address_street(self, new_street):
+        # Var olan bir adresi Edit formunda güncellerken kullanılıyor - Save'e
+        # basılınca save_address_form() bunun YENİ bir adres değil, MEVCUT
+        # kaydın güncellemesi olduğunu self._pending_address_is_edit ile
+        # ayırt edip listeye APPEND etmek yerine son elemanı DEĞİŞTİRİYOR.
+        self.enter_address_street(new_street)
+        city, _, building_no, description = self._entered_addresses[-1]
+        self._pending_address = (city, new_street, building_no, description)
+        self._pending_address_is_edit = True
+
+    def save_address_form(self):
+        self.click_address_save()
+        if self._pending_address_is_edit:
+            self._entered_addresses[-1] = self._pending_address
+        else:
+            self._entered_addresses.append(self._pending_address)
 
     def add_address_with_faker(self):
         # Şehir Faker'dan DEĞİL, ekrandaki gerçek <select> seçeneklerinden
@@ -226,7 +327,59 @@ class CreateCustomerPage:
         self.enter_address_building_no(building_no)
         self.enter_address_description(description)
         self.click_address_save()
+        self._entered_addresses.append((city, street, building_no, description))
         return city, street, building_no, description
+
+    def wait_for_address_form_open(self):
+        self.wait.until(EC.visibility_of_element_located(self.ADDRESS_SAVE))
+
+    def fill_address_form_without_city(self):
+        # Şehir (City) BİLEREK boş bırakılıyor - "Save butonu pasif kalmalı"
+        # senaryosu için diğer tüm zorunlu adres alanları (Street, Building
+        # No, Description) doldurulup sadece Şehir atlanıyor.
+        street = fake.street_name()
+        building_no = fake.building_number()
+        description = fake.sentence(nb_words=4)
+        self.enter_address_street(street)
+        self.enter_address_building_no(building_no)
+        self.enter_address_description(description)
+
+    def fill_missing_city(self):
+        city_field = self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY))
+        real_city_options = [o.text for o in Select(city_field).options if o.get_attribute("value")]
+        city = random.choice(real_city_options)
+        self.select_address_city(city)
+        return city
+
+    def is_address_save_disabled(self):
+        return not self.driver.find_element(*self.ADDRESS_SAVE).is_enabled()
+
+    def open_address_card_menu(self):
+        self.wait.until(EC.element_to_be_clickable(self.ADDRESS_CARD_MENU)).click()
+
+    def click_address_card_edit(self):
+        self.open_address_card_menu()
+        self.wait.until(EC.element_to_be_clickable(self.ADDRESS_CARD_EDIT)).click()
+
+    def is_address_edit_form_prefilled_correctly(self):
+        city, street, building_no, description = self._entered_addresses[-1]
+        city_value = Select(self.driver.find_element(*self.ADDRESS_CITY)).first_selected_option.text
+        street_value = self.driver.find_element(*self.ADDRESS_STREET).get_attribute("value")
+        building_value = self.driver.find_element(*self.ADDRESS_BUILDING_NO).get_attribute("value")
+        description_value = self.driver.find_element(*self.ADDRESS_DESCRIPTION).get_attribute("value")
+        return (city_value, street_value, building_value, description_value) == (city, street, building_no, description)
+
+    def click_address_form_cancel(self):
+        self.wait.until(EC.element_to_be_clickable(self.ADDRESS_FORM_CANCEL)).click()
+
+    def click_address_card_delete(self):
+        self.open_address_card_menu()
+        self.wait.until(EC.element_to_be_clickable(self.ADDRESS_CARD_DELETE)).click()
+        if self._entered_addresses:
+            self._entered_addresses.pop()
+
+    def get_address_card_count(self):
+        return len(self.driver.find_elements(*self.ADDRESS_CARD))
 
     def wait_for_address_step(self):
         self.wait.until(EC.visibility_of_element_located(self.ADD_ADDRESS_BUTTON))
@@ -238,11 +391,70 @@ class CreateCustomerPage:
         self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CARD))
         self.wait.until(EC.element_to_be_clickable(self.ADDRESS_NEXT))
 
+    def are_all_entered_addresses_displayed_as_cards(self):
+        self.wait.until(lambda d: len(d.find_elements(*self.ADDRESS_CARD)) == len(self._entered_addresses))
+        cards = self.driver.find_elements(*self.ADDRESS_CARD)
+        for card, (city, street, building_no, description) in zip(cards, self._entered_addresses):
+            title = card.find_element(*self.ADDRESS_CARD_TITLE).text
+            detail = card.find_element(*self.ADDRESS_CARD_DETAIL).text
+            if title != f"{city}, {street}, {building_no}" or detail != description:
+                return False
+        return True
+
     # --- Adım 3: İletişim Kanalı ---
     def enter_email(self, value):
         field = self.driver.find_element(*self.EMAIL)
         field.clear()
         field.send_keys(value)
+
+    def enter_invalid_email_format(self):
+        # Hata mesajı sadece BLUR sonrası görünüyor (gerçek uygulamada
+        # doğrulandı) - Tab ile başka alana odak kaydırılarak blur
+        # tetikleniyor.
+        invalid_email = "ahmet.yilmaz@"
+        field = self.driver.find_element(*self.EMAIL)
+        field.clear()
+        field.send_keys(invalid_email)
+        field.send_keys(Keys.TAB)
+        return invalid_email
+
+    def is_email_error_displayed(self):
+        # Mesaj metni dile göre değişebileceğinden (gerçek uygulamada
+        # "Geçerli bir e-posta girin; adres .com ile bitmelidir." çıkıyor,
+        # manuel case'in paraphrase'i "Geçersiz email formatı" ile birebir
+        # aynı değil) yapısal olarak (hata elementinin görünürlüğü) kontrol
+        # ediliyor, literal metin karşılaştırılmıyor.
+        errors = self.driver.find_elements(*self.EMAIL_ERROR)
+        return bool(errors) and errors[0].is_displayed()
+
+    def fix_email_with_faker(self):
+        email = f"{fake.user_name()}.{fake.random_number(digits=6, fix_len=True)}@example.com"
+        self.enter_email(email)
+        return email
+
+    def fill_mobile_phone_with_faker(self):
+        mobile_phone = fake.numerify("5#########")
+        self.enter_mobile_phone(mobile_phone)
+        return mobile_phone
+
+    def enter_invalid_mobile_phone_format(self):
+        # 8 haneli değer BİLEREK kullanılıyor: gerçek uygulamada doğrulama
+        # kuralı "tam 10 hane olmalı" (hata: "Türkiye (+90) için telefon
+        # numarası 10 haneli olmalıdır.") ama 8 hanede GERÇEK BİR BUG var -
+        # bu tek uzunlukta hata gösterilmiyor ve Create aktif kalıyor
+        # (1/2/6/7/9 hane doğru şekilde reddediliyor). Bu senaryo BİLEREK
+        # doğru/beklenen davranışı iddia ediyor, bug düzelene kadar
+        # kasıtlı kırmızı kalacak.
+        invalid_mobile = "05551234"
+        field = self.driver.find_element(*self.MOBILE_PHONE)
+        field.clear()
+        field.send_keys(invalid_mobile)
+        field.send_keys(Keys.TAB)
+        return invalid_mobile
+
+    def is_mobile_phone_error_displayed(self):
+        errors = self.driver.find_elements(*self.MOBILE_PHONE_ERROR)
+        return bool(errors) and errors[0].is_displayed()
 
     def enter_home_phone(self, value):
         field = self.driver.find_element(*self.HOME_PHONE)
@@ -289,6 +501,12 @@ class CreateCustomerPage:
         self._last_email = email
         self._last_mobile_phone = mobile_phone
         return email, mobile_phone
+
+    def click_contact_back(self):
+        self.wait.until(EC.element_to_be_clickable(self.CONTACT_BACK)).click()
+
+    def are_contact_values_displayed(self):
+        return self.get_email_value() == self._last_email and self.get_mobile_phone_value() == self._last_mobile_phone
 
     def is_submit_disabled(self):
         return not self.driver.find_element(*self.SUBMIT).is_enabled()

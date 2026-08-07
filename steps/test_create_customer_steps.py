@@ -85,16 +85,288 @@ def customer_info_gender_displayed(create_customer_page, expected_gender):
     assert create_customer_page.get_customer_info_gender_value() == expected_gender
 
 
-@when(parsers.parse('kullanıcı zorunlu Demografik Bilgi alanlarını Gender "{gender}" ile rastgele (Faker) değerlerle doldurur'))
+@when(parsers.parse('kullanıcı zorunlu Demografik Bilgi alanlarını Gender "{gender}" ile rastgele Faker değerlerle doldurur'))
 def fill_demographic_step_with_faker(create_customer_page, gender):
     create_customer_page.fill_demographic_step_with_faker(gender=gender)
 
 
-@when("kullanıcı Adres alanlarını rastgele (Faker) değerlerle doldurup Save butonuna tıklar")
+@when("kullanıcı Adres alanlarını rastgele Faker değerlerle doldurup Save butonuna tıklar")
 def add_address_with_faker(create_customer_page):
     create_customer_page.add_address_with_faker()
 
 
-@when("kullanıcı İletişim Kanalı alanlarını rastgele (Faker) değerlerle doldurur")
+@when("kullanıcı İletişim Kanalı alanlarını rastgele Faker değerlerle doldurur")
 def fill_contact_step_with_faker(create_customer_page):
     create_customer_page.fill_contact_step_with_faker()
+
+
+@given('kullanıcı "Demografik Bilgi" ekranında bazı alanları doldurmuştur')
+def fill_some_demographic_fields(create_customer_page):
+    create_customer_page.fill_some_demographic_fields()
+
+
+@when('kullanıcı "Cancel" butonuna tıklar')
+def click_cancel(create_customer_page):
+    create_customer_page.click_demographic_cancel()
+
+
+@then("sistem işlemi iptal eder ve kullanıcıyı müşteri listesi ekranına yönlendirir")
+def cancelled_and_redirected_to_customer_list(create_customer_page):
+    create_customer_page.wait_for_navigated_to_customer_list()
+
+
+@then("girilen hiçbir bilgi sistemde kaydedilmez")
+def no_data_saved(driver, create_customer_page):
+    search_page = SearchCustomersPage(driver)
+    search_page.enter_identity_number(create_customer_page._last_identity_number)
+    search_page.submit_search()
+    search_page.wait_for_no_results_state()
+
+
+@given('kullanıcı "Adres Bilgi" ekranındadır')
+def user_on_address_info_screen(create_customer_page):
+    create_customer_page.fill_demographic_step_with_faker(gender="Kadın")
+    create_customer_page.click_demographic_next()
+    create_customer_page.wait_for_address_step()
+
+
+@then("her iki adres kartı da ayrı ayrı ve eksiksiz görüntülenir, İleri butonu aktif kalır")
+def both_address_cards_displayed_and_next_enabled(create_customer_page):
+    assert create_customer_page.are_all_entered_addresses_displayed_as_cards()
+    assert not create_customer_page.is_address_next_disabled()
+
+
+@given('kullanıcı "Contact Medium" ekranında iletişim bilgilerini rastgele Faker değerlerle doldurmuştur')
+def user_on_contact_medium_with_data_filled(create_customer_page):
+    create_customer_page.fill_demographic_step_with_faker(gender="Kadın")
+    create_customer_page.click_demographic_next()
+    create_customer_page.wait_for_address_step()
+    create_customer_page.add_address_with_faker()
+    create_customer_page.wait_for_address_saved()
+    create_customer_page.click_address_next()
+    create_customer_page.wait_for_contact_step()
+    create_customer_page.fill_contact_step_with_faker()
+
+
+@when('kullanıcı "Previous" butonuna tıklar')
+def click_contact_back(create_customer_page):
+    create_customer_page.click_contact_back()
+
+
+@then('sistem kullanıcıyı "Adres Bilgi" ekranına yönlendirir ve daha önce kaydedilmiş adres kartı eksiksiz görüntülenir')
+def redirected_to_address_step_with_card_preserved(create_customer_page):
+    create_customer_page.wait_for_address_saved()
+    assert create_customer_page.are_all_entered_addresses_displayed_as_cards()
+
+
+@then("varsa önceden girilmiş iletişim bilgileri korunur")
+def contact_values_preserved(create_customer_page):
+    assert create_customer_page.are_contact_values_displayed()
+
+
+@when('kullanıcı zorunlu alanlardan birini "Soyad" boş bırakır')
+def fill_demographic_step_without_last_name(create_customer_page):
+    create_customer_page.fill_demographic_step_without_last_name()
+
+
+@then('"Next" butonu pasif durumdadır')
+def demographic_next_disabled(create_customer_page):
+    assert create_customer_page.is_demographic_next_disabled()
+
+
+@when("kullanıcı eksik bırakılan zorunlu alanı doldurur")
+def fill_missing_last_name(create_customer_page):
+    create_customer_page.fill_missing_last_name()
+
+
+@then('"Next" butonu aktif hale gelir')
+def demographic_next_enabled(create_customer_page):
+    assert not create_customer_page.is_demographic_next_disabled()
+
+
+@given("kullanıcı adres girişi penceresini açmıştır")
+def user_has_opened_address_form(create_customer_page):
+    create_customer_page.fill_demographic_step_with_faker(gender="Kadın")
+    create_customer_page.click_demographic_next()
+    create_customer_page.wait_for_address_step()
+    create_customer_page.click_add_address()
+    create_customer_page.wait_for_address_form_open()
+
+
+@when('kullanıcı zorunlu adres alanlarından birini "Şehir" boş bırakır')
+def fill_address_form_without_city(create_customer_page):
+    create_customer_page.fill_address_form_without_city()
+
+
+@then('"Save" butonu pasif durumdadır')
+def address_save_disabled(create_customer_page):
+    assert create_customer_page.is_address_save_disabled()
+
+
+@when("kullanıcı eksik bırakılan zorunlu adres alanını doldurur")
+def fill_missing_city(create_customer_page):
+    create_customer_page.fill_missing_city()
+
+
+@then('"Save" butonu aktif hale gelir')
+def address_save_enabled(create_customer_page):
+    assert not create_customer_page.is_address_save_disabled()
+
+
+@given('kullanıcı "Contact Medium" ekranındadır')
+def user_on_contact_medium_screen(create_customer_page):
+    create_customer_page.fill_demographic_step_with_faker(gender="Kadın")
+    create_customer_page.click_demographic_next()
+    create_customer_page.wait_for_address_step()
+    create_customer_page.add_address_with_faker()
+    create_customer_page.wait_for_address_saved()
+    create_customer_page.click_address_next()
+    create_customer_page.wait_for_contact_step()
+    # Create butonunun diğer zorunlu alanın kontrolünden BAĞIMSIZ olarak
+    # pasif kalmaması için hem Email hem Mobile Phone önceden geçerli
+    # değerlerle dolduruluyor - her senaryo kendi test ettiği alanı
+    # (email veya mobile) sonradan geçersiz bir değerle EZİYOR.
+    create_customer_page.fix_email_with_faker()
+    create_customer_page.fill_mobile_phone_with_faker()
+
+
+@when("kullanıcı email alanına geçersiz formatta bir değer girer")
+def enter_invalid_email(create_customer_page):
+    create_customer_page.enter_invalid_email_format()
+
+
+@then("sistem geçersiz email formatı uyarısını görüntüler")
+def invalid_email_warning_displayed(create_customer_page):
+    assert create_customer_page.is_email_error_displayed()
+
+
+@then("Create butonu pasif durumdadır")
+def submit_button_disabled(create_customer_page):
+    assert create_customer_page.is_submit_disabled()
+
+
+@when("kullanıcı email alanını geçerli formatta bir değerle günceller")
+def fix_email(create_customer_page):
+    create_customer_page.fix_email_with_faker()
+
+
+@then('"Birth Date" alanı bir date-picker açacak şekilde native tarih giriş alanıdır')
+def birth_date_is_native_date_input(create_customer_page):
+    assert create_customer_page.is_birth_date_native_date_picker()
+
+
+@when('kullanıcı "Birth Date" alanına bir tarih girer')
+def enter_birth_date(create_customer_page):
+    create_customer_page.enter_birth_date_with_faker()
+
+
+@then('seçilen tarih "Birth Date" alanına doğru şekilde yazılır')
+def birth_date_displayed_correctly(create_customer_page):
+    assert create_customer_page.is_birth_date_displayed_correctly()
+
+
+@then('"Gender" alanı ekrana ilk geldiğinde varsayılan olarak "Erkek" seçili görüntülenir')
+def gender_defaults_to_erkek(create_customer_page):
+    assert create_customer_page.get_selected_gender_text() == "Erkek"
+
+
+@when('kullanıcı "Gender" alanını açar')
+def click_gender_field(create_customer_page):
+    create_customer_page.click_gender_field()
+
+
+@then("sistem tanımlı cinsiyet seçeneklerini listeler")
+def gender_options_listed(create_customer_page):
+    assert create_customer_page.get_gender_options() == ["Erkek", "Kadın"]
+
+
+@when('kullanıcı listeden "Kadın" seçeneğini seçer')
+def select_kadin(create_customer_page):
+    create_customer_page.select_gender("Kadın")
+
+
+@then('"Gender" alanı "Kadın" olarak güncellenir')
+def gender_updated_to_kadin(create_customer_page):
+    assert create_customer_page.get_selected_gender_text() == "Kadın"
+
+
+@when('kullanıcı adres kartındaki "Edit" seçeneğine tıklar')
+def click_address_card_edit(create_customer_page):
+    create_customer_page.click_address_card_edit()
+
+
+@then("adres bilgileri güncellenmek üzere form olarak açılır")
+def address_edit_form_prefilled(create_customer_page):
+    assert create_customer_page.is_address_edit_form_prefilled_correctly()
+
+
+@when("kullanıcı adres form penceresini kapatır")
+def close_address_form(create_customer_page):
+    create_customer_page.click_address_form_cancel()
+
+
+@when('kullanıcı adres kartındaki "Delete" seçeneğine tıklar')
+def click_address_card_delete(create_customer_page):
+    create_customer_page.click_address_card_delete()
+
+
+@then("adres kartı listeden kaldırılır")
+def address_card_removed(create_customer_page):
+    assert create_customer_page.get_address_card_count() == 0
+
+
+@then("listede başka kayıtlı adres kalmadığı için İleri butonu tekrar pasif hale gelir")
+def address_next_disabled_after_delete(create_customer_page):
+    assert create_customer_page.is_address_next_disabled()
+
+
+@given('kullanıcı "Adres Bilgi" ekranında Şehir "İstanbul", Sokak "Bağdat Caddesi", No "45/2" ile bir adres formu doldurmuştur')
+def user_filled_address_form_with_literal_values(create_customer_page):
+    create_customer_page.fill_demographic_step_with_faker(gender="Kadın")
+    create_customer_page.click_demographic_next()
+    create_customer_page.wait_for_address_step()
+    create_customer_page.fill_address_form("İstanbul", "Bağdat Caddesi", "45/2", "Ev adresi")
+
+
+@when('kullanıcı "Save" butonuna tıklar')
+def click_save_button(create_customer_page):
+    create_customer_page.save_address_form()
+
+
+@then("adres kart olarak listelenir ve tamamı bina-daire no dahil okunabilir şekilde görüntülenir")
+def address_card_fully_readable(create_customer_page):
+    assert create_customer_page.are_all_entered_addresses_displayed_as_cards()
+
+
+@given('kullanıcının "Adres Bilgi" ekranında kayıtlı bir adres kartı bulunmaktadır')
+def user_has_saved_address_card(create_customer_page):
+    create_customer_page.fill_demographic_step_with_faker(gender="Kadın")
+    create_customer_page.click_demographic_next()
+    create_customer_page.wait_for_address_step()
+    create_customer_page.fill_address_form("İstanbul", "Bağdat Caddesi", "45/2", "Ev adresi")
+    create_customer_page.save_address_form()
+
+
+@when('kullanıcı "Sokak" alanını "Fenerbahçe Caddesi" olarak günceller')
+def update_street_field(create_customer_page):
+    create_customer_page.update_address_street("Fenerbahçe Caddesi")
+
+
+@then("adres kartı güncellenmiş bilgilerle listelenir")
+def address_card_updated(create_customer_page):
+    assert create_customer_page.are_all_entered_addresses_displayed_as_cards()
+
+
+@when('kullanıcı "Mobile Phone" alanına geçersiz formatta bir değer girer')
+def enter_invalid_mobile(create_customer_page):
+    create_customer_page.enter_invalid_mobile_phone_format()
+
+
+@then("sistem geçersiz telefon formatı uyarısını görüntüler")
+def invalid_mobile_warning_displayed(create_customer_page):
+    assert create_customer_page.is_mobile_phone_error_displayed()
+
+
+@when('kullanıcı "Mobile Phone" alanını geçerli formatta bir değerle günceller')
+def fix_mobile(create_customer_page):
+    create_customer_page.fill_mobile_phone_with_faker()

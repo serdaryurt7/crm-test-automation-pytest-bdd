@@ -61,6 +61,7 @@ def driver(request):
     browser = os.getenv("BROWSER", "chrome").lower()
 
     driver = _build_driver(browser, headless)
+    driver.maximize_window()
     driver.implicitly_wait(10)
 
     yield driver

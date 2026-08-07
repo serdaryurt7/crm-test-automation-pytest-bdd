@@ -1810,3 +1810,519 @@ Her yeni değişiklikte bu dosyanın sonuna yeni bir madde eklenir.
   kaydediyor - Erkek seçildiğinde tesadüfen doğru sonuç çıktığı için
   test yanılgıyla yeşil oluyor, Kadın seçildiğinde gerçek tutarsızlık
   ortaya çıkıyor.
+
+[2026-08-07] KALICI KURAL: kullanıcı bundan sonra vereceği her senaryo/test adımı için otomatik page+steps+feature+doğrulama akışını istedi
+- Kullanıcı: "Bundan sonra vereceğim her senaryo ve test adımı için bunu
+  yap." - yani bu oturumda zaten uygulanan yöntem (gerçek uygulamada
+  önce keşif/doğrulama -> Gherkin -> Page Object -> step tanımları ->
+  izole pytest çalıştırması -> project_brain.txt'e log) artık HER yeni
+  manuel senaryo için sorulmadan, otomatik olarak uygulanacak.
+
+[2026-08-07] Yeni senaryo: Demografik Bilgi Ekranında "Cancel" ile İşlemin İptal Edilmesi
+- Kullanıcı manuel test case'i bir tablo görseli olarak verdi (Given/
+  When/Then/And/And satırları): bazı alanlar doldurulmuş halde iken
+  Cancel'a tıklanınca işlem iptal olmalı, kullanıcı müşteri listesi
+  ekranına yönlenmeli, girilen hiçbir bilgi kaydedilmemeli.
+- ÖNCE gerçek uygulamada Cancel butonu (customer-create-cancel, <a>
+  etiketi) incelendi: href doğrudan "http://localhost:4200/customers"
+  - onay penceresi (confirm dialog) YOK, native alert YOK, düz bir link
+  navigasyonu. Bazı alanlar (firstName, lastName, identityNumber)
+  doldurulup Cancel'a tıklandıktan sonra o identityNumber ile arama
+  yapıldı - "sonuç bulunamadı" (empty state) çıktı, yani veri gerçekten
+  kaydedilmemiş - manuel case'in iddiası TAM doğrulandı, tutarsızlık yok.
+- pages/create_customer_page.py: fill_some_demographic_fields() (Faker
+  ile first_name/last_name/identity_number - BİLEREK sadece BİR KISMI,
+  "bazı alanları doldurmuştur" ifadesine uygun, birth_date/gender/vb.
+  doldurulmuyor) eklendi. click_demographic_cancel() artık diğer click_*
+  metotlarıyla tutarlı şekilde wait.until(element_to_be_clickable) ile
+  sarmalandı (öncesinde çıplak find_element().click() idi).
+  wait_for_navigated_to_customer_list() (URL'nin TAM ".../customers" ile
+  bitmesini bekliyor - "/customers/new" veya "/customers/{id}" ile
+  KARIŞTIRILMAMASI için rstrip("/").endswith("/customers") kullanıldı)
+  eklendi.
+- features/create_customer.feature: "Demografik Bilgi Ekranında 'Cancel'
+  ile İşlemin İptal Edilmesi" senaryosu eklendi.
+- steps/test_create_customer_steps.py: Given (fill_some_demographic_
+  fields çağırıyor), When (click_demographic_cancel çağırıyor), 2 Then
+  eklendi. "girilen hiçbir bilgi sistemde kaydedilmez" step'i YENİ bir
+  SearchCustomersPage(driver) örneği açıp create_customer_page._last_
+  identity_number ile arama yapıp wait_for_no_results_state() çağırıyor
+  - search_customers_page.py'deki MEVCUT, zaten doğrulanmış metotlar
+  AYNEN tekrar kullanıldı (DRY, yeni arama/doğrulama mantığı yazılmadı).
+- Doğrulama: pytest -k "cancel" ile gerçek uygulamaya karşı izole
+  çalıştırıldı, 1 passed.
+
+[2026-08-07] "(Faker)" parantezleri kaldırıldı, feature+steps senkron tutuldu
+- Kullanıcı: "Faker daki parantezleri kaldır ve bağlantılı olan her yeri
+  güncelle." - features/create_customer.feature'daki 3 step metninde
+  "rastgele (Faker) değerlerle" -> "rastgele Faker değerlerle" olarak
+  düzeltildi, steps/test_create_customer_steps.py'deki karşılık gelen 3
+  @when tanımı (fill_demographic_step_with_faker, add_address_with_faker,
+  fill_contact_step_with_faker) BİREBİR aynı metin değişikliğiyle
+  güncellendi. grep ile repo genelinde başka "(Faker)" kalmadığı
+  doğrulandı. pytest --collect-only + izole çalıştırma (Erkek örneği)
+  ile davranışın değişmediği doğrulandı.
+- NOT: Bu turda ayrıca kullanıcı "Uçtan Uca Müşteri Yaratma" Scenario
+  Outline başlığından "2" ifadesini kendisi kaldırdı (artık sadece
+  "...Yaratma" - "Yaratma 2" değil) - bu değişiklik doğrudan dosyada
+  yapıldı, koda dokunmadım, sadece not düşülüyor.
+
+[2026-08-07] Yeni senaryo: Adres Bilgi Ekranında Birden Fazla Adres Ekleme
+- Kullanıcı manuel test case'i tablo görseli olarak verdi: Adres Bilgi
+  ekranında ilk adres girilip Save'e basılınca kart olarak listelenmeli,
+  "Add Address" ile ikinci adres eklenip Save'e basılınca o da AYRI bir
+  kart olarak eklenmeli, her iki kart da eksiksiz görüntülenmeli, Next
+  butonu aktif kalmalı.
+  KALICI KURAL gereği (önceki kayıt) soru sormadan direkt önce gerçek
+  uygulamada doğrulama, sonra implementasyon yapıldı.
+- ÖNCE gerçek uygulamada doğrulandı: "Yeni Adres Ekle" butonu ilk adres
+  kaydedildikten SONRA da ekranda kalmaya devam ediyor (kaybolmuyor),
+  ikinci kez tıklanabiliyor. 2 adres eklendi (Adana+Ankara, farklı
+  sokak/bina/açıklama) - SONUÇ: 2 ayrı address-card elementi, her biri
+  doğru "Şehir, Sokak, Bina No" title formatında + doğru description
+  detail'i ile, Next butonu enabled kaldı. Manuel case'in iddiası TAM
+  doğrulandı, tutarsızlık yok. (Bonus gözlem, case'de istenmemiş: ilk
+  eklenen adres otomatik "primary" (radio, checked) oluyor, ikincisi
+  değil - bilgi amaçlı not düşüldü, assertion'a dahil edilmedi.)
+- pages/create_customer_page.py: ADDRESS_CARD_TITLE, ADDRESS_CARD_DETAIL
+  locator'ları eklendi. __init__'e self._entered_addresses = [] eklendi.
+  add_address_with_faker() artık her çağrıda girilen (city, street,
+  building_no, description) tuple'ını bu listeye APPEND ediyor (böylece
+  AYNI metot İKİ kez çağrılınca hem ilk hem ikinci adresi otomatik takip
+  ediyor - ekstra parametre/state yönetimi steps tarafında gerekmedi).
+  are_all_entered_addresses_displayed_as_cards() eklendi: kart sayısının
+  self._entered_addresses uzunluğuyla eşleşmesini bekliyor, sonra her
+  kartın title'ını "{city}, {street}, {building_no}" ve detail'ini
+  description ile TEK TEK karşılaştırıyor.
+- features/create_customer.feature: "Adres Bilgi Ekranında Birden Fazla
+  Adres Ekleme" senaryosu eklendi - "kullanıcı Adres alanlarını rastgele
+  Faker değerlerle doldurup Save butonuna tıklar" + "sistem adresi kart
+  olarak listeler ve İleri butonu aktif hale gelir" adımları Scenario
+  Outline'dan AYNEN (ikinci kez) tekrar kullanıldı - hiç yeni kod
+  yazılmadan ilk adres ekleme + doğrulaması karşılandı, sadece final
+  Then'de YENİ bir çoklu-kart doğrulaması eklendi.
+- steps/test_create_customer_steps.py: Given ("kullanıcı 'Adres Bilgi'
+  ekranındadır" - fill_demographic_step_with_faker(gender="Kadın") +
+  click_demographic_next + wait_for_address_step çağırıyor, Background'ın
+  sağladığı create_customer_page fixture'ını REDECLARE ETMEDEN, üzerinde
+  aksiyon alarak ilerliyor) ve final Then (are_all_entered_addresses_
+  displayed_as_cards + is_address_next_disabled negation) eklendi.
+- Doğrulama: pytest -k "birden_fazla" ile gerçek uygulamaya karşı izole
+  çalıştırıldı - İLK deneme SessionNotCreatedException ("DevToolsActivePort
+  file doesn't exist") ile ortam kaynaklı (çok sayıda arka arkaya açılan
+  Chrome örneğinden kaynaklanan geçici bir ChromeDriver başlatma sorunu,
+  koddan/uygulamadan bağımsız) FAILED oldu - hemen tekrar çalıştırılınca
+  sorunsuz PASSED. Gerçek bir regresyon değildi.
+
+[2026-08-07] Yeni senaryo: "Contact Medium" Ekranında "Previous" ile Adres Bilgi Ekranına Dönüş
+- Kullanıcı manuel test case'i tablo görseli olarak verdi: Contact Medium
+  ekranında en az bir adres kayıtlıyken Previous'a basılınca Adres Bilgi
+  ekranına dönülmeli, önceki adres kartı eksiksiz görünmeli; Next'e tekrar
+  basılınca Contact Medium'a geri dönülmeli ve varsa önceden girilmiş
+  iletişim bilgileri korunmalı.
+- ÖNCE gerçek uygulamada doğrulandı: Demografik+1 adres dolduruldu, Contact
+  Medium'a geçildi, email kısmen dolduruldu (mobile boş bırakılarak),
+  "Geri" (customer-create-contact-back, text="Geri") butonuna tıklandı -
+  Adres panel'i açıldı, önceden kaydedilmiş adres kartı title+detail
+  eksiksiz göründü, Next (address-next) hâlâ enabled'dı. Next'e tekrar
+  basılınca Contact Medium'a dönüldü ve email alanındaki değer AYNEN
+  KORUNMUŞ görüldü (form state wizard boyunca kayboluyor değil, Angular
+  reactive form gibi kalıcı tutuluyor). Manuel case'in iddiası TAM
+  doğrulandı, tutarsızlık yok.
+- pages/create_customer_page.py: click_contact_back() eklendi. are_
+  contact_values_displayed() YENİDEN eklendi (bir önceki turda "hiçbir
+  step kullanmıyor" diye silinmişti - şimdi GERÇEKTEN ihtiyaç oldu,
+  silme kararı kalıcı bir kural değil, kullanım ortaya çıkınca geri
+  eklenmesi normal).
+- features/create_customer.feature: yeni senaryo eklendi - Given
+  (Contact Medium'a ulaşıp iletişim bilgilerini Faker ile dolduran
+  orkestrasyon), sonra Previous/Next döngüsü. Adımların ÇOĞU (adres
+  kartı doğrulaması, "İleri butonuna tıklar", "İletişim Kanalı ekranını
+  açar") ÖNCEKİ senaryolardan AYNEN tekrar kullanıldı - sadece Given
+  (yeni orkestrasyon), "Previous butonuna tıklar" (yeni), "Adres Bilgi
+  ekranına yönlendirir ve kart eksiksiz görüntülenir" (yeni, ama
+  wait_for_address_saved + are_all_entered_addresses_displayed_as_cards
+  metotlarını tekrar kullanıyor) ve "iletişim bilgileri korunur" (yeni)
+  step fonksiyonları eklendi.
+- Doğrulama: pytest -k "previous" ile gerçek uygulamaya karşı izole
+  çalıştırıldı, 1 passed (ilk denemede, sorunsuz).
+
+[2026-08-07] KALICI KURAL: her test öncesi driver.maximize_window() eklendi
+- Kullanıcı: "driver açıldıktan sonra neler yapılmalı? window'u maximize
+  edilmesi gerektiğini düşünüyorum. Nereye eklemeliyim? Anlat." - senior
+  QA perspektifiyle görüş istendi (viewport tutarlılığının bu oturumda
+  zaten birkaç kez karşılaşılan sticky-topbar/responsive-sidebar
+  sorunlarıyla ilişkisi anlatıldı, maximize vs sabit çözünürlük trade-off'u
+  açıklandı) - kullanıcı "maximize et her test öncesi" dedi.
+- conftest.py: driver fixture'ında `driver = _build_driver(browser,
+  headless)` satırından hemen sonra, `driver.implicitly_wait(10)`'dan
+  ÖNCE `driver.maximize_window()` eklendi - tüm browser'lar (Chrome/
+  Firefox/Edge) için TEK bir yerden uygulanıyor, her _build_driver
+  dalını ayrı ayrı değiştirmeye gerek kalmadı.
+- Doğrulama: pytest -k "cancel" ile gerçek uygulamaya karşı çalıştırıldı,
+  1 passed, davranış değişmedi.
+
+[2026-08-07] Yeni senaryo: Demografik Bilgi Ekranında Zorunlu Alan Eksikken Next Butonunun Pasif Kalması
+- Kullanıcı manuel test case'i tablo görseli olarak verdi: bir zorunlu
+  alan (örn. Soyad) boş bırakılınca Next pasif kalmalı, doldurulunca
+  tekrar aktif olmalı.
+- ÖNCE gerçek uygulamada doğrulama sırasında YANILTICI bir sonuçla
+  karşılaşıldı: Soyad alanı .clear() ile boşaltılınca Next buton AKTİF
+  KALDI (beklenmedik) - ancak bunun GERÇEK bir bug olup olmadığını
+  ayırt etmek için AYNI senaryo gerçek klavye tuşlarıyla (Keys.BACKSPACE
+  ile karakter karakter silme) tekrar denendi: bu sefer Next DOĞRU
+  şekilde tekrar pasif oldu. SONUÇ: bug YOK, tespit edilen tutarsızlık
+  Selenium'un .clear() metodunun Angular'ın dinlediği input event'ini
+  tetiklememesinden kaynaklanan bir TEST ARTEFAKTIYDI (tıpkı 2026-08-06
+  Clear-button ve 2026-08-07 address-city keşiflerinde bulunan "eksik
+  event dispatch" pattern'iyle aynı kök neden ailesi) - gerçek kullanıcı
+  davranışı (klavyeyle silme) doğru sonuç veriyor, uygulama kodu doğru.
+  Bu yüzden implementasyonda .clear() KULLANILMADI, sadece normal
+  enter_last_name()/send_keys tabanlı doldurma kullanıldı (zaten
+  senaryo hiçbir yerde alanı temizlemiyor, sadece BAŞTAN boş bırakıp
+  SONRADAN dolduruyor - .clear() ihtiyacı yok).
+- pages/create_customer_page.py: fill_demographic_step_without_last_name()
+  (First Name/Birth Date/Gender/Nationality ID Faker ile dolduruluyor,
+  Last Name BİLEREK atlanıyor) ve fill_missing_last_name() (Faker ile
+  last_name üretip enter_last_name() çağırıyor - DRY, mevcut metot tekrar
+  kullanıldı) eklendi. is_demographic_next_disabled() YENİDEN eklendi
+  (2026-08-07'de "kullanılmıyor" diye silinmişti - şimdi gerçekten
+  ihtiyaç oldu, bu üçüncü "sil sonra geri ekle" örneği - silme kararları
+  kalıcı değil, yeni senaryo geldikçe yeniden değerlendiriliyor).
+- features/create_customer.feature: yeni senaryo eklendi - Background
+  zaten Demografik Bilgi ekranına (boş) indiriyor, bu yüzden manuel
+  case'in kendi Given'ı ("Demografik Bilgi ekranındadır") Background'la
+  ÖRTÜŞTÜĞÜ için ayrıca eklenmedi (diğer senaryolarda da aynı desen
+  izlendi - Background zaten sağlıyorsa tekrar yazılmıyor).
+- Doğrulama: pytest -k "eksikken" ile gerçek uygulamaya karşı izole
+  çalıştırıldı, 1 passed.
+
+[2026-08-07] "(Soyad)" ve "(disabled)" parantezleri kaldırıldı
+- Kullanıcı: bu iki step'teki parantezleri kaldır ve bağlı yerlerden de
+  kaldır dedi. features/create_customer.feature: 'kullanıcı zorunlu
+  alanlardan birini ("Soyad") boş bırakır' -> 'kullanıcı zorunlu
+  alanlardan birini "Soyad" boş bırakır', '"Next" butonu pasif
+  (disabled) durumdadır' -> '"Next" butonu pasif durumdadır'.
+  steps/test_create_customer_steps.py'deki karşılık gelen 2 @when/@then
+  BİREBİR aynı metinle güncellendi. grep ile başka eşleşme kalmadığı
+  doğrulandı. pytest --collect-only ile temiz toplandığı teyit edildi.
+
+[2026-08-07] Yeni senaryo: Adres Girişi Penceresinde Zorunlu Alan Eksikken Save Butonunun Pasif Kalması
+- Kullanıcı manuel test case'i tablo görseli olarak verdi: Add/Edit
+  Address penceresi açıkken bir zorunlu adres alanı (örn. Şehir) boş
+  bırakılınca Save pasif kalmalı, doldurulunca aktif olmalı - Demografik
+  Bilgi/Next senaryosunun adres formu karşılığı.
+  Bir önceki geri bildirim (parantez kullanma) BAŞTAN uygulanarak Gherkin
+  parantezsiz yazıldı: 'kullanıcı zorunlu adres alanlarından birini
+  "Şehir" boş bırakır', '"Save" butonu pasif durumdadır' (disabled
+  ifadesi eklenmedi).
+- ÖNCE gerçek uygulamada doğrulandı: Şehir hariç Street/Building No/
+  Description dolduruldu - Save pasif kaldı (False). Şehir de seçilince
+  Save aktif oldu (True). Manuel case'in iddiası TAM doğrulandı,
+  tutarsızlık yok.
+- pages/create_customer_page.py: wait_for_address_form_open() (ADDRESS_
+  SAVE görünürlüğünü bekliyor), fill_address_form_without_city() (Faker
+  ile Street/Building No/Description dolduruyor, Şehir BİLEREK
+  atlanıyor), fill_missing_city() (gerçek <select> option'larından
+  rastgele şehir seçip select_address_city()'i ÇAĞIRIYOR - DRY, mevcut
+  event-dispatch workaround'ı tekrar kullanıldı), is_address_save_
+  disabled() eklendi.
+- features/create_customer.feature: yeni senaryo eklendi. Given
+  ("kullanıcı adres girişi penceresini açmıştır") demografik doldurup
+  Adres adımına geçip "Yeni Adres Ekle"ye tıklayan YENİ bir orkestrasyon
+  - önceki Given'lardan (Adres Bilgi ekranı / Contact Medium) farklı
+  çünkü bu sefer formun content'i AÇIK olması gerekiyor, sadece panel
+  değil.
+- steps/test_create_customer_steps.py: 5 yeni step eklendi (Given + 2
+  When + 2 Then) - hiçbiri önceki adımlarla AYNI metne sahip olmadığı
+  için (Demografik versiyonundan kasıtlı olarak "adres" kelimesiyle
+  ayrıştırıldı, örn. "eksik bırakılan zorunlu ADRES alanını doldurur")
+  isim çakışması yaşanmadı.
+- Doğrulama: pytest -k "save_butonunun" ile gerçek uygulamaya karşı
+  izole çalıştırıldı, 1 passed.
+
+[2026-08-07] Yeni senaryo: Contact Medium Ekranında Geçersiz Email Formatı Girildiğinde Create Butonunun Pasif Kalması
+- Kullanıcı manuel test case'i tablo görseli olarak verdi: geçersiz
+  email formatı ("ahmet.yilmaz@") girilince uyarı çıkmalı ve Create
+  pasif kalmalı, geçerli formatla ("ahmet.yilmaz@example.com")
+  güncellenince Create tekrar aktif olmalı.
+- ÖNCE gerçek uygulamada doğrulandı - 2 önemli bulgu:
+  1) Hata mesajı SADECE BLUR sonrası görünüyor (input sırasında değil) -
+     ilk deneme email yazıp hemen kontrol ettiğinde hiçbir görünür hata
+     bulunamadı, Tab ile başka alana odak kaydırılınca (new-contact-
+     email-error testid'i altında) ortaya çıktı. Bu YENİ bir keşif -
+     implementasyonda enter_invalid_email_format() email'i girdikten
+     hemen sonra Keys.TAB gönderiyor.
+  2) Gerçek hata metni manuel case'in paraphrase'inden ("Geçersiz email
+     formatı") FARKLI: "Geçerli bir e-posta girin; adres .com ile
+     bitmelidir." (2026-08-07 Faker email keşfinde bulunan .com kısıtıyla
+     AYNI validator mesajı - hem gerçekten malformed email hem de sadece
+     yanlış TLD'li email için TEK ORTAK mesaj kullanılıyor). Bu yüzden
+     bu oturumda daha önce kurulan "dile dayanıklı test" felsefesiyle
+     TUTARLI şekilde, is_email_error_displayed() literal metin
+     KARŞILAŞTIRMIYOR, sadece hata elementinin (new-contact-email-error)
+     görünürlüğünü yapısal olarak kontrol ediyor.
+  Create butonunun pasif/aktif geçişi (Submit enabled: False -> True)
+  manuel case'in iddiasıyla TAM örtüştü, davranışsal tutarsızlık yok.
+- ÖNEMLİ implementasyon detayı: Create butonu email VE mobile phone
+  ikisi de dolu olmadan zaten pasif kalıyor (bkz. önceki "Uçtan Uca
+  Müşteri Yaratma" bulgusu) - bu senaryo SADECE email formatının etkisini
+  izole etmek istediği için, yeni Given ("kullanıcı 'Contact Medium'
+  ekranındadır") Contact Medium'a ulaştıktan SONRA mobile phone'u da
+  Faker ile ÖNCEDEN dolduruyor (manuel case'de yazılı değil ama email
+  testini anlamlı kılmak için gerekli - aksi halde Create hiçbir zaman
+  "aktif" olamazdı, mobile boş kaldığı için).
+- pages/create_customer_page.py: Keys import edildi. EMAIL_ERROR
+  locator'ı (new-contact-email-error) eklendi. enter_invalid_email_format()
+  (sabit "ahmet.yilmaz@" + Tab ile blur), is_email_error_displayed()
+  (yapısal/dil-bağımsız kontrol), fix_email_with_faker(), fill_mobile_
+  phone_with_faker() eklendi.
+- features/create_customer.feature: yeni senaryo eklendi - final "Create
+  butonu aktif hale gelir" Then'i Scenario Outline'daki MEVCUT step ile
+  AYNEN eşleşiyor (tırnaksız yazıldı ki reuse çalışsın), yeni step
+  yazılmadı.
+- steps/test_create_customer_steps.py: Given + 4 yeni step eklendi.
+- Doğrulama: pytest -k "create_butonunun_pasif" ile gerçek uygulamaya
+  karşı izole çalıştırıldı, 1 passed.
+
+[2026-08-07] Yeni senaryo: Birth Date ve Gender Alan Davranışlarının Doğrulanması (Selenium kısıtı bulundu, kullanıcıya soruldu)
+- Kullanıcı manuel test case'i tablo görseli olarak verdi: Birth Date
+  alanına tıklanınca date-picker (takvim) açılmalı, takvimden bir tarih
+  seçilince DD/MM/YYYY formatında alana yazılmalı; Gender alanı ilk
+  geldiğinde varsayılan "Male" seçili olmalı, dropdown açılınca tanımlı
+  seçenekleri listelemeli, "Female" seçilince güncellemeli.
+- ÖNCE gerçek uygulamada keşfedildi - ÖNEMLİ TEKNİK KISIT bulundu: Birth
+  Date native bir <input type="date"> (outerHTML doğrulandı: type="date").
+  Alana tıklandığında DOM'a HİÇBİR calendar/datepicker paneli eklenmiyor
+  (0 sonuç - class*=calendar, data-testid*=date-picker, role=dialog/grid,
+  mat-calendar, ngb-datepicker, p-calendar seçicileriyle arandı) - takvim
+  tarayıcı/OS seviyesinde native olarak render ediliyor. Bu, Selenium
+  WebDriver'ın İYİ BİLİNEN bir kısıtı: native date input'un takvim
+  popup'ı DOM dışında olduğu için find_element ile hiçbir gün hücresine
+  tıklanamaz (uygulama bug'ı DEĞİL, WebDriver'ın evrensel sınırı).
+  Kullanıcıya AskUserQuestion ile 3 seçenek sunuldu (fonksiyonel
+  eşdeğerini test et / senaryoyu atla / deneysel ActionChains dene) -
+  kullanıcı "fonksiyonel eşdeğerini test et" seçti: takvime gerçekten
+  tıklama adımı atlanıp, type="date" olmasının (native picker garantisi)
+  ve klavyeyle girilen tarihin doğru şekilde saklanıp görüntülendiğinin
+  (zaten kullanılan enter_birth_date yöntemiyle) doğrulanması kararlaştırıldı.
+- Gender default DEĞERİ ayrıca doğrulandı: sayfa ilk yüklendiğinde
+  <option value="male" selected="true">Erkek</option> - manuel case'in
+  "Male varsayılan" iddiasıyla TAM örtüşüyor (Erkek = Male), tutarsızlık
+  yok. Not: gerçek UI Türkçe olduğu için Gherkin/assertion'larda "Male"/
+  "Female" değil "Erkek"/"Kadın" kullanıldı (bu oturumun başından beri
+  izlenen "gerçek UI diline göre yaz" konvansiyonuyla tutarlı).
+- pages/create_customer_page.py: is_birth_date_native_date_picker()
+  (type="date" kontrolü), enter_birth_date_with_faker() (Faker ile tarih
+  üretip enter_birth_date()'i çağırıyor - DRY, mevcut MM/DD/YYYY
+  dönüşüm mantığı tekrar kullanıldı), get_birth_date_iso_value(),
+  is_birth_date_displayed_correctly(), click_gender_field(),
+  get_gender_options() eklendi. select_gender() ve get_selected_gender_
+  text() ZATEN vardı, aynen tekrar kullanıldı.
+- features/create_customer.feature + steps/test_create_customer_steps.py:
+  yeni senaryo ve 8 step eklendi (Given gerekmedi - Background zaten
+  Demografik Bilgi ekranına indiriyor).
+- Doğrulama: pytest -k "birth_date_ve_gender" ile gerçek uygulamaya
+  karşı izole çalıştırıldı, 1 passed.
+
+[2026-08-07] Yeni senaryo: Adres Bilgisi Ekranında Adres Kartı Edit/Delete Aksiyonları ve Next Butonu Aktiflik Davranışı
+- Kullanıcı manuel test case'i tablo görseli olarak verdi: adres yokken
+  Next pasif, adres eklenince kart+Next aktif, karttaki Edit formu
+  mevcut verilerle açmalı, Delete kartı kaldırmalı, adres kalmayınca
+  Next tekrar pasif olmalı.
+- ÖNCE gerçek uygulamada keşfedildi: adres kartındaki "⋮" menü butonu
+  (address-card-menu) tıklanınca "Düzenle" (address-card-edit) ve "Sil"
+  (address-card-delete) seçenekleri açılıyor. Düzenle'ye tıklanınca AYNI
+  address-form AÇIK adresin City/Street/Building No/Description
+  değerleriyle ÖNCEDEN DOLU olarak açılıyor (panel-heading "Adres
+  Düzenle" oluyor). Sil'e tıklanınca HİÇBİR onay penceresi (native alert
+  yok, DOM modal yok) olmadan kart DOĞRUDAN kaldırılıyor, Next butonu
+  0 adresle tekrar pasif oluyor. Manuel case'in TÜM iddiaları TAM
+  doğrulandı, tutarsızlık yok.
+- pages/create_customer_page.py: ADDRESS_CARD_MENU, ADDRESS_CARD_EDIT,
+  ADDRESS_CARD_DELETE locator'ları eklendi. open_address_card_menu(),
+  click_address_card_edit() (menüyü açıp Düzenle'ye tıklıyor),
+  is_address_edit_form_prefilled_correctly() (self._entered_addresses'
+  daki SON adresle form alanlarını karşılaştırıyor - DRY, mevcut takip
+  listesi tekrar kullanıldı), click_address_form_cancel() (ADDRESS_FORM_
+  CANCEL locator'ı zaten vardı, click metodu eksikti - eklendi),
+  click_address_card_delete() (menüyü açıp Sil'e tıklıyor, self._entered_
+  addresses'ten de POP ediyor - liste tutarlılığı korunuyor),
+  get_address_card_count() eklendi.
+- features/create_customer.feature: yeni senaryo eklendi - "Given
+  kullanıcı 'Adres Bilgi' ekranındadır", "Adres adımında İleri butonu
+  pasiftir", "kullanıcı Adres alanlarını rastgele Faker değerlerle
+  doldurup Save butonuna tıklar", "sistem adresi kart olarak listeler ve
+  İleri butonu aktif hale gelir" - hepsi ÖNCEKİ senaryolardan AYNEN
+  tekrar kullanıldı, sadece Edit/Delete'e özel 6 step YENİ yazıldı.
+- Doğrulama: pytest -k "editdelete" ile gerçek uygulamaya karşı izole
+  çalıştırıldı, 1 passed.
+
+[2026-08-07] Yeni senaryo: Kaydedilen Adresin "City, Street Name..." Formatında Kart Olarak Görüntülenmesi
+- Kullanıcı manuel test case'i tablo görseli olarak verdi: Adres Bilgi
+  ekranında Şehir "İstanbul", Sokak "Bağdat Caddesi", No "45/2" ile form
+  doldurulup Save'e basılınca adres "İstanbul, Bağdat Caddesi..."
+  formatında kart olarak listelenmeli, bina/daire no dahil tamamı
+  okunabilir olmalı.
+- ÖNCE fark edilen kod eksikliği DÜZELTİLDİ: add_address(city, street,
+  building_no, description) (literal değerli, daha önce hiçbir step
+  tarafından kullanılmayan genel amaçlı metot) self._entered_addresses
+  listesine APPEND ETMİYORDU (sadece add_address_with_faker() ediyordu) -
+  bu YÜZDEN are_all_entered_addresses_displayed_as_cards() ile reuse
+  edilemezdi. add_address()'e de append satırı eklendi.
+- Manuel case'in Given'ı "form doldurmuştur" ile When'i "Save'e tıklar"ı
+  AYRI adımlar olarak istediği için (add_address()/add_address_with_
+  faker() gibi ikisini TEK metotta birleştiren mevcut metotlar
+  kullanılamadı) YENİ bir çift eklendi: fill_address_form(...) (SADECE
+  dolduruyor, Save'e tıklamıyor, değerleri self._pending_address'te
+  geçici tutuyor) + save_address_form() (Save'e tıklayıp self._pending_
+  address'i self._entered_addresses'e taşıyor).
+- ÖNCE gerçek uygulamada doğrulanmadı (bu spesifik format zaten önceki
+  3 senaryoda - Faker'lı Birden Fazla Adres Ekleme, Previous ile Dönüş,
+  Edit/Delete - defalarca aynı "{city}, {street}, {building_no}" title +
+  description detail formatıyla doğrulanmıştı) - GERÇEK TEST ÇALIŞTIRMASI
+  yine de yapıldı (kural gereği asla atlanmıyor), sonuç PASSED, ek bir
+  yeni bulgu çıkmadı.
+- features/create_customer.feature + steps/test_create_customer_steps.py:
+  yeni senaryo ve 3 step eklendi (Given, "Save butonuna tıklar" When,
+  final Then - hepsi are_all_entered_addresses_displayed_as_cards()'ı
+  yeniden kullanıyor).
+- Doğrulama: pytest -k "street_name_format" ile gerçek uygulamaya karşı
+  izole çalıştırıldı, 1 passed.
+
+[2026-08-07] "/" karakteri "-" ile değiştirildi (bina/daire -> bina-daire)
+- Kullanıcı: bir önceki senaryonun son Then step'inde "/" yerine "-"
+  kullanılmasını istedi ve bağlı yerlerin güncellenmesini istedi.
+  features/create_customer.feature ve steps/test_create_customer_steps.py
+  içindeki "adres kart olarak listelenir ve tamamı bina/daire no dahil
+  okunabilir şekilde görüntülenir" -> "...bina-daire no dahil..." olarak
+  BİREBİR güncellendi. project_brain.txt'teki geçmiş log satırına
+  BİLEREK dokunulmadı (o an doğru olanı anlatan tarihsel kayıt,
+  sonradan yapılan kozmetik yeniden adlandırmalar geçmiş loglara
+  yansıtılmıyor - bu oturumun genel konvansiyonu). pytest --collect-only
+  ile temiz toplandığı doğrulandı.
+
+[2026-08-07] Yeni senaryo: Adres Kartında Edit Seçeneğiyle Mevcut Adresin Güncellenmesi
+- Kullanıcı manuel test case'i tablo görseli olarak verdi: kayıtlı bir
+  adres kartı varken Edit'e tıklanıp Sokak alanı "Bağdat Caddesi"'nden
+  "Fenerbahçe Caddesi"'ne güncellenip Save'e basılınca kart GÜNCELLENMİŞ
+  bilgilerle listelenmeli (yeni bir kart OLUŞMAMALI).
+- ÖNCE gerçek uygulamada doğrulandı: adres kaydedildi (1 kart), Edit ->
+  Sokak alanı değiştirildi -> Save'e basıldı (buton metni "Kaydet",
+  enabled=True) - SONUÇ: kart sayısı HÂLÂ 1 (yeni kart eklenmedi), kart
+  title'ı yeni sokak adını yansıtacak şekilde güncellendi ("İstanbul,
+  Fenerbahce Caddesi, 45/2"). Manuel case'in iddiası TAM doğrulandı,
+  tutarsızlık yok.
+- ÖNEMLİ TASARIM KARARI: "Save butonuna tıklar" step'i hem YENİ adres
+  ekleme hem MEVCUT adresi güncelleme senaryolarında AYNI Gherkin
+  metniyle ("Save" butonuna tıklar) çağrılıyor - pytest-bdd metin bazlı
+  eşleştirdiği için bu TEK bir Python fonksiyonuna (save_address_form)
+  bağlanıyor, ama davranışı (self._entered_addresses'e APPEND mi yoksa
+  son elemanı DEĞİŞTİRME mi) BAĞLAMA göre farklı olmalı. Bunun için
+  self._pending_address_is_edit flag'i eklendi: fill_address_form() bunu
+  False, update_address_street() (YENİ metot - sadece Sokak alanını
+  güncelleyip self._entered_addresses'in SON elemanını yeni sokak
+  adıyla self._pending_address'e hazırlıyor) True set ediyor;
+  save_address_form() bu flag'e göre APPEND veya İN-PLACE REPLACE
+  yapıyor. Bu sayede aynı Gherkin metni iki farklı akışta doğru şekilde
+  yeniden kullanılabiliyor (DRY korundu, davranış context'e göre doğru).
+- features/create_customer.feature + steps/test_create_customer_steps.py:
+  yeni senaryo eklendi - "kullanıcı adres kartındaki 'Edit' seçeneğine
+  tıklar", "adres bilgileri güncellenmek üzere form olarak açılır",
+  "'Save' butonuna tıklar" ÖNCEKİ senaryolardan AYNEN tekrar kullanıldı;
+  Given (kayıtlı adres kurulumu), "Sokak alanını günceller" When ve final
+  Then (are_all_entered_addresses_displayed_as_cards() tekrar kullanıyor)
+  YENİ yazıldı.
+- Doğrulama: pytest -k "mevcut_adresin" ile gerçek uygulamaya karşı izole
+  çalıştırıldı, 1 passed. Ayrıca değişikliğin önceki "Kaydedilen Adresin
+  ... Formatında Kart Olarak Görüntülenmesi" senaryosunu bozmadığı da
+  pytest -k "street_name_format" ile tekrar doğrulandı, 1 passed.
+
+[2026-08-07] Yeni senaryo: Adres Kartında Delete Seçeneğiyle Adresin "Soft Delete" İddiası (kapsam daraltıldı, kullanıcıya soruldu)
+- Kullanıcı manuel test case'i tablo görseli olarak verdi: Delete'e
+  tıklanınca sistem adres kaydını FİZİKSEL olarak silmemeli, status
+  bilgisini "Deleted / Inactive" olarak güncellemeli (soft delete), kart
+  ekrandaki listeden kaldırılmalı.
+- ÖNCE gerçek uygulamada ARAŞTIRILDI - ÖNEMLİ BAĞLAM UYUŞMAZLIĞI bulundu:
+  window.fetch/XMLHttpRequest monkey-patch edilip Delete'e tıklandı -
+  HİÇBİR network isteği (fetch veya XHR) ATILMADI (0 çağrı yakalandı).
+  Kök sebep: bu ekran (Yeni Müşteri Oluşturma sihirbazının Adres Bilgi
+  adımı) adresi HENÜZ backend'e kaydetmiyor - tüm veri (adresler dahil)
+  sadece "Oluştur" butonuna basılınca TEK bir POST isteğiyle gönderiliyor
+  (2026-08-07 Uçtan Uca Müşteri Yaratma keşfinde zaten doğrulanmıştı).
+  Yani bu aşamada "soft delete" edilecek gerçek bir backend kaydı YOK -
+  manuel case muhtemelen ZATEN VAR OLAN bir müşterinin Customer Info
+  ekranındaki "Adres" sekmesini (tab-address, daha önce keşfedilen,
+  gerçekten backend'e bağlı bir ekran) tarif ediyor, "Yeni Müşteri
+  Oluştur" sihirbazını DEĞİL.
+- Kullanıcıya AskUserQuestion ile 3 seçenek sunuldu (sadece UI davranışını
+  test et / kasıtlı kırmızı yaz / senaryoyu atla) - kullanıcı "sadece UI
+  davranışını test et" seçti: backend/status iddiası senaryodan
+  ÇIKARILDI, senaryo başlığı da bunu yansıtacak şekilde "...Adresin
+  Ekrandaki Listeden Kaldırılması" olarak değiştirildi (soft-delete
+  referansı kaldırıldı - artık ne test edildiğini doğru yansıtıyor).
+- SONUÇ: Bu senaryo TAMAMEN önceki senaryolardan (Edit/Delete Aksiyonları,
+  Edit ile Güncelleme) tekrar kullanılan 3 step'ten oluşuyor - HİÇBİR
+  yeni step fonksiyonu veya page object metodu YAZILMADI (Given "kullanıcının
+  'Adres Bilgi' ekranında kayıtlı bir adres kartı bulunmaktadır", When
+  "kullanıcı adres kartındaki 'Delete' seçeneğine tıklar", Then "adres
+  kartı listeden kaldırılır" - üçü de AYNEN mevcuttu). DRY'ın doğal
+  sonucu olarak sıfır yeni kod ile bir senaryo daha eklenmiş oldu.
+- Doğrulama: pytest -k "ekrandaki" ile gerçek uygulamaya karşı izole
+  çalıştırıldı, 1 passed.
+- NOT: Kullanıcı sonradan bu senaryonun BAŞLIĞINI dosyada "Adres
+  Kartında Delete Seçeneğiyle Adresin Status-Update Olarak Silinmesi"
+  olarak geri değiştirdi (soft-delete referansı başlığa TEKRAR eklendi) -
+  ADIM İÇERİĞİ (Given/When/Then) DEĞİŞMEDİ, hâlâ sadece UI davranışını
+  test ediyor. Kod geri alınmadı (kullanıcı istemedikçe geri alınmaz
+  kuralı gereği), sadece not düşülüyor.
+
+[2026-08-07] Yeni senaryo: Contact Medium Ekranında Geçersiz Mobile Phone Formatı (8 hanede GERÇEK BUG bulundu, kasıtlı kırmızı)
+- Kullanıcı manuel test case'i tablo görseli olarak verdi: Mobile Phone
+  alanına geçersiz format ("05551234") girilince uyarı çıkmalı ve Create
+  pasif kalmalı, geçerli formatla ("+90 555 123 45 67") güncellenince
+  Create tekrar aktif olmalı - email senaryosunun mobile phone karşılığı.
+- ÖNCE gerçek uygulamada SİSTEMATİK bir uzunluk taraması yapıldı (1, 2,
+  6, 7, 8, 9, 10 haneli değerler tek tek denendi) - GERÇEK BİR BUG
+  bulundu: doğrulama kuralı "tam 10 hane olmalı" (hata mesajı: "Türkiye
+  (+90) için telefon numarası 10 haneli olmalıdır.") ve bu kural 1, 2,
+  6, 7, 9 hanede DOĞRU çalışıyor (hata gösterip Create'i pasif
+  bırakıyor) - AMA TAM OLARAK 8 HANEDE bu doğrulama ATLANIYOR: hiçbir
+  hata görünmüyor, Create AKTİF kalıyor. Manuel case'in KENDİ "geçersiz"
+  örneği ("05551234") TESADÜFEN tam olarak bu buggy uzunluk (8 hane) -
+  yani manuel case'i olduğu gibi implement etmek doğrudan bu bug'ı
+  tetikliyor.
+  (Ayrıca doğrulandı: harfler tamamen filtreleniyor/kabul edilmiyor,
+  "+90 555 123 45 67" gibi formatlı girişler ham rakamlara indirgenip
+  maxlength=10'a kadar kesiliyor - "90"+ilk8hane; leading digit (0 vs 5)
+  kuralın bir parçası değil, SADECE hane sayısı kontrol ediliyor.)
+- Kullanıcıya AskUserQuestion ile 3 seçenek sunuldu (kasıtlı kırmızı yaz
+  / gerçekten çalışan bir uzunluk kullan / telefon kısmını atla) -
+  kullanıcı "kasıtlı kırmızı test yaz" seçti: manuel case'in kendi
+  "05551234" örneği AYNEN kullanıldı, doğru/beklenen davranış (hata
+  görünmeli + Create pasif kalmalı) iddia edildi.
+- ÖNEMLİ YAN DEĞİŞİKLİK: Paylaşılan Given ("kullanıcı 'Contact Medium'
+  ekranındadır") ÖNCEDEN sadece Mobile Phone'u Faker ile dolduruyordu
+  (email senaryosunu izole etmek için) - bu senaryo TERSİNİ ihtiyaç
+  duyduğu (Email önceden geçerli dolu, Mobile test ediliyor) için Given
+  hem Email hem Mobile Phone'u önceden geçerli değerlerle dolduracak
+  şekilde GENİŞLETİLDİ (fix_email_with_faker() + fill_mobile_phone_
+  with_faker()). Bu, mevcut email senaryosunu BOZMADI çünkü o senaryo
+  zaten email'i sonradan geçersiz bir değerle EZİYORDU - gerçek
+  uygulamaya karşı tekrar çalıştırılıp PASSED olduğu doğrulandı.
+- pages/create_customer_page.py: MOBILE_PHONE_ERROR locator'ı (new-
+  contact-mobile-error) eklendi. enter_invalid_mobile_phone_format()
+  (sabit "05551234" + Tab ile blur, bug'ı belgeleyen yorum içeriyor),
+  is_mobile_phone_error_displayed() (email'deki gibi yapısal/dil-bağımsız
+  kontrol) eklendi. fix için MEVCUT fill_mobile_phone_with_faker()
+  tekrar kullanıldı (yeni metot gerekmedi).
+- features/create_customer.feature + steps/test_create_customer_steps.py:
+  yeni senaryo eklendi - "Create butonu pasif durumdadır" ve "Create
+  butonu aktif hale gelir" ÖNCEKİ (email) senaryodan AYNEN tekrar
+  kullanıldı, 3 yeni step yazıldı.
+- Doğrulama: pytest -k "mobile_phone_format" ile gerçek uygulamaya karşı
+  izole çalıştırıldı - BEKLENDİĞİ GİBİ FAILED: "sistem geçersiz telefon
+  formatı uyarısını görüntüler" adımında is_mobile_phone_error_displayed()
+  False döndü (8 hanede hata elementi hiç görünmüyor - keşifle birebir
+  tutarlı). Aynı çalıştırmada email senaryosu da tekrar doğrulandı,
+  PASSED (Given genişletmesi email akışını bozmadı).
