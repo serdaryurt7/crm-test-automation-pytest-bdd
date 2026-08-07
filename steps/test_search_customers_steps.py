@@ -1,10 +1,10 @@
 from pytest_bdd import given, parsers, scenarios, then, when
 from selenium.webdriver.support.ui import WebDriverWait
 
-from pages.customers_page import CustomersPage
+from pages.search_customers_page import CustomersPage
 from pages.login_page import LoginPage
 
-scenarios("customers.feature")
+scenarios("search_customers.feature")
 
 
 @given("kullanıcı müşteri arama sayfasındadır", target_fixture="customers_page")

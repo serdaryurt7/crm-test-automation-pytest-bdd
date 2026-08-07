@@ -1511,3 +1511,302 @@ Her yeni değişiklikte bu dosyanın sonuna yeni bir madde eklenir.
   tıklar" MEVCUT step'i tekrar kullanıldı.
 - Doğrulama: pytest -k "clear_butonuyla" ile gerçek uygulamaya karşı
   izole çalıştırıldı, passed.
+
+[2026-08-07] customers.feature -> search_customers.feature yeniden adlandırması sonrası kırık referans bulundu ve düzeltildi
+- Kullanıcı oturum dışında features/pages/steps dosyalarını yeniden
+  adlandırmış: features/customers.feature -> features/search_customers.
+  feature, pages/customers_page.py -> pages/search_customers_page.py,
+  steps/test_customers_steps.py -> steps/test_search_customers_steps.py.
+  Ayrıca boş features/create_customer.feature ve features/update_
+  customer.feature dosyaları oluşturulmuş.
+- BULUNAN GERÇEK BUG: steps/test_search_customers_steps.py içindeki
+  scenarios("customers.feature") çağrısı güncellenmemiş - features/
+  customers.feature artık diskte YOK, bu yüzden pytest-bdd koleksiyonu
+  kırıktı (dosya bulunamadı). scenarios("search_customers.feature")
+  olarak düzeltildi, --collect-only ile 28 testin sorunsuz toplandığı
+  doğrulandı.
+- login.feature + search_customers.feature birlikte tam suite olarak
+  çalıştırıldı (48 test): 47 passed, 1 failed (bilinen/kasıtlı kırmızı:
+  admin-123 tanımsız kullanıcı için hâlâ "hesabınız 15 dakika kilitlendi"
+  mesajı gösteriliyor - FR gereksinimine aykırı, önceden dokümante
+  edilmiş gerçek bug, davranış değişmedi). Allure raporu `allure generate`
+  + `allure open` ile üretilip localhost'ta URL olarak açıldı.
+
+[2026-08-07] Yeni yapı: Müşteri Oluşturma (create_customer) sayfa/step/feature iskeleti kuruldu
+- Kullanıcı isteği: "search customer yapısı gibi, pages, steps, features,
+  create_customer kurmak istiyorum" - search_customers ile aynı üçlü
+  yapı (Page Object + step definitions + feature) create_customer için
+  de kurulacak.
+- ÖNCE gerçek uygulamada /customers/new keşfedildi (login -> demo/
+  Password123 -> doğrudan URL navigasyonu). Ekranın 3 ADIMLI bir
+  sihirbaz (stepper) olduğu görüldü:
+  1) Demografik Bilgi: firstName, secondName, lastName, birthDate
+     (type=date), gender (select: Erkek/Kadın), fatherName, motherName,
+     identityNumber (maxlen 11) - hepsi gerçek HTML id'sine sahip.
+     "İleri" butonu (customer-create-demographic-next) alanlar
+     doldurulana kadar DISABLED.
+  2) Adres: "Yeni Adres Ekle" butonuna basılınca açılan alt formda
+     address-city (select, id'li), address-street, address-building
+     (id="address-building", testid'i "address-building-no"), address-
+     description (textarea) - hepsi required. "Kaydet" butonu
+     (address-save) tüm alanlar dolana kadar DISABLED.
+     NOT: native <select> için Selenium'un select_by_visible_text'i
+     formun beklediği change/blur event'ini bazen tetiklemiyor - şehir
+     seçilse dahi "Bu alan zorunludur" hatası kalıcı olabiliyor, JS ile
+     ek olarak change+blur event dispatch edilmesi gerekti (bu WORKAROUND
+     pages/create_customer_page.py select_address_city() içine yorumla
+     birlikte eklendi).
+  3) İletişim Kanalı: email (id="new-contact-email", required), home
+     phone/mobile phone/fax (id'li, tel tipinde, maxlen 10, hepsi
+     OPSİYONEL - required attribute yok), ülke kodu butonları (+90,
+     testid'li, henüz kullanılmıyor). "Oluştur" butonu (customer-create-
+     submit) email boşken DISABLED.
+- pages/create_customer_page.py oluşturuldu: search_customers_page.py
+  ile AYNI konvansiyon (gerçek id varsa By.ID, yoksa data-testid CSS
+  selector, StaleElementReferenceException ignore edilen WebDriverWait).
+  3 adımın tüm locator'ları + temel etkileşim metodları (enter_*,
+  select_gender, add_address, click_demographic_next/click_address_next/
+  click_submit vb.) eklendi.
+- features/create_customer.feature: Feature header + Background
+  ("kullanıcı müşteri oluşturma sayfasındadır") + İLK senaryo eklendi:
+  "Ekran Açıldığında Demografik Bilgi Adımının Görüntülenmesi ve İleri
+  Butonunun Pasif Olması" (kalan senaryolar kullanıcıdan manuel test
+  case'leri geldikçe eklenecek - search_customers'daki ilerleme deseniyle
+  aynı).
+- steps/test_create_customer_steps.py: Given fixture login olup base_
+  url'in origin'ini urlparse ile çıkarıp doğrudan /customers/new'e
+  navigate ediyor (search_customers'daki gibi UI üzerinden nav linkine
+  tıklamak yerine - nav-customer-create linki varsayılan olarak kapalı
+  sidebar içinde gizli/visible=False olduğu için daha kırılgan olurdu).
+- Doğrulama: pytest steps/test_create_customer_steps.py gerçek
+  uygulamaya karşı çalıştırıldı, 1 passed.
+- NOT: Kullanıcı daha sonra bu ilk placeholder senaryoyu (feature'dan) ve
+  ona ait Then step'lerini (steps dosyasından) SİLDİ, yerine gerçek bir
+  manuel test case (uçtan uca müşteri yaratma) verdi - bkz. aşağıdaki
+  [2026-08-07] Uçtan Uca Müşteri Yaratma kaydı. Given fixture'ı da o
+  kayıtta URL nav'dan UI click-through'a çevrildi.
+
+[2026-08-07] Yeni senaryo: Demografik, Adres ve İletişim Bilgileriyle Uçtan Uca Müşteri Yaratma (2 gerçek bug bulundu, biri kasıtlı kırmızı bırakıldı)
+- Kullanıcı 10 adımlık manuel test case verdi (FR-003 ACC-10/15/16/26/27/
+  28/29 referanslı) ve "bu test adımlarını dinamik yap" dedi - Nationality
+  ID ve email'in sabit test verisi (98765432109, ayse.demir@example.com)
+  yerine her çalıştırmada rastgele üretilmesi istendi.
+- ÖNCE Background değiştirildi: artık /customers/new'e DOĞRUDAN URL
+  navigasyonu yerine, manuel case'in 1. adımıyla birebir eşleşecek şekilde
+  gerçek UI akışından geçiyor (ID Number "00000000000" ara -> sonuç yok ->
+  Create Customer butonuna tıkla). search_customers_page.py'deki
+  enter_identity_number/submit_search/wait_for_no_results_state/click_
+  create_customer_button metotları AYNEN tekrar kullanıldı (import
+  pages.search_customers_page.CustomersPage as SearchCustomersPage) -
+  yeni kod yazılmadı, DRY korundu.
+- GERÇEK UYGULAMADA UÇTAN UCA DENEME sırasında 2 gerçek, tekrarlanabilir
+  bug/davranış bulundu:
+  1) Backend email'in BENZERSİZ olmasını zorunlu kılıyor: aynı email ile
+     ikinci POST denemesi 400 + "This email address is already
+     registered." (Business Rule Violation) dönüyor - fetch/XHR intercept
+     ile network payload'ı yakalanarak doğrulandı. SONUÇ: "dinamik yap"
+     isteği sadece Nationality ID'yi değil email'i de kapsamalı - ikisi de
+     random üretiliyor artık (identity: 11 haneli rastgele rakam, email:
+     test.{8 haneli rastgele rakam}@example.com).
+  2) GERÇEK BUG: Demografik Bilgi adımında Gender alanında "Kadın"
+     seçilse DAHİ, oluşturulan müşteri kaydında Cinsiyet her zaman
+     "Erkek" olarak kaydediliyor. İKİ bağımsız yöntemle doğrulandı:
+     a) window.fetch/XMLHttpRequest monkey-patch edilip network isteği
+        yakalandı: UI'da "Kadın" seçili olmasına rağmen POST payload'ında
+        "genderType":"MALE" gönderiliyor (DOM'daki <select>'in kendi
+        value attribute'u "female" - yani HTML seviyesinde seçim doğru,
+        bug Angular'ın form-to-DTO mapping/serialization katmanında).
+        Kontrol için "Erkek" seçilerek de aynı payload'da "MALE" çıktığı
+        doğrulandı (fark yok - her zaman MALE gönderiliyor).
+     b) Gerçekten oluşturulan 2 müşteri kaydı (Kadın seçilerek oluşturulan
+        #68 ve Erkek seçilerek oluşturulan #69) Customer Info ekranından
+        açılıp kontrol edildi - İKİSİ DE "Cinsiyet: Erkek" gösteriyor.
+        Bu, payload bulgusunu backend/persist seviyesinde de doğruladı.
+  - Kullanıcıya AskUserQuestion ile 3 seçenek sunuldu (kasıtlı kırmızı
+    yaz / gerçek davranışa göre yaz / gender assertion'ı atla) - kullanıcı
+    "kasıtlı kırmızı test yaz" seçti. Senaryonun son Then'i DOĞRU/beklenen
+    davranışı iddia ediyor ("müşterinin Cinsiyet bilgisi 'Kadın' olarak
+    görüntülenir") ve bug düzelene kadar BİLEREK FAIL verecek.
+- pages/create_customer_page.py'ye eklenenler:
+  - enter_birth_date artık "DD/MM/YYYY" (manuel case notasyonu) kabul
+    edip iç kısımda "MM/DD/YYYY" tuş sırasına çeviriyor - HTML date
+    input'un Selenium send_keys ile MM/DD/YYYY tuş sırası beklediği
+    ampirik olarak doğrulandı (07/22/1992 -> value="1992-07-22").
+  - select_address_city() workaround'ına EKSİK OLAN 'input' event
+    dispatch'i eklendi - önceki günün kaydında sadece change+blur
+    dispatch ediliyordu, bu YETERSİZDİ: "Bu alan zorunludur" hatası
+    kalıcı kalıyordu. change+input+blur üçü birden dispatch edilince
+    (tıpkı 2026-08-06 Clear-button keşfinde bulunduğu gibi) tüm şehirler
+    (Adana, İstanbul, İzmir, Ankara, Şanlıurfa, Muğla dahil - Türkçe
+    karakter kaynaklı bir sorun DEĞİL, saf event-eksikliği sorunuymuş)
+    doğru çalıştı.
+  - fill_demographic_step_with_random_identity_number(), fill_contact_
+    step_with_random_email() (rastgele identity/email üretip page
+    object'te self._last_* olarak saklıyor), are_demographic_values_
+    displayed(), are_contact_values_displayed(), wait_for_address_step(),
+    is_address_next_disabled(), wait_for_address_saved() (address-card
+    görünürlüğü + Next butonu clickable), wait_for_contact_step(),
+    wait_for_navigated_to_customer_info(), get_customer_info_gender_
+    value() eklendi.
+- steps/test_create_customer_steps.py: tüm senaryo için step'ler
+  yazıldı, parsers.parse ile first_name/last_name/birth_date/gender/city/
+  street/building_no/description/mobile_phone/expected_gender parametrize
+  edildi (identity number ve email BİLEREK parametrize EDİLMEDİ - dinamik
+  üretim page object içinde gerçekleşiyor).
+- Doğrulama: pytest steps/test_create_customer_steps.py gerçek
+  uygulamaya karşı çalıştırıldı - 12 adımın TAMAMI (dinamik ID/email
+  üretimi, 3 adımlı sihirbaz, adres kaydı, Customer Info'ya yönlenme
+  dahil) PASSED, senaryo yalnızca son Then'de (Cinsiyet assertion'ı)
+  beklendiği gibi FAILED: assert 'Erkek' == 'Kadın'.
+
+[2026-08-07] İkinci senaryo: Uçtan Uca Müşteri Yaratma 2 (Faker ile tam rastgele veri)
+- Kullanıcı önce "Scenario Outline + Examples" fikrini önerdi (isim/soyisim/
+  TC/cep telefonu/email random olsun), AskUserQuestion ile Examples
+  tablosunun ne içereceği soruldu (kullanıcı "sadece tekrar sayısı" dedi) -
+  ANCAK bu yaklaşımdan tamamen VAZGEÇİLDİ, kullanıcı bunun yerine yeni/ayrı
+  bir Scenario ("... Yaratma 2") istedi ve rastgele veri üretimi için
+  spesifik olarak Faker kütüphanesinin import edilip kullanılmasını istedi
+  (Scenario Outline kodu hiç yazılmadı, sadece soru soruldu - önemli: bu
+  yaklaşımdan dönüldüğü unutulmamalı).
+- Faker requirements.txt'e eklendi, pip install Faker ile kuruldu
+  (v40.36.0). pages/create_customer_page.py'de `fake = Faker("tr_TR")`
+  modül seviyesinde instantiate edildi.
+- Kullanıcı zorunlu demografik, adres ve iletişim alanlarının TAMAMININ
+  Faker ile rastgele üretilmesini istedi. AskUserQuestion ile Gender
+  alanı özelinde netleştirme yapıldı: Gender zaten bug'lı (ne seçilirse
+  seçilsin backend hep "Erkek" kaydediyor - bkz. yukarıki [2026-08-07]
+  Uçtan Uca Müşteri Yaratma kaydı) - Gender'ı da rastgele seçmek testi
+  %50 ihtimalle şans eseri PASS ettirip bug'ı gizleyebilirdi. Kullanıcı
+  "Gender'ı sabit Kadın bırak" seçeneğini seçti - bu yüzden
+  fill_demographic_step_with_faker(gender="Kadın") varsayılanı SABİT,
+  diğer her şey (first_name/last_name/birth_date/identity_number) Faker
+  ile üretiliyor.
+- Kullanıcı features/create_customer.feature dosyasına eş zamanlı olarak
+  kendi tarafından ham/yapıştırılmış bir manuel test case ekledi ("Not AI"
+  başlıklı, süslü tırnaklı, geçerli Gherkin OLMAYAN bir blok) - bu ne
+  amaçlı olduğu AskUserQuestion ile soruldu, kullanıcı "sadece referans
+  notu, dokunma" dedi. BU BLOK BİLEREK OLDUĞU GİBİ BIRAKILDI, silinmedi
+  veya düzenlenmedi. NOT: pytest-bdd'nin scenarios("create_customer.
+  feature") çağrısı feature dosyasındaki TÜM Scenario bloklarını topluyor,
+  bu "Not AI" bloğu da (geçersiz/eşleşmeyen step'leri yüzünden) bir test
+  olarak toplanıp muhtemelen HATA verecek şekilde collect ediliyor -
+  kullanıcıya "dokunma" dendiği için bilerek müdahale edilmedi, sadece
+  bilgi olarak not düşülüyor.
+- pages/create_customer_page.py'ye eklenen Faker tabanlı metodlar:
+  - fill_demographic_step_with_faker(gender="Kadın"): first_name (fake.
+    first_name_female()/first_name_male() - gender'a göre), last_name
+    (fake.last_name()), birth_date (fake.date_of_birth(min=18,max=90) ->
+    "DD/MM/YYYY"), identity_number (fake.numerify("###########")).
+    Mevcut fill_demographic_step() metodunu ÇAĞIRIYOR (DRY).
+  - add_address_with_faker(): City Faker'DAN DEĞİL, ekrandaki GERÇEK
+    <select> option listesinden (Select(...).options) rastgele seçiliyor
+    - sebep: alan yalnızca kendi option listesindeki 81 il adından
+    biriyle TAM eşleşirse kabul ediyor, Faker'ın ürettiği bir şehir adının
+    bu listeyle birebir eşleşeceği garanti edilemezdi. Street (fake.
+    street_name()), building_no (fake.building_number()), description
+    (fake.sentence(nb_words=4)) Faker ile üretiliyor. select_address_city()
+    metodunu ÇAĞIRIYOR (DRY, change+input+blur workaround'ı tekrar
+    kullanılıyor).
+  - fill_contact_step_with_faker(): mobile_phone fake.numerify
+    ("5#########") ile Türkiye GSM formatına (5 ile başlayan 10 hane)
+    zorlanıyor (Faker'ın genel phone_number() sağlayıcısı boşluk/parantez
+    içerdiğinden KULLANILMADI). Email için de GERÇEK BİR BULGU: ilk
+    denemede fake.email() rastgele ürettiği ".org" TLD'li bir adres
+    yüzünden "Create butonu aktif hale gelir" adımında FAIL verdi -
+    debug edilince uygulamanın kendi email validasyonunun SADECE ".com"
+    ile biten adresleri kabul ettiği görüldü ("Geçerli bir e-posta girin;
+    adres .com ile bitmelidir." hata mesajı, new-contact-email-error
+    testid'i altında). Email artık domain SABİT "example.com" olacak
+    şekilde elle kuruluyor (f"{fake.user_name()}.{fake.random_number(...)}
+    @example.com") - hem Faker kullanıyor hem .com kısıtına uyuyor hem de
+    benzersizlik için rastgele sayı ekliyor.
+- features/create_customer.feature: "Demografik, Adres ve İletişim
+  Bilgileriyle Uçtan Uca Müşteri Yaratma 2" adında YENİ bir Scenario
+  eklendi (Scenario 1'in AYNISI akış, sadece Demografik/Adres/İletişim
+  doldurma step'leri Faker tabanlı 3 yeni step ile değiştirildi - kalan
+  TÜM step'ler scenario 1'den AYNEN tekrar kullanıldı, DRY korundu, yeni
+  step fonksiyonu sadece 3 tane: fill_demographic_step_with_faker,
+  add_address_with_faker, fill_contact_step_with_faker).
+- Doğrulama: pytest -k "yaratma_2 and not not_ai" ile 2 KEZ art arda
+  gerçek uygulamaya karşı çalıştırıldı (2 farklı rastgele veri seti ile) -
+  her ikisinde de aynı sonuç: TÜM 12 adım PASSED (Faker verisiyle bile
+  wizard'ın 3 adımı sorunsuz tamamlanıyor), yalnızca son Cinsiyet
+  assertion'ı beklendiği gibi FAILED (assert 'Erkek' == 'Kadın') -
+  scenario 1'deki bug'ın rastgele veriyle de TUTARLI şekilde
+  tekrarlandığı doğrulandı, flaky değil.
+
+[2026-08-07] Kullanıcı Scenario 1'i feature dosyasından SİLDİ + ölü kod temizliği
+- Kullanıcı features/create_customer.feature'dan "Uçtan Uca Müşteri
+  Yaratma" (1. senaryo, sabit "Ayşe Demir" verisiyle) ve daha önce
+  bırakılan "Not AI" referans bloğunu KENDİSİ sildi - dosyada artık
+  SADECE Background + "Uçtan Uca Müşteri Yaratma 2" (Faker tabanlı)
+  kalıyor. Kullanıcı "faker ile yazılan test adımlarını pages ve steps'e
+  bağla ve altı sarı çizili durumu gider" dedi (VS Code Cucumber
+  eklentisinin "step tanımı bulunamadı" uyarısı - bu oturumda daha önce
+  de birkaç kez görülen, genelde eklenti cache'inin güncel olmamasından
+  kaynaklanan YANLIŞ pozitif bir durum, pytest --collect-only HER ZAMAN
+  temiz sonuç verdi).
+- Silinen Scenario 1 yüzünden artık HİÇBİR Gherkin metniyle eşleşmeyen
+  (dead code) step fonksiyonları ve page object metodları tespit edilip
+  temizlendi:
+  - steps/test_create_customer_steps.py'den silinenler: "sistem
+    Demografik Bilgi adımının tüm alanlarını görüntüler" ve "İleri
+    butonu pasif kalır" step'leri (bunlar aslında Scenario 1'den de ÖNCE,
+    kullanıcının sildiği ilk placeholder senaryodan kalma eski ölü
+    koddu), sabit tırnaklı First Name/Last Name/Birth Date/Gender step'i,
+    sabit tırnaklı "Add New Address" step'i, sabit tırnaklı Email/Mobile
+    Phone step'i.
+  - pages/create_customer_page.py'den silinenler: are_demographic_fields_
+    visible() + DEMOGRAPHIC_FIELDS sabiti, is_demographic_next_disabled(),
+    fill_demographic_step_with_random_identity_number(), fill_contact_
+    step_with_random_email(mobile_phone), are_contact_values_displayed()
+    (bu sonuncusu hiçbir step tarafından hiç çağrılmamış, baştan beri
+    kullanılmayan bir metottu).
+  - KORUNANLAR (bilerek silinmedi): enter_second_name/enter_father_name/
+    enter_mother_name/enter_home_phone/enter_fax/click_demographic_cancel
+    ve add_address(city, street, building_no, description) - bunlar şu an
+    hiçbir step tarafından çağrılmasa da search_customers_page.py'deki
+    established pattern'e uygun şekilde GENEL AMAÇLI Page Object yüzeyi
+    olarak bırakıldı (gelecekte kullanıcı bu opsiyonel alanlar için yeni
+    manuel test case verirse hazır olacak) - tamamen farklı bir kategori,
+    "belirli bir silinen step'e özel glue kod" değil.
+  - add_address_with_faker() şehir seçimi ÖNCE self.click_add_address()
+    ile formu açıp GERÇEK option listesini okumak ZORUNDA olduğundan
+    add_address()'i çağıramıyor (çağırırsa formu iki kez açmaya çalışır) -
+    bu yüzden kendi bağımsız akışını koruyor, sahte bir DRY-reuse
+    zorlanmadı.
+- Doğrulama: temizlik sonrası pytest --collect-only (1 test, hatasız) ve
+  gerçek uygulamaya karşı tam çalıştırma (pytest steps/test_create_
+  customer_steps.py) tekrar yapıldı - sonuç DEĞİŞMEDİ: 11 adım PASSED,
+  Cinsiyet assertion'ı beklendiği gibi FAILED. Temizlik davranışı
+  bozmadı.
+
+[2026-08-07] Yaratma 2 Scenario Outline'a çevrildi: Gender hem "Kadın" hem "Erkek" ile test ediliyor
+- Kullanıcı: "Gender'ın hem erkek hem de kadın olan versiyonu ile test
+  etmek istiyorum. İki status'ü de kontrol etmek istiyorum." - önceki
+  turda AskUserQuestion'da "Gender'ı sabit Kadın bırak" seçmişti (flaky
+  olmasın diye), şimdi bu karardan BİLEREK vazgeçip tam tersini istedi -
+  bug'ın HER İKİ değerde de nasıl davrandığını görmek istiyor.
+- features/create_customer.feature: Scenario -> Scenario Outline'a
+  çevrildi, Gender art:k "<gender>" placeholder'ı ile hem Demografik
+  Bilgi doldurma step'ine hem final Cinsiyet assertion'ına besleniyor,
+  Examples: | gender | Kadın | Erkek |. Final assertion step'i
+  DEĞİŞMEDİ ("müşterinin Cinsiyet bilgisi "{expected_gender}" olarak
+  görüntülenir") - <gender> otomatik olarak expected_gender'a bağlanıyor,
+  ekstra step yazmaya gerek kalmadı.
+- steps/test_create_customer_steps.py: fill_demographic_step_with_faker
+  step'i parametrize edildi (parsers.parse ile {gender} alıyor artık,
+  eskiden parametresizdi/sabit "Kadın" default'luydu).
+- pages/create_customer_page.py: fill_demographic_step_with_faker(self,
+  gender) artık ZORUNLU parametre alıyor (default "Kadın" kaldırıldı),
+  yorum güncellendi - artık "flaky olmasın diye sabit tutuluyor" değil,
+  "bug'ın asimetrik doğasını (Kadın->FAIL, Erkek->PASS) kanıtlamak için
+  BİLEREK her iki değerle ayrı ayrı çalıştırılıyor" olarak açıklanıyor.
+- Doğrulama: pytest steps/test_create_customer_steps.py gerçek
+  uygulamaya karşı çalıştırıldı, 2 test (Examples satırı başına 1) -
+  SONUÇ TAM BEKLENDİĞİ GİBİ: [Kadın] FAILED (assert 'Erkek' ==
+  'Kadın'), [Erkek] PASSED. Bu, bug'ın karakterini kesin olarak
+  kanıtlıyor: sistem GİRİLEN değere bakmaksızın HER ZAMAN "Erkek"
+  kaydediyor - Erkek seçildiğinde tesadüfen doğru sonuç çıktığı için
+  test yanılgıyla yeşil oluyor, Kadın seçildiğinde gerçek tutarsızlık
+  ortaya çıkıyor.

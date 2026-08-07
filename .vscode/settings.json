@@ -2,7 +2,6 @@
   "cucumberautocomplete.steps": ["steps/*.py"],
   "cucumberautocomplete.syncfeatures": "features/*.feature",
   "cucumberautocomplete.gherkinDefinitionPart": "(@(?:given|when|then)\\((?:parsers\\.(?:parse|re|cfparse)\\()?r?)",
-  "python.defaultInterpreterPath": "C:\\Users\\serdar.yurtseven\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
   "python-envs.defaultEnvManager": "ms-python.python:system",
   "python.testing.pytestArgs": [
     "."
