@@ -62,6 +62,14 @@ def driver(request):
 
     driver = _build_driver(browser, headless)
     driver.maximize_window()
+    # maximize_window() OS pencere yoneticisine bagli ve uzun/agir test
+    # kosumlarinda (ardarda cok sayida Chrome oturumu) guvenilmez sekilde
+    # kucuk bir pencerede kalabiliyor - bu da uygulamanin responsive
+    # breakpoint'ini tetikleyip Gender <select>/native date picker gibi
+    # elementlerin farkli (mobil) widget'lara donusmesine, sahte test
+    # hatalarina yol aciyordu. set_window_size deterministik oldugu icin
+    # guvenlik agi olarak ekleniyor.
+    driver.set_window_size(1920, 1080)
     driver.implicitly_wait(10)
 
     yield driver

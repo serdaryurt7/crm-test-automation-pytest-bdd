@@ -2326,3 +2326,471 @@ Her yeni değişiklikte bu dosyanın sonuna yeni bir madde eklenir.
   False döndü (8 hanede hata elementi hiç görünmüyor - keşifle birebir
   tutarlı). Aynı çalıştırmada email senaryosu da tekrar doğrulandı,
   PASSED (Given genişletmesi email akışını bozmadı).
+
+[2026-08-09] BÜYÜK GÖREV: Tüm uygulama (17 UC) canlı keşfedildi, 161 test case'lik senior-QA Excel envanteri üretildi
+- Kullanıcı bu seferki istek AUTOMASYON KODU değil, bir TEST TASARIM
+  ENVANTERİYDİ: kendi Excel formatını (UC / Senaryo | Test Case ID | Test
+  Case Başlığı | Test Türü | Öncelik sütunları, UC başına mavi grup
+  başlığı, yeşil/kırmızı/gri renk kodlaması) ekran görüntüsüyle verdi ve
+  "tüm uygulamayı dolaş" + bu 17 UC başlığına göre TÜM test senaryolarını
+  (positive/negative/happy path/boundary/+ yazılmamış diğer tipler) bu
+  formatta bir Excel'e hazırlamamı istedi:
+  UC-EACRML 001 Sisteme Giriş, 002 Müşteri Arama ve Görüntüleme, 003
+  Müşteri Yaratma, 004 Müşteri Bilgilerini Güncelleme, 005 Müşteri
+  Bilgilerini Silme, 006 Müşteri Adresinin Güncellenmesi, 007 Yeni
+  Müşteri Adresinin Eklenmesi, 008 Müşteri Adresinin Silinmesi, 009
+  Kontakt Bilgilerinin Güncellenmesi, 010 Yeni Fatura Hesabı Oluşturma,
+  011 Fatura Hesabı Güncelleme, 012 Fatura Hesabını Silme, 013 Fatura
+  Hesabına Bağlı Ürün Detayları, 014 Teklif Seçimi, 015 Ürün
+  Konfigürasyonu, 016 Siparişin Tamamlanması, 017 Dil Desteği.
+- KRİTİK KEŞİF - sidebar navigasyonu SADECE 3 gerçek link içeriyor
+  (Müşteri Arama, Müşteri Bilgisi, Müşteri Oluştur) - UC-010'dan UC-016'ya
+  kadar olan alanlar (Fatura Hesabı/Teklif/Ürün Konfig/Sipariş) sidebar'da
+  YOK. Bunlar aslında var ve ÇALIŞIYOR ama SADECE var olan bir müşterinin
+  "Müşteri Hesabı" (tab-account) sekmesindeki "Yeni Satış Başlat"
+  butonu üzerinden erişiliyor - bu keşfedilmeden UC-010-016 tamamen
+  "yok/prototipte eksik" sanılabilirdi. Akış: Müşteri Hesabı sekmesi ->
+  Yeni Hesap Oluştur (UC-010, form: Hesap Adı/Açıklaması/Adres, gerçek
+  POST /account-service/api/v1/billing-accounts) -> hesap satırında
+  Edit (UC-011, panel başlığı "Fatura Hesabını Düzenle") / Delete
+  (UC-012) -> ürün satırında Preview (UC-013, panel: Ürün Teklif ID/Adı/
+  Spec ID/Karakteristikler) -> "Yeni Satış Başlat" -> /customers/{id}/
+  new-sale?accountId={id} -> Adım 1 "Teklif Seçimi" (UC-014: Katalog/
+  Kampanya sekmeleri, 11 kalem katalog, filtre, sepet, tamamlayıcı ürün
+  ve çapraz satış önerileri) -> Adım 2 "Ürün Konfigürasyonu" (UC-015:
+  config kartları, hizmet adresi seçimi) -> Adım 3 "Sipariş Gönder"
+  (UC-016: özet, toplam tutar, Gönder butonu).
+- GÜVENLİK ÖNLEMİ: Customer Info Edit/Delete, Adres CRUD, Fatura Hesabı
+  CRUD gibi MUTASYON gerektiren testler SEED'LENMİŞ gerçek müşteriler
+  (ör. customer 1/2/3) üzerinde DENENMEDİ - bunun yerine önce Create
+  wizard ile KENDİ ATILABİLİR test müşterim (ID 80, "Disposable
+  TestCustomer") oluşturuldu, TÜM mutasyon içeren keşifler (Edit+Save,
+  Delete confirm-dialog kontrolü, Adres ekleme/silme, Fatura Hesabı
+  oluşturma, Yeni Satış Başlat) SADECE bu atılabilir müşteride yapıldı -
+  paylaşılan seed veri hiç değiştirilmedi (customer-info-delete'te
+  "Evet"e TIKLANMADI, sadece onay penceresinin varlığı doğrulandı).
+- GERÇEK BACKEND DOĞRULAMASI (fetch/XHR intercept ile): Customer Info
+  Edit -> PUT .../individual-customers/{id} (200). Adres ekleme (mevcut
+  müşteride) -> POST .../addresses (201). Adres silme (mevcut müşteride)
+  -> GERÇEK DELETE .../addresses/{id} (204) - onay penceresi YOK. Fatura
+  Hesabı oluşturma -> POST .../billing-accounts (201). Customer Delete
+  butonu ise Adres silmenin AKSİNE gerçek bir onay penceresi gösteriyor
+  ("Bu müşteriyi silmek istediğinize emin misiniz?" Hayır/Evet) - bu
+  UI tutarsızlığı (bazı silme akışları onaylı, bazıları onaysız) not
+  edildi ama ayrı bir defekt olarak İŞARETLENMEDİ (iş kuralı gereği
+  meşru bir tasarım tercihi olabilir).
+- YENİ BULUNAN GERÇEK BUG (bu oturumun EN ÖNEMLİ yeni keşfi):
+  Teklif Seçimi ekranında SEPETE TEK SEFER eklenen bir teklif ("Ev
+  İnterneti Fiber 100", 299.90 TL), Ürün Konfigürasyonu ekranında 2 AYRI
+  config kartı olarak, Sipariş Gönder ekranında ise 3 KEZ tekrarlanan
+  özet satırı olarak görüntülenip toplam tutarı YANLIŞ hesaplıyor
+  (899.70 TL = 3 × 299.90 TL, olması gereken 299.90 TL). "Gönder"
+  butonuna TIKLANMADI (gerçek sipariş oluşturma riski alınmadı) - bulgu
+  sadece ekran gözlemiyle doğrulandı, kök neden (cart state'inin
+  duplicate edilmesi mi, yoksa sadece görüntüleme katmanının mı
+  duplicate ettiği) tam olarak root-cause edilmedi, ileride derinlemesine
+  incelenebilir.
+- pip install openpyxl yapıldı (proje requirements.txt'ine EKLENMEDİ -
+  bu tek seferlik test-tasarım teslimatı için, pytest otomasyon
+  altyapısının bir parçası değil).
+- ÜRETILEN DOSYA: C:\\Users\\serdar.yurtseven\\Desktop\\
+  EACRML_Test_Senaryolari.xlsx - 2 sayfa:
+  1) "Test Senaryolari": 17 UC grubu (mavi başlık satırları), TOPLAM 161
+     test case satırı. Renk kodu: yeşil=doğrulanmış/beklenen davranış,
+     kırmızı=onaylanmış bug/defekt adayı (7 adet - UC-001 admin-123
+     kilitlenme mesajı, UC-002 B2B disabled spec uyuşmazlığı, UC-003/
+     UC-009 gender-always-Erkek, UC-003/UC-009 8-hane mobile phone bug'ı
+     (iki UC'de de aynı kök neden, ayrı satır), UC-014/UC-016 sepet
+     duplikasyon bug'ı (iki UC'de de aynı kök neden, ayrı satır)), gri=
+     bloke/prototipte tam test edilemez (1 adet - UC-002 B2B segment
+     geçişi, B2B toggle'ın kendisi disabled olduğu için).
+  2) "Özet": toplam sayılar, renk kodu açıklaması, bu oturumda doğrulanan
+     4 kritik bulgunun özeti, metodoloji notu.
+- NOT: Bu iş bu oturumun ŞİMDİYE KADARKİ EN BÜYÜK tek görevi - tüm
+  17 UC'yi kapsayan gerçek keşif + senior QA test tasarımı + formatlı
+  Excel üretimi tek bir akışta yapıldı. project_brain.txt'e KALICI KURAL
+  olarak not düşülüyor: bundan sonra "tüm uygulamayı dolaş/test senaryosu
+  hazırla" tarzı geniş kapsamlı istekler geldiğinde, ÖNCE sidebar/
+  navigasyon dışında kalan (yalnızca detay ekranlarından erişilebilen)
+  gizli akışların var olup olmadığı MUTLAKA kontrol edilmeli - bu
+  oturumda UC-010-016'nın tamamı tam da bu şekilde "gizli" kalıyordu.
+
+[2026-08-09] Excel'e 6. sütun olarak Gherkin Test Adımları eklendi (uygulama koduna DOKUNULMADI)
+- Kullanıcı: "bu hazırladığın senaryolar için gherkin test adımlarını
+  yazmanı ve dokümanın üzerine eklemeni istiyorum. Uygulama üzerinde bir
+  değişiklik yapma. Sadece excel dosyasına yaz ve hazırla." - yani bu
+  BİR ÖNCEKİ 161 satırlık Excel'e (features/*.feature, pages/*.py,
+  steps/*.py dosyalarına DEĞİL) 6. bir sütun ("Gherkin Test Adımları")
+  eklenmesi istendi.
+- METODOLOJİ: UC-001 (Sisteme Giriş, 17 satır), UC-002 (Müşteri Arama,
+  23 satır) ve UC-003 (Müşteri Yaratma, 16 satır) için Gherkin BİREBİR
+  gerçek/doğrulanmış features/login.feature, features/search_customers.
+  feature, features/create_customer.feature dosyalarından OKUNUP
+  kopyalandı (uydurma değil, gerçekten otomatize edilmiş ve geçen
+  metin). UC-004..017 (105 satır) için ise bir önceki turda canlı
+  uygulamada yapılan keşfe (gerçek data-testid'ler, form alanları, buton
+  isimleri, gerçek network endpoint'leri) dayanarak AYNI Türkçe Gherkin
+  üslubuyla YENİ adımlar yazıldı. Bilinen/onaylanmış bug'ı olan satırlara
+  (kırmızı renkli 7 satır) Gherkin içine "# NOT: ..." satır içi yorumuyla
+  gerçek davranışın beklenenden nasıl saptığı açıkça not düşüldü.
+- TEKNİK SORUN VE ÇÖZÜMÜ: openpyxl'de bir hücrenin fill/font stilini
+  BAŞKA bir hücreden doğrudan `cell.fill = other_cell.fill` ile kopyalamak
+  "TypeError: unhashable type: 'StyleProxy'" hatası veriyor - stil
+  proxy nesnesi doğrudan yeniden atanamıyor. Çözüm: renk kodunu (rgb
+  string) okuyup HER SEFERİNDE YENİ bir PatternFill/Font nesnesi
+  oluşturmak gerekiyor.
+- Ayrıca dosya GÜNCELLEME sırasında "PermissionError: [Errno 13]
+  Permission denied" alındı - `~$EACRML_Test_Senaryolari.xlsx` kilit
+  dosyası kontrol edilip dosyanın kullanıcı tarafından Excel'de AÇIK
+  olduğu tespit edildi. AskUserQuestion ile kullanıcıya soruldu, kullanıcı
+  dosyayı kapatıp "tekrar dene" dedi - ikinci denemede başarılı oldu.
+- SONUÇ: C:\\Users\\serdar.yurtseven\\Desktop\\EACRML_Test_Senaryolari.xlsx
+  dosyasının "Test Senaryolari" sayfasına F sütunu ("Gherkin Test
+  Adımları", Consolas yazı tipi, satır rengi aynı satırdaki Test Türü
+  hücresinin rengini (yeşil/kırmızı/gri) miras alıyor, satır yüksekliği
+  içerikteki satır sayısına göre otomatik ayarlanıyor) eklendi. TÜM 161
+  test case için birebir eşleşme sağlandı, hiçbiri "hazırlanacak"
+  placeholder'ında kalmadı. Uygulama kod tabanında (features/pages/steps)
+  HİÇBİR dosya değiştirilmedi - bu iş tamamen Excel/test-tasarım
+  teslimatı olarak kaldı.
+
+[2026-08-09] EACRML_Test_Senaryolari.xlsx - Gherkin sütunu BAĞIMSIZ olarak yeniden yazıldı + yeni kapsam boşlukları eklendi
+- KULLANICI DÜZELTMESİ: Kullanıcı, bir önceki turda UC-001/002/003 için
+  Gherkin'in gerçek features/*.feature dosyalarından BİREBİR kopyalanmış
+  olmasını AÇIKÇA REDDETTİ: "mevcut feature dosyalarından alma kendin
+  oluştur... Tüm yazdığım feature dosyalarında hatalar olabilir. bir
+  senior qa gibi davran." Talep: (1) Gherkin'i kopyalamadan bağımsız
+  yeniden yaz, (2) kullanıcının kendi oluşturmadığı ek/farklı senaryolar
+  varsa onları da üret, (3) mevcut feature dosyalarını sorgusuz doğru
+  kabul etme, (4) uygulamada hiçbir değişiklik yapma - sadece Excel.
+- UYGULANAN YÖNTEM: UC-001 (Sisteme Giriş, 17->19 satır), UC-002 (Müşteri
+  Arama, 23->27 satır) ve UC-003 (Müşteri Yaratma, 16->18 satır) için
+  TÜM Gherkin metni sıfırdan, features/*.feature dosyalarına BAKMADAN,
+  yalnızca önceki turlarda canlı uygulamada doğrulanmış gerçek davranış
+  bilgisine (data-testid'ler, buton aktiflik/pasiflik kuralları, hata
+  mesajları, network payload gözlemleri) dayanarak yeniden yazıldı. Cümle
+  yapısı, adım sırası ve vurgulanan detaylar bilinçli olarak orijinal
+  feature dosyalarından FARKLI - bağımsız bir senior QA gözden geçirmesi
+  simüle edildi.
+- YENİ TESPİT EDİLEN GERÇEK KAPSAM BOŞLUĞU (sarı, 9 yeni satır):
+  1) UC-002-24/25: pages/search_customers_page.py içinde SORT_FIRST_NAME/
+     SORT_LAST_NAME/SORT_CUSTOMER_ID/SORT_ROLE/SORT_NATIONALITY_ID
+     locator'ları TANIMLIYDI ama hiçbir step onları kullanmıyordu (grep
+     ile doğrulandı). Canlı uygulamada scratchpad/explore_column_sort.py
+     scripti ile MANUEL DOĞRULANDI: "AD" sütun başlığına
+     ([data-testid='customer-results-sort-firstName']) tıklamak listeyi
+     GERÇEKTEN artan/azalan sıraya diziyor - önceden hiç test edilmemiş,
+     gerçek ve çalışan bir özellik.
+  2) UC-001-15: Login alanlarına SQL Injection/XSS payload girme (güvenlik)
+  3) UC-001-16: Tab tuşu ile odak sırası (Username->Password->Login)
+  4) UC-001-17: Password alanında Enter ile form gönderimi
+  5) UC-001-18: Zaten login olmuş kullanıcının /login'i tekrar ziyareti
+  6) UC-001-19: Hesap kilitliyken kalan süre bilgilendirmesi
+  7) UC-002-26: ID Number + Customer ID'nin AYNI ANDA doldurulması (iki
+     tanımlayıcı alanın kombinasyon mantığı hiç test edilmemişti)
+  8) UC-002-27: Detaya gidip tarayıcı geri tuşuyla dönüldüğünde filtre/
+     sonuç korunumu
+  9) UC-003-17/18: Create Customer'da opsiyonel alanların (İkinci Ad/Baba
+     Adı/Anne Adı, Home Phone/Fax - hiçbirinde HTML required özniteliği
+     yok) boş bırakılmasının Next/Create butonunu ENGELLEMEMESİ gerektiği
+     - kullanıcının mevcut otomasyonunda hiç kapsanmamış bir sınır senaryosu.
+  Bu 9 satır Excel'de SARI renkle işaretlendi (yeşil/kırmızı/griden ayrı
+  yeni bir kategori): "yeni tespit edilen, bazıları doğrulandı bazıları
+  henüz otomatize edilmedi" anlamında.
+- UC-004..017 (105 satır, önceki turda zaten canlı keşfe dayalı bağımsız
+  yazılmıştı) DEĞİŞTİRİLMEDİ, aynen korundu.
+- Toplam test case sayısı 161 -> 169'a çıktı (17 UC, 7 kırmızı/onaylı
+  bug, 1 gri/bloke, 9 sarı/yeni-boşluk, kalan 152 yeşil).
+- "Özet" sayfasına yeni bir bölüm eklendi: "Bu Turda Yapılan Bağımsız
+  İnceleme Notu" (yöntem açıklaması + öne çıkan yeni bulgular) ve renk
+  legend'ına "Sarı" satırı eklendi.
+- SONUÇ: C:\Users\serdar.yurtseven\Desktop\EACRML_Test_Senaryolari.xlsx
+  scratchpad/rebuild_excel_independent.py ile TAMAMEN yeniden üretildi
+  (önceki add_gherkin_column.py scriptinin yerini aldı). Uygulama kod
+  tabanında (features/pages/steps/conftest.py) YİNE HİÇBİR dosya
+  değiştirilmedi - iş tamamen Excel/test-tasarım teslimatı olarak kaldı.
+
+[2026-08-09] Login'e SQL Injection / XSS Payload senaryosu gerçekten otomatize edildi (Excel'deki sarı satır artık yeşile geçti)
+- BAĞLAM: Bir önceki turda Excel'e "yeni tespit edilen, henüz otomatize
+  edilmemiş" (sarı) bir kapsam boşluğu olarak eklenmiş olan "Username/
+  Password Alanlarına SQL Injection / XSS Payload Girildiğinde Sistemin
+  Etkilenmemesi" (TC-EACRML-001-15) senaryosu, kullanıcı isteğiyle bu
+  turda GERÇEKTEN features/login.feature'a implement edildi.
+- CANLI KEŞİF (önce): scratchpad/explore_login_injection.py ile gerçek
+  uygulamada Username alanına "' OR '1'='1", Password alanına
+  "<script>alert(1)</script>" girilip Login'e tıklandı. Bulgular: (1)
+  backend 401 Unauthorized döndürüyor (SQL hatası/stack trace sızıntısı
+  YOK - parametrized query/ORM kullanıldığına işaret ediyor), (2) ekranda
+  AYNI generic "Kullanıcı adı veya şifre hatalı..." mesajı gösteriliyor
+  (özel/farklı bir davranış yok), (3) URL /login'de kalıyor (yetkisiz
+  erişim YOK), (4) native alert() TETİKLENMEDİ, (5) girilen payload
+  sayfada hiçbir yerde ham/unescaped olarak yansımıyor. SONUÇ: Bu senaryo
+  kasıtlı kırmızı DEĞİL, gerçek uygulama bu payload'ları güvenli
+  şekilde ele alıyor - temiz geçen (yeşil) bir güvenlik testi.
+- IMPLEMENTASYON:
+  - features/login.feature: "Username ve Password Alanlarına SQL
+    Injection / XSS Payload Girildiğinde Sistemin Etkilenmemesi" adında
+    yeni bir Scenario Outline eklendi. Mevcut parametrize step'i
+    ('"<username>" kullanıcı adı ve "<password>" şifresi ile giriş
+    yapar') ve mevcut hata-mesajı step'ini ('kullanıcı adı veya şifre
+    hatalı uyarısı görüntülenir') DRY şekilde yeniden kullandı, yalnızca
+    güvenliğe özgü doğrulama için TEK yeni bir Then adımı eklendi.
+  - pages/login_page.py: __init__'e _last_username/_last_password
+    takibi eklendi (login() metodu artık son gönderilen değerleri
+    saklıyor); has_unexpected_alert() (native alert var mı, varsa kabul
+    edip True döner) ve is_last_submitted_value_reflected_unescaped()
+    (yalnızca SON GÖNDERİLEN username/password değerinin page_source
+    içinde ham olarak geçip geçmediğini kontrol eder) metodları eklendi.
+  - steps/test_login_steps.py: "herhangi bir script çalıştırılmaz ve
+    yetkisiz erişim sağlanmaz" Then step'i eklendi - 3 gerçek kontrol:
+    native alert yok, /customers'a yönlendirme yok, payload sayfada ham
+    yansımıyor.
+- TESPİT EDİLEN KENDİ TEST HATAM VE DÜZELTMESİ: İlk implementasyonda
+  is_raw_script_tag_reflected() metodu sadece page_source içinde
+  "<script>" substring'i arıyordu - bu YANLIŞ POZİTİF üretti, çünkü
+  Angular'ın kendi derleme çıktısı (main.js/runtime.js/polyfills.js için
+  <script> etiketleri) HER SAYFADA zaten var. Test, gerçek bir güvenlik
+  açığı olmadığı halde FAILED verdi. Kök neden analiz edilip metod
+  is_last_submitted_value_reflected_unescaped() olarak değiştirildi -
+  yalnızca BİZİM gönderdiğimiz spesifik payload değerini arıyor,
+  Angular'ın kendi script etiketlerini değil. İkinci çalıştırmada PASSED.
+  Bu, önceki .clear() pitfall'ına benzer bir "test metodolojisi hatası,
+  uygulama hatası değil" örneği.
+- REGRESYON KONTROLÜ: steps/test_login_steps.py TAMAMI (21 test, lockout
+  hariç varsayılan pytest.ini ile) çalıştırıldı: 20 passed, 1 failed.
+  Tek başarısız test, ÖNCEDEN BEKLENEN/bilinen kasıtlı kırmızı senaryo
+  (admin-123 - tanımsız kullanıcıya da kilitlenme mesajı gösterilmesi
+  bug'ı, UC-001-07-A). Bu değişiklikle İLGİSİZ, önceden var olan bir
+  durum - yeni eklenen senaryo veya login_page.py/test_login_steps.py
+  düzenlemeleri kaynaklı HİÇBİR regresyon YOK.
+- SONUÇ: Bu artık Excel'deki (EACRML_Test_Senaryolari.xlsx) sarı
+  TC-EACRML-001-15 satırının GERÇEK, çalışan, geçen bir otomasyon
+  karşılığı var. Excel dosyası bu turda GÜNCELLENMEDİ (kullanıcı henüz
+  istemedi) - yalnızca features/login.feature, pages/login_page.py ve
+  steps/test_login_steps.py değiştirildi.
+
+[2026-08-09] Tab Sırası Senaryosu (TC-EACRML-001-16) - Kullanıcı Kararıyla ATLANDI
+- CANLI KEŞİF: scratchpad/explore_tab_order.py ve explore_tab_order_filled.py
+  ile gerçek Tab sırası doğrulandı: Username -> Password -> [Şifre
+  göster/gizle göz ikonu] -> Login butonu (buton doluyken) -> body.
+  Manuel senaryonun iddia ettiği "Username -> Password -> Login butonu"
+  (2 Tab) YANLIŞ/EKSİK - araya göz ikonu giriyor (3. durak), ayrıca Login
+  butonu disabled iken Tab sırasından tamamen çıkarılıyor (tarayıcı
+  standardı, disabled butonlar tab'lanamaz).
+- KARAR: Kullanıcıya AskUserQuestion ile üç seçenek sunuldu (gerçek
+  davranışa uyarla / kasıtlı kırmızı yaz / atla). Kullanıcı "Bu senaryoyu
+  atla" seçti. Bu bir uygulama bug'ı olmadığı (göz ikonunun tab sırasında
+  olması iyi bir erişilebilirlik pratiği) için kasıtlı kırmızı yazmak
+  yanıltıcı olurdu - kullanıcı bunun yerine hiç implement edilmemesini
+  tercih etti.
+- SONUÇ: login.feature'a HİÇBİR ŞEY EKLENMEDİ. Excel'deki TC-EACRML-001-16
+  satırı (sarı) olduğu gibi kalıyor - "yeni tespit edilen, kullanıcı
+  kararıyla otomasyona dahil edilmedi" notu ileride Excel güncellenirse
+  eklenmeli.
+
+[2026-08-09] Zaten Giriş Yapmış Kullanıcının /login'i Tekrar Ziyareti Senaryosu Otomatize Edildi (TC-EACRML-001-18)
+- CANLI KEŞİF: scratchpad/explore_relogin_visit.py ile demo/Password123
+  ile giriş yapılıp ardından tarayıcıdan doğrudan tekrar /login adresine
+  gidildi (hem normal navigasyon hem hard refresh ile). Bulgu: sistem
+  HER İKİ durumda da login formunu HİÇ göstermeden kullanıcıyı anında
+  /customers ekranına geri yönlendiriyor; sessionStorage'daki
+  etiya.refreshToken oturumun gerçekten aktif kaldığını doğruluyor.
+  Bu, Excel'deki (sarı, henüz doğrulanmamış) TC-EACRML-001-18 senaryosunun
+  iddiasıyla BİREBİR UYUŞTU - kasıtlı kırmızı değil, temiz geçen bir
+  senaryo, doğrudan implement edildi.
+- IMPLEMENTASYON: features/login.feature'a "Zaten Giriş Yapmış
+  Kullanıcının /login Adresini Tekrar Ziyaret Etmesi Durumunda Otomatik
+  Yönlendirme" senaryosu eklendi. Mevcut '"demo" kullanıcı adı ve
+  "Password123" şifresi ile giriş yapar' step'i (oturum-zaman-aşımı
+  senaryosuyla aynı desen) DRY şekilde yeniden kullanıldı. İki yeni step
+  eklendi: "kullanıcı tarayıcıdan doğrudan login adresine gitmeyi dener"
+  (steps/test_login_steps.py) ve "kullanıcı login formu gösterilmeden
+  Müşteri Arama ekranına yönlendirilir". pages/login_page.py'ye
+  is_login_form_displayed() metodu eklendi.
+- TESPİT EDİLEN KENDİ TEST HATAM VE DÜZELTMESİ (senkronizasyon/race
+  condition): İlk implementasyonda "doğrudan login adresine gitmeyi
+  dener" step'i hemen driver.get(base_url) çağırıyordu - fakat
+  LoginPage.login() metodu yalnızca Login butonuna tıklamayı bekliyor,
+  ASENKRON login isteğinin/yönlendirmenin TAMAMLANMASINI beklemiyor. Bu
+  yüzden test bazen login isteği/token kaydı tamamlanmadan /login'e
+  geri dönüyor, oturum henüz "aktif" sayılmadığı için yönlendirme
+  gerçekleşmiyor ve test 10 saniye sonra TimeoutException ile FAIL
+  veriyordu. Kök neden: mevcut "8 Saatlik Oturum Süresi..." senaryosunun
+  user_session_expires step'i de AYNI SORUNU YAŞAMAMAK için ilk satırında
+  WebDriverWait(...).until(lambda d: "/customers" in d.current_url)
+  kullanıyor - aynı koruma yeni step'e de eklendi, ikinci denemede PASSED.
+- REGRESYON KONTROLÜ: Tüm login suite (22 test, lockout hariç) çalıştırıldı:
+  21 passed, 1 failed. Tek başarısız test yine ÖNCEDEN BİLİNEN kasıtlı
+  kırmızı admin-123 senaryosu (bu turdaki değişikliklerle ilgisiz).
+  Bugünkü İKİ yeni senaryo (SQL Injection/XSS + /login tekrar ziyareti)
+  dahil TÜM diğer testler yeşil.
+- SONUÇ: Excel'deki (EACRML_Test_Senaryolari.xlsx) sarı TC-EACRML-001-18
+  satırının artık gerçek, çalışan, geçen bir otomasyon karşılığı var
+  (Excel bu turda güncellenmedi). TC-EACRML-001-16 (Tab sırası) kullanıcı
+  kararıyla atlandığı için otomatize EDİLMEDİ - ayrıntı bir önceki log
+  girişinde. Uygulama kod tabanında yalnızca features/login.feature,
+  pages/login_page.py ve steps/test_login_steps.py değiştirildi.
+
+[2026-08-09] YENİ ÖZELLİK ALANI: Müşteri Bilgilerini Güncelleme (features/update_customer.feature, pages/update_customer_page.py, steps/test_update_customer_steps.py)
+- BAĞLAM: Kullanıcı manuel bir test case tablosu verip (Excel'deki
+  UC-004-01'e karşılık gelen "Müşteri Bilgisi Ekranında Edit ile
+  Demografik Bilgilerin Güncellenip Kaydedilmesi") bunu update_customer.
+  feature dosyasına (önceden boş/yeni açılmış), pages/ ve steps/'te
+  ilgili yeni dosyalarla implement etmemi istedi. Bu, projedeki 4.
+  feature alanı (login, search_customers, create_customer'dan sonra).
+- CANLI KEŞİF: scratchpad/explore_customer_detail2.py,
+  explore_customer_detail3.py, explore_customer_edit_form.py ile önce
+  disposable test müşterisi (ID 80, önceki turlardan kalma) üzerinde
+  Customer Info ekranının tüm data-testid yapısı çıkarıldı:
+  customer-info-edit (Edit ikonu), customer-info-save/-cancel,
+  customer-info-value-first-name/-last-name/vb. (görüntüleme modu),
+  customer-info-first-name/-last-name/-birth-date/-gender/vb. (edit
+  formu input'ları - form GERÇEKTEN mevcut değerlerle önceden dolu
+  açılıyor, manuel case'in iddiasıyla uyuşuyor).
+- PUT İSTEĞİ DOĞRULAMA SORUNU VE ÇÖZÜMÜ: explore_customer_edit_save.py
+  ve explore_customer_edit_save2.py ile window.fetch/XMLHttpRequest
+  monkey-patch tekniğiyle gerçek PUT isteğini yakalamaya çalışıldı, HER
+  İKİSİ DE BOŞ SONUÇ verdi (login.feature turundaki explore_login_
+  injection.py'de de AYNI sorun yaşanmıştı - console log gerçek bir ağ
+  isteği olduğunu gösteriyor ama JS-seviyesi interceptor hiçbir şey
+  yakalamıyor). Kök neden analizi: Angular'ın Zone.js'i muhtemelen
+  XHR/fetch prototiplerini uygulama bootstrap'ında, bizim execute_script
+  ile enjekte edebileceğimizden ÇOK DAHA ERKEN sarmalıyor - bu yüzden
+  post-load JS tabanlı network interception bu uygulamada GÜVENİLİR
+  ÇALIŞMIYOR (bir test metodolojisi kısıtı, uygulama bug'ı değil).
+  ÇÖZÜM: scratchpad/explore_customer_edit_persist.py ile alternatif ve
+  daha güvenilir bir kanıt yöntemi kullanıldı - Ad alanı değiştirilip
+  kaydedildikten sonra TAMAMEN YENİ bir navigasyonla (about:blank →
+  tekrar /customers/80) sayfa hard-reload edildi; değişikliğin HALA
+  ORADA olduğu doğrulandı. Bu, sadece client-side/in-memory state olsaydı
+  reload'da kaybolacağı için gerçek backend kalıcılığının eşit derecede
+  güçlü (hatta daha sağlam) bir kanıtı.
+- IMPLEMENTASYON: Gherkin, manuel case'in "PUT isteğiyle güncellemeyi
+  kaydeder" iddiasını LİTERAL bir network-inspection step'i olarak DEĞİL,
+  dürüst bir şekilde "güncelleme sayfa yenilense dahi kalıcı olarak
+  korunur" (persistence-after-reload) step'i olarak ifade etti - test
+  edilebilir gerçekliği yanlış temsil etmeden aynı temel iddiayı
+  (gerçek backend kaydı) doğruluyor.
+  - pages/update_customer_page.py: UpdateCustomerPage sınıfı - click_edit()
+    (Edit'e tıklamadan ÖNCE görüntülenen değerleri kaydedip formdaki
+    değerlerle karşılaştırma imkanı sağlıyor, create_customer_page.py'deki
+    is_address_edit_form_prefilled_correctly() ile AYNI desen),
+    update_first_name_with_faker() (Faker("tr_TR") ile dinamik veri,
+    projenin genel Faker kullanım konvansiyonuyla tutarlı),
+    reload_and_verify_first_name_persisted().
+  - steps/test_update_customer_steps.py: Background step'i
+    ("kullanıcı bir müşterinin Müşteri Bilgisi ekranındadır") login.feature
+    ve search_customers.feature'daki login+navigasyon desenini DRY şekilde
+    yeniden kullanıyor: LoginPage.login() + CustomersPage.enter_customer_id/
+    submit_search/wait_for_matching_customer_id/click_customer_row_link/
+    verify_navigated_to_customer_detail_same_tab - HİÇBİR yeni navigasyon
+    kodu yazılmadı, tamamen mevcut CustomersPage metodları üzerinden.
+    Disposable test müşterisi ID 80 kullanıldı (paylaşılan seed müşteriler
+    1-3'e DOKUNULMADI, proje konvansiyonuyla tutarlı).
+- DOĞRULAMA: steps/test_update_customer_steps.py iki kez art arda
+  çalıştırıldı (idempotentlik kontrolü, her seferinde yeni Faker adıyla) -
+  her ikisi de PASSED. Bu turda search_customers_page.py/create_customer_
+  page.py/login_page.py gibi PAYLAŞILAN dosyalara HİÇBİR dokunuş
+  yapılmadığı için mevcut suite'lerde regresyon riski yok.
+- SONUÇ: Proje artık 4 feature dosyasına sahip (login, search_customers,
+  create_customer, update_customer). Excel bu turda güncellenmedi.
+
+[2026-08-09] Edit Formunda Zorunlu Alan (Ad/Soyad) Boşaltıldığında Kaydet Butonunun Pasif Kalması (TC-EACRML-004-03)
+- CANLI KEŞİF: scratchpad/explore_edit_form_required.py ile disposable
+  test müşterisi (ID 80) üzerinde Edit formunda First Name/Last Name
+  input'larının gerçekten HTML required özniteliğine sahip olduğu
+  doğrulandı (required="true"). CTRL+A + BACKSPACE ile (proje
+  konvansiyonu gereği .clear() DEĞİL, gerçek tuş vuruşu simülasyonu ile)
+  Ad alanı boşaltılınca Kaydet butonu pasif oluyor, tekrar doldurulunca
+  aktif oluyor; aynı davranış Soyad için de doğrulandı. Manuel case'in
+  iddiasıyla birebir uyuştu - kasıtlı kırmızı değil, temiz geçen senaryo.
+- IMPLEMENTASYON: features/update_customer.feature'a "Edit Formunda
+  Zorunlu Alan (Ad/Soyad) Boşaltıldığında Kaydet Butonunun Pasif Kalması"
+  Scenario Outline'ı eklendi (Examples: Ad, Soyad - login.feature'daki
+  "Zorunlu Alan (Username/Password)..." outline deseniyle tutarlı, tek
+  senaryo bloğunda iki alanı da DRY şekilde kapsıyor).
+  - pages/update_customer_page.py: REQUIRED_FIELD_LOCATORS sözlüğü
+    ("Ad"/"Soyad" -> ilgili locator), clear_required_field(field_label)
+    (CTRL+A+BACKSPACE ile), is_save_button_disabled() eklendi.
+  - steps/test_update_customer_steps.py: "kullanıcı düzenleme
+    formundadır" Given step'i, MEVCUT "kullanıcı Edit ikonuna tıklar"
+    step fonksiyonuna İKİNCİ bir dekoratör olarak eklendi (login.feature
+    steps'teki @then/@then stacking deseniyle birebir aynı DRY yaklaşım -
+    aynı davranış, iki farklı Gherkin metniyle eşleşiyor). Yeni
+    parametrize step '"{alan}" alanı boşaltılır' ve "Kaydet butonu pasif
+    kalır" Then step'i eklendi.
+- DOĞRULAMA: Hem Ad hem Soyad varyantı izole çalıştırıldı (PASSED),
+  ardından update_customer.feature'daki TÜM senaryolar (3 test - önceki
+  turdan 1 + bu turdan 2) birlikte çalıştırıldı: 3 passed. Kaydet hiç
+  tıklanmadığı (buton disabled kaldığı) için customer 80'in backend
+  verisinde HİÇBİR mutasyon oluşmuyor - güvenli, yan etkisiz test.
+
+[2026-08-09] UC-004 (Müşteri Bilgilerini Güncelleme) - 7 Yeni Senaryo Toplu Olarak Implement Edildi (TC-EACRML-004-03, 03b, 04, 05, 06, 07, 08)
+- BAĞLAM: Kullanıcı kendi harici dokümanından 7 senaryoluk bir Gherkin
+  taslağı verip bunları update_customer.feature'a, pages/steps'e "senior
+  QA gibi" implement etmemi istedi. Taslakta kullanıcının kendisi bazı
+  notlar düşmüştü: "50 karakter sınırı doğrulanamadı, teyit önerilir" gibi
+  - bu tür işaretli belirsizlikler CANLI olarak doğrulandı, körü körüne
+  kopyalanmadı.
+- CANLI KEŞİF (scratchpad/explore_batch1.py, explore_nationality_conflict.py,
+  explore_gender_select.py, explore_edit_xss.py) ile şu bulgular elde edildi:
+  1) Görüntüleme modunda (Edit'e basmadan önce) sayfada SIFIR input/select
+     elementi var - gerçekten salt okunur (004-05 ✓, kasıtlı kırmızı değil).
+  2) Edit/Delete ikonları başlığın yanında görüntüleniyor ve tıklanabilir
+     (004-05 ✓).
+  3) firstName/lastName input'larının GERÇEKTEN maxlength="50" özniteliği
+     var - 60 karakter yazılmaya çalışılınca fiilen 50'de kesiliyor.
+     Kullanıcının "doğrulanamadı" notu ÇÖZÜLDÜ: sınır GERÇEKTEN uygulanıyor
+     (004-07 ✓, kasıtlı kırmızı değil).
+  4) Cancel butonu: değiştirilmiş alan + Cancel → view mode'a dönüyor VE
+     orijinal (değiştirilmemiş) değer gösteriliyor (004-04 ✓).
+  5) Gender select option text'leri Türkçe ("male"->"Erkek", "female"->
+     "Kadın") - görüntüleme modundaki metinle birebir eşleşiyor, bu bilgi
+     is_form_prefilled_correctly()'yi genişletmek için kullanıldı.
+  6) Nationality ID çakışması: seed müşteri 1'in gerçek identity number'ı
+     (10000000146) customer 80'e yazılıp kaydedilince GERÇEKTEN reddediliyor
+     (form açık kalıyor, input sayısı 0'dan >0'a çıkıyor) - AMA gösterilen
+     mesaj "Müşteri bilgisi güncellenemedi. Lütfen tekrar deneyin." (generic),
+     kullanıcının beklediği "A customer is already exist with this
+     Nationality ID." (spesifik) DEĞİL.
+  7) Nationality ID değiştirilmeden Save'e basmak YANLIŞ POZİTİF "already
+     exist" hatası TETİKLEMİYOR - normal şekilde view mode'a dönüyor (004-03b ✓).
+  8) XSS: Ad alanına "<script>alert(1)</script>" yazılmaya çalışılınca
+     input GERÇEK ZAMANLI olarak özel karakterleri (< > ( ) / 1) FİLTRELİYOR
+     - kaydedilen değer "scriptalertscript" (sadece harfler). Bu, HTML
+     escaping'den FARKLI ve daha güçlü bir savunma (karakter hiç yazılamıyor).
+- KULLANICI KARARI (AskUserQuestion): Nationality ID çakışma mesajının
+  generic olması (004-03) için "Kasıtlı kırmızı yaz" seçildi - backend
+  çakışmayı doğru reddediyor ama kullanıcıya NEDENİ bildirilmiyor, bu
+  create_customer.feature'daki email-çakışması senaryosunun (spesifik
+  "This email address is already registered." mesajı gösteren) tutarsız
+  bir karşılığı olarak belgelendi.
+- IMPLEMENTASYON:
+  - pages/update_customer_page.py: DELETE_BUTTON, SAVE_ERROR, VALUE_BIRTH_DATE/
+    GENDER/IDENTITY_NUMBER, BIRTH_DATE_INPUT/GENDER_SELECT/IDENTITY_NUMBER_INPUT
+    locator'ları eklendi. is_form_prefilled_correctly() 2 alandan (Ad/Soyad)
+    5 alana (+ Birth Date [dd/mm/yyyy <-> ISO format dönüşümüyle] + Gender
+    [Select.first_selected_option] + Nationality ID) GENİŞLETİLDİ - bu hem
+    004-01'i (mevcut, önceden PASSING) güçlendirdi hem 004-06'yı DRY şekilde
+    karşıladı, yeni bir neredeyse-birebir-aynı metod yazılmadı.
+    is_read_only_view_mode(), is_edit_icon_visible(), is_delete_icon_visible(),
+    click_cancel(), is_view_showing_original_values(), attempt_to_type_long_value(),
+    update_identity_number(), get_save_error_text(), is_save_error_displayed(),
+    attempt_xss_in_first_name(), has_unexpected_alert() (login_page.py'deki
+    AYNI desen, ayrı page object olduğu için küçük bir tekrar - kabul edilebilir)
+    eklendi.
+  - steps/test_update_customer_steps.py: OTHER_CUSTOMERS_NATIONALITY_ID
+    sabiti (seed müşteri 1'in identity number'ı, salt okunur kullanım -
+    seed veriye hiçbir mutasyon yapılmadı). 12 yeni step fonksiyonu eklendi,
+    mümkün olan yerlerde (typed_field_value target_fixture'ı 004-07 ve
+    004-08 arasında paylaşılıyor) DRY tutuldu.
+  - features/update_customer.feature: 7 yeni Scenario/Scenario Outline
+    eklendi (004-07 Ad/Soyad Outline ile 2 satır, toplam 9 yeni test case).
+- DOĞRULAMA: Tüm senaryolar önce izole, sonra dosyanın TAMAMI (11 test)
+  birlikte çalıştırıldı: 10 passed, 1 failed (yalnızca kasıtlı kırmızı
+  004-03, beklenen sebeple - mesaj metni uyuşmazlığı). Genişletilen
+  is_form_prefilled_correctly() nedeniyle önceki 004-01/required-field
+  testlerinde HİÇBİR regresyon yok.
+- SONUÇ: update_customer.feature artık 11 test case içeriyor (1 baştan +
+  2 zorunlu alan + 7 yeni senaryodan gelen 8 = 11). Excel bu turda
+  güncellenmedi.

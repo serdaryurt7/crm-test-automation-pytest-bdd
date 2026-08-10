@@ -114,3 +114,4 @@ Feature: Müşteri Oluşturma
     And Create butonu pasif durumdadır
     When kullanıcı "Mobile Phone" alanını geçerli formatta bir değerle günceller
     Then Create butonu aktif hale gelir
+  

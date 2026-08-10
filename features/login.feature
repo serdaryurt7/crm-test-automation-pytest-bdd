@@ -110,3 +110,17 @@ Feature: Login
     And kullanıcı Login butonuna tıklar
     Then Login butonu pasif duruma geçer
 
+  Scenario Outline: Username ve Password Alanlarına SQL Injection / XSS Payload Girildiğinde Sistemin Etkilenmemesi
+    When "<username>" kullanıcı adı ve "<password>" şifresi ile giriş yapar
+    Then kullanıcı adı veya şifre hatalı uyarısı görüntülenir
+    And herhangi bir script çalıştırılmaz ve yetkisiz erişim sağlanmaz
+
+    Examples:
+      | username    | password                  |
+      | ' OR '1'='1 | <script>alert(1)</script> |
+
+  Scenario: Zaten Giriş Yapmış Kullanıcının /login Adresini Tekrar Ziyaret Etmesi Durumunda Otomatik Yönlendirme
+    When "demo" kullanıcı adı ve "Password123" şifresi ile giriş yapar
+    And kullanıcı tarayıcıdan doğrudan login adresine gitmeyi dener
+    Then kullanıcı login formu gösterilmeden Müşteri Arama ekranına yönlendirilir
+

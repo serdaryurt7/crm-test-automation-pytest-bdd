@@ -59,6 +59,34 @@ def login_button_enabled(login_page):
     assert not login_page.is_login_button_disabled()
 
 
+@then("herhangi bir script çalıştırılmaz ve yetkisiz erişim sağlanmaz")
+def no_script_execution_and_no_unauthorized_access(login_page, driver):
+    assert not login_page.has_unexpected_alert(), (
+        "Girilen payload bir tarayıcı alert'i olarak çalıştı - XSS açığı tespit edildi"
+    )
+    assert "/customers" not in driver.current_url, (
+        "Injection payload'ı ile yetkisiz erişim sağlandı"
+    )
+    assert not login_page.is_last_submitted_value_reflected_unescaped(), (
+        "Girilen injection/XSS payload'ı sayfada ham (unescaped) olarak yansıtılıyor"
+    )
+
+
+@when("kullanıcı tarayıcıdan doğrudan login adresine gitmeyi dener")
+def user_navigates_directly_to_login_url(driver, base_url):
+    WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
+    driver.get(base_url)
+
+
+@then("kullanıcı login formu gösterilmeden Müşteri Arama ekranına yönlendirilir")
+def redirected_to_customers_without_login_form(driver, login_page):
+    WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
+    assert "/customers" in driver.current_url
+    assert not login_page.is_login_form_displayed(), (
+        "Kullanıcı zaten giriş yapmışken /login ziyaretinde login formu gösterildi"
+    )
+
+
 @then("hata mesajı ekrandan kalkar")
 def error_message_disappears(login_page):
     login_page.wait_for_error_message_to_disappear()

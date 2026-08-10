@@ -1,3 +1,4 @@
+from selenium.common.exceptions import NoAlertPresentException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -13,12 +14,16 @@ class LoginPage:
     def __init__(self, driver):
         self.driver = driver
         self.wait = WebDriverWait(driver, 10)
+        self._last_username = None
+        self._last_password = None
 
     def open(self, url):
         self.driver.get(url)
         self.wait.until(EC.visibility_of_element_located(self.USERNAME_INPUT))
 
     def login(self, username, password):
+        self._last_username = username
+        self._last_password = password
         username_field = self.driver.find_element(*self.USERNAME_INPUT)
         password_field = self.driver.find_element(*self.PASSWORD_INPUT)
         username_field.clear()
@@ -72,3 +77,27 @@ class LoginPage:
 
     def get_password_value(self):
         return self.driver.find_element(*self.PASSWORD_INPUT).get_attribute("value")
+
+    def has_unexpected_alert(self):
+        # <script> gibi payload'lar innerHTML uzerinden asla calismaz (tarayici
+        # standardi), bu yuzden native alert kontrolu tek basina yeterli degil -
+        # is_last_submitted_value_reflected_unescaped ile birlikte kullanilmali.
+        try:
+            alert = self.driver.switch_to.alert
+            alert.accept()
+            return True
+        except NoAlertPresentException:
+            return False
+
+    def is_login_form_displayed(self):
+        return bool(self.driver.find_elements(*self.USERNAME_INPUT))
+
+    def is_last_submitted_value_reflected_unescaped(self):
+        # Genel "<script>" arama Angular'in kendi bundle <script> etiketlerine
+        # (main.js, runtime.js vb.) her zaman eslesip yanlis-pozitif uretir -
+        # bunun yerine SADECE az once gonderilen degerin kendisini ariyoruz.
+        page = self.driver.page_source
+        for value in (self._last_username, self._last_password):
+            if value and value in page:
+                return True
+        return False
