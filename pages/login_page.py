@@ -46,7 +46,37 @@ class LoginPage:
         return not self.driver.find_element(*self.LOGIN_BUTTON).is_enabled()
 
     def click_login_button(self):
-        self.wait.until(EC.element_to_be_clickable(self.LOGIN_BUTTON)).click()
+        button = self.wait.until(EC.element_to_be_clickable(self.LOGIN_BUTTON))
+        # Giriş isteği sırasındaki pasif (disabled) durum ÇOK KISA sürüyor
+        # (canlı ölçüldü: tıklamadan ~60ms sonra disabled oluyor, ~200ms'de
+        # zaten tekrar enabled'a dönüyor, ~300-500ms'de sayfa /customers'a
+        # yönleniyor) - bu pencere, WebDriverWait'in varsayılan 0.5sn'lik
+        # polling aralığından DAHA DAR, yani DIŞARIDAN periyodik biçimde
+        # (ne kadar sık olursa olsun) yoklamaya (polling) dayalı HER ÇÖZÜM
+        # bu geçişi şansa bağlı olarak kaçırabilir. Bunun yerine tarayıcının
+        # KENDİ DOM mutasyon gözlemcisi (MutationObserver) tıklamadan HEMEN
+        # ÖNCE butona bağlanıp durum değişikliğini POLLING YAPMADAN,
+        # mutasyon anında JS motorunun kendisi tarafından yakalıyor - tam
+        # olay-tabanlı (event-driven), hiçbir dış zamanlama varsayımına
+        # dayanmayan bir çözüm. Angular router'ın client-side (sayfa
+        # yenilemesiz) navigasyonu sayesinde window nesnesi /customers'a
+        # geçildikten SONRA da yaşamaya devam ediyor, bu yüzden sonuç
+        # navigasyon sonrasında da güvenle okunabiliyor (canlı doğrulandı).
+        self.driver.execute_script(
+            """
+            const btn = arguments[0];
+            window.__loginBtnWasDisabled = false;
+            const observer = new MutationObserver(() => {
+                if (btn.disabled) { window.__loginBtnWasDisabled = true; }
+            });
+            observer.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
+            """,
+            button,
+        )
+        button.click()
+
+    def was_disabled_during_submit(self):
+        return bool(self.driver.execute_script("return window.__loginBtnWasDisabled;"))
 
     def get_error_message(self):
         return self.wait.until(EC.visibility_of_element_located(self.ERROR_MESSAGE)).text

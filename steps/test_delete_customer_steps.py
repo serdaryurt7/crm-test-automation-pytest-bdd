@@ -48,7 +48,7 @@ def user_clicks_delete_icon(delete_customer_page):
     delete_customer_page.click_delete()
 
 
-@then("onay penceresi, silme mesajı ve Evet/Hayır butonlarıyla birlikte görüntülenir")
+@then("onay penceresi, silme mesajı ve Evet, Hayır butonlarıyla birlikte görüntülenir")
 def confirm_dialog_displayed(delete_customer_page):
     assert delete_customer_page.is_confirm_dialog_displayed_with_buttons()
 

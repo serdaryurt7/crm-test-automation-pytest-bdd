@@ -44,9 +44,20 @@ def user_fills_credentials(login_page, username, password):
 
 
 @then("giriş butonu pasif kalır")
-@then("Login butonu pasif duruma geçer")
 def login_button_disabled(login_page):
+    # Bu, zorunlu alan boş bırakıldığında oluşan KALICI/durağan bir pasif
+    # durum (form geçersiz kaldığı sürece değişmez) - senkron kontrol
+    # güvenli, herhangi bir yarış durumu riski yok.
     assert login_page.is_login_button_disabled()
+
+
+@then("Login butonu pasif duruma geçer")
+def login_button_disabled_during_submit(login_page):
+    # Bu ise login isteği sırasındaki ÇOK KISA SÜRELİ (~150ms, canlı
+    # ölçüldü) GEÇİCİ bir durum - click_login_button() tıklamayla AYNI ANDA
+    # bir MutationObserver bağlayıp bu geçişi olay-tabanlı (polling
+    # olmadan) zaten yakalamıştı; burada sadece o sonucu okuyoruz.
+    assert login_page.was_disabled_during_submit()
 
 
 @when("kullanıcı Login butonuna tıklar")

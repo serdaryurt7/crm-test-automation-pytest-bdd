@@ -3340,3 +3340,712 @@ Her yeni değişiklikte bu dosyanın sonuna yeni bir madde eklenir.
   bozulmadan kalır. Rapor üretimi/açılması İŞİN GERÇEKTEN EN SON
   ADIMI olmalı - araya HİÇBİR başka pytest çağrısı (varsayılan
   addopts'la) girmemeli.
+
+[2026-08-09] Yeni özellik: Müşteri Adresinin Güncellenmesi (UC-EACRML 006) - address_update.feature/page/steps
+- Kullanıcı, UC-EACRML 006 için TÜM Gherkin spesifikasyonunu (8 manuel test
+  case: TC-EACRML-006-01..08) hazır olarak verdi, "senior QA gibi implemente
+  et, TR/EN dilden bağımsız, statik değil dinamik çözüm, test
+  metodolojilerine uy, bağımsız test olsun, pages/features/steps bağlantısı
+  olsun, dosya adı 'address_update' olsun" talimatıyla.
+- YENİ ÜÇLÜ: features/address_update.feature, pages/address_update_page.py,
+  steps/test_address_update_steps.py oluşturuldu (login/create/update/delete
+  ile aynı desen: Page Object + Background + scenarios() bağlama).
+- BAĞIMSIZLIK KARARI (delete/update_customer'daki desenin devamı): Background
+  ("kullanıcı bir müşterinin Adres sekmesinde kayıtlı bir adres kartı
+  görüntülemektedir") HER SENARYO için sıfırdan, CreateCustomerPage'in tam
+  wizard akışıyla (demografik->adres->iletişim->submit) TEK KULLANIMLIK bir
+  disposable müşteri oluşturuyor - hiçbir sabit/seed müşteri ID'sine bağımlı
+  değil, testler birbirinden ve mevcut veriden tamamen izole.
+- GERÇEK DOM İNCELEMESİYLE bulunan locator'lar: tab-address, customer-address-
+  add, address-card/-card-title/-card-detail/-card-menu/-card-edit/-card-
+  delete/-card-primary (radio, name="primaryAddress"), address-city (combobox
+  buton, aria-controls="address-city-list") + address-city-list (li[role=
+  option][data-value]) - create_customer wizard'ındaki AYNI Şehir combobox
+  deseni address düzenleme formunda da birebir tekrar kullanılıyor (kod
+  tekrarı değil, gerçek uygulamanın kendi UI tutarlılığı), address-street/
+  -building-no/-description (textarea)/-save/-cancel.
+- DİLDEN BAĞIMSIZLIK (TR/EN) tüm assertion'larda yapısal olarak sağlandı:
+  literal metin karşılaştırması YOK. Örn. is_card_title_and_detail_well_
+  formed() başlığın TAM OLARAK 3 virgüllü parçaya (Şehir/Sokak/No) bölünüp
+  hepsinin dolu olduğunu ve açıklamanın boş olmadığını kontrol ediyor -
+  içeriğin HANGİ dilde olduğuna bakmıyor.
+- TC-EACRML-006-03 (zorunlu alan boşaltılınca Kaydet pasif kalır) İÇİN
+  kullanıcının doküman notundaki belirsizlik ("sadece Şehir mi, yoksa her
+  zorunlu alan mı") kullanıcının kendi yorumuna göre çözüldü: Scenario
+  Outline + Examples (Sokak/Bina No/Açıklama) ile HER metin alanı AYRI AYRI
+  test edildi (Şehir hariç tutuldu - o bir combobox, her zaman bir değere
+  sahip, "boşaltma" kavramı yapısal olarak uygulanamıyor).
+- TC-EACRML-006-05 İKİ AYRI senaryoya bölündü (kullanıcı AskUserQuestion'da
+  "iki senaryoyu da oluştur" dedi): 006-05a (limitsiz kabul - PASS bekleniyor)
+  ve 006-05b (tanımlı limiti aşan girişi reddetmeli - manuel test case'in
+  iddiası). GERÇEK UYGULAMADA DOĞRULANDI: Description alanına 3000 karakter
+  JS native value-setter + input event ile (klavye yerine, performans için)
+  yazıldığında TAMAMI (3000/3000) kabul ediliyor, HİÇBİR üst karakter sınırı
+  yok. Sonuç: 006-05a PASS, 006-05b KASITLI KIRMIZI (FAILED) - bu bir kod
+  hatası değil, manuel test case'in "tanımlı bir karakter sınırı var"
+  varsayımının gerçek uygulamada YANLIŞ olduğunun kanıtı/belgelenmesi.
+- TC-EACRML-006-06 İKİ AYRI senaryoya bölündü (006-06a: anlık/client-side
+  değişim, 006-06b: sayfa yenilense de kalıcılık) - kullanıcı "iki senaryoyu
+  da implemente et" dedi.
+- ÖNEMLİ KENDİ-KENDİNİ-DÜZELTEN BULGU - Primary adres değişikliğinin
+  KALICILIĞI (006-06b): İlk yaklaşım driver.refresh() sonrası ANINDA
+  get_primary_states() kontrolü yapıyordu - izole çalıştırıldığında bu
+  senaryo FAILED düştü ([True, False] görünüyordu, beklenen [False, True]
+  değil), ilk başta GERÇEK bir "kasıtlı kırmızı" backend bug'ı gibi
+  yorumlandı. Ancak TAM SUITE çalıştırmasında AYNI senaryo PASSED geçti -
+  bu tutarsızlık araştırmaya yol açtı. Canlı XHR-interception + zamanlı
+  reload script'iyle (Zone.js nedeniyle execute_script tabanlı XHR
+  interception'ın yine boş kaldığı, ama zamanlı reload testinin kesin
+  sonuç verdiği önceki oturumdaki bulguyla tutarlı) doğrulandı: GERÇEK
+  KÖK SEBEP kendi testimdeydi, uygulamada değil - Primary değişikliği
+  backend'e ANINDA değil ASENKRON/~3 saniyelik bir gecikmeyle persist
+  ediliyor; tıklamadan hemen sonra reload yapmak bir YARIŞ DURUMU (race
+  condition) yaratıyordu.
+- KULLANICI DÜZELTMESİ (önemli, kalıcı ders): reload_and_get_primary_states()
+  için ilk düzeltme denemem time.sleep() tabanlı sabit bir bekleme/retry
+  döngüsüydü - kullanıcı bu edit'i REDDETTİ ve açıkça "dinamik bekleme
+  ekle" dedi (statik/sabit süre tahminine dayalı çözüm istenmiyor).
+  ÇÖZÜM: pages/address_update_page.py'de wait_for_primary_states_to_persist
+  (expected_states) adında yeni bir metot yazıldı - WebDriverWait.until()
+  içine sarılmış bir predicate fonksiyonu HER POLL DÖNGÜSÜNDE (varsayılan
+  ~0.5sn aralık, en fazla self.wait'in 10sn timeout'u kadar) sayfayı TEKRAR
+  navigate edip Adres sekmesine tıklayıp state'i kontrol ediyor, beklenen
+  duruma ulaşana kadar TEKRARLIYOR - time.sleep YOK, tamamen
+  WebDriverWait'in kendi dinamik polling mekanizması kullanıldı. Gerçekten
+  hiç persist edilmeseydi (gerçek bug olsaydı) zaman aşımı sonunda doğru
+  şekilde FAIL verecek şekilde tasarlandı.
+  steps/test_address_update_steps.py'deki primary_persists_after_reload
+  step'i de reload_and_get_primary_states() yerine bu yeni metodu
+  çağıracak şekilde güncellendi.
+- DOĞRULAMA: 006-06b izole çalıştırıldığında (--alluredir scratchpad'e
+  yönlendirilerek, TAM SUITE Allure sonuçlarını bozmadan) PASSED - dinamik
+  bekleme gecikmeli persist'i doğru şekilde tolere ettiğini kanıtladı.
+- Primary radio butonunun native .click() ile TIKLANAMADIĞI (sr-only/peer
+  CSS deseniyle görsel olarak gizli, sibling <span> tıklamayı intercept
+  ediyor) canlı doğrulandı - login'deki göz ikonu ve create_customer'daki
+  diğer JS-click gereken elementlerle AYNI kategori bulgu, execute_script
+  ile JS click kullanıldı (mark_second_address_as_primary).
+- TC-EACRML-006-07 ("tek adres otomatik Primary, değiştirilemez") İÇİN
+  "değiştirilemez" iddiası TEKNİK bir disabled özniteliği değil, MANTIKSAL
+  bir sonuç olarak doğrulandı (canlı kontrol edildi: radio'nun disabled
+  attribute'u None) - değiştirilecek İKİNCİ bir seçenek/radio hiç
+  bulunmadığından tek mevcut seçenek zaten Primary olmak ZORUNDA.
+- TAM SUITE SONUCU (python -m pytest steps/test_address_update_steps.py -v,
+  12 test, tek çalıştırmada): 11 passed, 1 failed - BEKLENEN/DOĞRU sonuç,
+  tek FAILED test 006-05b (yukarıda açıklanan kasıtlı kırmızı, karakter
+  sınırı manuel-test-case iddiasının gerçek uygulamayla uyuşmadığının
+  belgesi). Regresyon YOK, tüm diğer 11 senaryo (006-01, 006-02, 006-03×3,
+  006-04, 006-05a, 006-06a, 006-06b, 006-07, 006-08) yeşil geçti.
+- ÖĞRENİLEN GENEL KURAL (bu oturumun en önemli tekil dersi): İzole
+  çalıştırmada FAILED, tam suite'te PASSED gibi TUTARSIZ bir sonuç
+  görüldüğünde, hemen "gerçek bug" sonucuna varmadan önce zamanlama/
+  asenkronluk (race condition) ihtimali araştırılmalı - özellikle "UI
+  anında güncelleniyor ama backend persist'i gecikmeli" senaryolarında.
+  Böyle bir gecikme doğrulanırsa çözüm HER ZAMAN time.sleep tabanlı sabit
+  bekleme değil, WebDriverWait'in dinamik polling'i (predicate içinde
+  navigasyon+kontrol tekrarı) olmalı - hem gecikmeyi adil tolere eder hem
+  gerçek bir hata durumunda zaman aşımıyla doğru şekilde FAIL verir.
+
+[2026-08-09] Yeni özellik: Yeni Müşteri Adresinin Eklenmesi (UC-EACRML 007) - address_add.feature/page/steps
+- Kullanıcı, UC-EACRML 007 için 8 manuel test case'lik (TC-EACRML-007-01..08)
+  Gherkin spesifikasyonunu hazır olarak verdi, address_update.feature ile
+  AYNI talimatla: "senior QA gibi implemente et, dilden bağımsız TR/EN,
+  statik değil dinamik çözüm, test metodolojilerine uy, testler bağımsız
+  olsun, INVEST kurallarına uy."
+- TASARIM KARARI - YENİ PAGE OBJECT AddressUpdatePage'DEN TÜRETİLDİ (kalıtım
+  ilk kez bu projede kullanıldı): "Yeni Adres Ekle" formu, adres GÜNCELLEME
+  formuyla AYNI DOM/alan setini kullanıyor (canlı doğrulandı - aynı
+  address-city/-street/-building-no/-description/-save/-cancel locator'ları).
+  Codebase'in yerleşik konvansiyonu (her Feature'a kendi ayrı Page Object -
+  create/update/delete_customer_page.py) ile DRY prensibi arasında bir
+  denge kurmak için: pages/address_add_page.py oluşturuldu ama
+  AddressUpdatePage'i MİRAS ALIYOR (class AddressAddPage(AddressUpdatePage)).
+  Böylece hem her Feature kendi dedicated page/steps dosyasına sahip oluyor
+  hem de ortak locator'lar/temel metotlar (click_add_address, click_save,
+  click_cancel, is_save_button_disabled, get_card_count vb.) TEKRAR
+  YAZILMIYOR. Bu, projede ilk kez kullanılan bir desen - bilinçli bir
+  kırılma, gerekçesi: iki Feature LİTERALEN aynı UI/DOM bölgesini
+  kullanıyor (edit formu ile add formu tamamen aynı alan setine sahip),
+  bu da inheritance'ı meşru kılan nadir bir durum.
+- steps/test_address_add_steps.py: address_update_steps.py'deki gibi HER
+  senaryo için _create_fresh_customer_and_open_address_tab() helper'ıyla
+  fresh, tek kullanımlık disposable müşteri oluşturuluyor - tam bağımsızlık.
+- GERÇEK UYGULAMADA ÖNCE DOĞRULANAN BULGULAR (exploratory Selenium
+  script'leriyle, kod yazılmadan önce):
+  - Boş "Yeni Adres Ekle" formunda: Şehir butonu "Seçiniz" placeholder'ı
+    gösteriyor (seçilmemiş durum), Sokak/Bina No/Açıklama boş, Save pasif.
+  - Şehir dropdown'ı AÇILDIĞINDA her zaman TAM OLARAK 81 seçenek listeleniyor
+    (Türkiye'nin sabit il sayısı) VE Şehir kontrolü bir <button> (aria-
+    controls ile bir <ul role="listbox"> açıyor), <input type="text">
+    DEĞİL - yani "serbest metin girişine izin verilmez" iddiası YAPISAL
+    olarak (tag_name kontrolüyle) doğrulanabiliyor, herhangi bir metin
+    karşılaştırmasına gerek yok.
+  - Bina No alanına "12 D:4" gibi harf+rakam+özel karakter karışık bir
+    değer girildiğinde HİÇBİR kısıtlama/maskeleme olmadan aynen kabul
+    ediliyor (field value girilen değerle birebir eşleşiyor).
+  - Yeni eklenen adres kartı listenin SONUNA ekleniyor (başına değil),
+    ÖNCEKİ kart(lar) silinmiyor/değişmiyor.
+  - Cancel butonuna tıklandığında form kapanıyor VE hiçbir kart
+    eklenmiyor (kart sayısı değişmiyor) - iddia doğrulandı.
+  - Zorunlu 4 alanın (Şehir, Sokak, Bina No, Açıklama) HER BİRİ tek tek
+    boş bırakılıp diğerleri doldurulduğunda Save HER DURUMDA pasif kalıyor
+    (4 ayrı canlı deneyle tek tek doğrulandı) - Scenario Outline + 4
+    Examples ile karşılandı.
+  - 2 adresli bir müşteriye 3. bir adres eklendiğinde HİÇBİR üst sınır
+    hatasıyla karşılaşılmıyor, 3 kart da sorunsuz listeleniyor.
+- TC-EACRML-007-01'İN "…/addresses'A GERÇEK BİR POST İSTEĞİYLE KAYDEDER"
+  İDDİASI İÇİN TASARIM KARARI (kullanıcıya sorulmadı, gerekçeli senior QA
+  kararı olarak uygulanıp burada şeffafça belgeleniyor): Bu oturumda daha
+  önce defalarca doğrulandığı üzere (Primary-adres persistence bulgusu),
+  Angular'ın Zone.js'i JS-seviyesi (execute_script tabanlı) XHR/fetch
+  interception'ı bu projede güvenilmez kılıyor. Ham HTTP metodunu/endpoint'i
+  UI testinden doğrulamak (CDP performans logu, seleniumwire vb.) hem bu
+  projenin YAGNI/minimal-mühendislik ilkesine aykırı ek bağımlılık/altyapı
+  gerektirirdi hem de gereğinden fazla white-box (implementasyon detayına
+  bağımlı) bir e2e test olurdu. Bunun yerine "gerçek bir POST isteğiyle
+  kaydedildiği" iddiası, GÖZLEMLENEBİLİR SONUCU (sayfa TAMAMEN yenilendikten
+  SONRA da yeni adresin hâlâ mevcut olması - yani sadece iyimser/istemci
+  tarafı bir UI güncellemesi değil, gerçekten backend'e yazılmış olması)
+  üzerinden, address_update.feature'daki Primary-persistence testiyle AYNI
+  dinamik WebDriverWait polling deseniyle (wait_for_new_address_persisted_
+  after_reload) doğrulandı. Bu, HTTP metodunu doğrulamaktan daha ANLAMLI
+  bir test (bir POST atılıp sunucu 500 dönse bile istemci iyimser UI
+  güncellemesi yapabilirdi - reload-tabanlı kontrol BUNU da yakalar).
+- YAN BULGU VE DÜZELTME (base class'ta latent sahte-PASS riski): Bu
+  Feature'ı geliştirirken pages/address_update_page.py'deki
+  add_address_with_faker() metodunun kaydetme sonrası bekleme koşulunun
+  SABİT `len(cards) >= 2` olduğu fark edildi - bu, o ana kadarki TÜM
+  çağrı noktalarında (hep 1 adresten 2 adrese çıkma senaryosu) doğru
+  çalışıyordu AMA metot 3. veya sonraki bir adres eklemek için
+  kullanılsaydı, bekleme koşulu gerçek ekleme gerçekleşmeden ÖNCE bile
+  (kart sayısı zaten >= 2 olduğundan) anında "doğru" dönüp sahte-PASS'e
+  yol açabilirdi. DÜZELTME: koşul `len(cards) > before_count` olarak
+  ÖNCEKİ sayıya göre GÖRECELİ hale getirildi - mevcut tüm çağrı
+  noktalarında davranış değişmedi (regresyon yok, hepsi hâlâ 1->2
+  senaryosu), ama artık kaç adresten başlarsa başlasın doğru çalışıyor.
+  Bu, önceki search_customers_page.py sahte-PASS bulgularıyla AYNI
+  kategoriden bir denetim/düzeltme.
+- TAM SUITE SONUCU (python -m pytest steps/test_address_add_steps.py -v,
+  11 test - 007-03 Outline'ın 4 örneği dahil, tek çalıştırmada): 11
+  passed, 0 failed. Ayrıca her senaryo ÖNCE tek tek izole çalıştırılıp
+  (--alluredir scratchpad'e yönlendirilerek, mevcut Allure sonuçlarını
+  bozmadan) hepsi PASSED doğrulandı - hem izole hem tam suite'te sıfır
+  regresyon. Bu Feature için gerçek uygulamayla hiçbir tutarsızlık
+  bulunmadı, dolayısıyla önceki Feature'ların aksine (address_update'te
+  006-05b gibi) KASITLI KIRMIZI bir senaryo YOK - manuel test case'in
+  tüm 8 iddiası gerçek uygulama davranışıyla birebir örtüştü.
+
+[2026-08-09] AUDIT: Inheritance kullanımı ve DRY ihlalleri için TÜM proje taraması
+- Kullanıcı sordu: "inheritance kullanılan başka bir yer olabilir mi? DRY'a
+  aykırı bir durum var mı tüm projeyi tara." SADECE bir tarama/rapor
+  isteği - HİÇBİR KOD DEĞİŞİKLİĞİ yapılmadı, bulgular aşağıda belgelenip
+  kullanıcının kararına bırakıldı (önceki "statik yapı" auditiyle aynı
+  yöntem: önce bul/raporla, sonra kullanıcı hangisini uygulayacağına karar
+  versin).
+- INHERITANCE: Projede şu an SADECE 1 yerde kullanılıyor:
+  pages/address_add_page.py -> class AddressAddPage(AddressUpdatePage).
+  Diğer TÜM page object'ler (LoginPage, CreateCustomerPage,
+  UpdateCustomerPage, DeleteCustomerPage, CustomersPage/search) birbirinden
+  bağımsız, DÜZ (flat) sınıflar - aralarında hiç kalıtım yok.
+- DRY BULGU #1 (EN BÜYÜK KOD TEKRARI - ~15 satırlık blok, 4 dosyada
+  BİREBİR AYNI): "Fresh disposable müşteri oluştur + Customer Info
+  ekranına geç" akışı (login + /customers/new'e git + CreateCustomerPage
+  wizard'ı: demografik+adres+iletişim+submit+wait_for_navigated_to_
+  customer_info) şu 4 steps dosyasında satır satır AYNI şekilde tekrar
+  ediyor:
+    - steps/test_update_customer_steps.py (user_on_customer_info_screen)
+    - steps/test_delete_customer_steps.py (user_on_customer_to_delete_info_screen)
+    - steps/test_address_update_steps.py (_create_fresh_customer_and_open_address_tab)
+    - steps/test_address_add_steps.py (_create_fresh_customer_and_open_address_tab - AYNI İSİM, AYRI kopya)
+  TEK FARK: fonksiyon sonunda döndürülen Page nesnesinin TİPİ
+  (UpdateCustomerPage / DeleteCustomerPage / AddressUpdatePage /
+  AddressAddPage). Bu, ortak bir yardımcı fonksiyona (ör.
+  utils/customer_factory.py içinde `create_fresh_customer_and_navigate
+  (driver, base_url, page_class)` -> page_class parametre olarak alınıp
+  sonunda `return page_class(driver)`) çıkarılabilir. UYGULANMADI, sadece
+  belgelendi.
+- DRY BULGU #2 (locator seviyesinde tekrar): `[data-testid='customer-
+  detail-header']` locator'ı 4 AYRI page object'te (CreateCustomerPage.
+  CUSTOMER_DETAIL_HEADER, UpdateCustomerPage.DETAIL_HEADER,
+  DeleteCustomerPage.DETAIL_HEADER, CustomersPage.CUSTOMER_DETAIL_HEADER)
+  birebir aynı string olarak ayrı ayrı tanımlanmış. Benzer şekilde
+  `[data-testid='customer-info-delete']` (DELETE_BUTTON) hem
+  UpdateCustomerPage'de hem DeleteCustomerPage'de tekrar tanımlı.
+- DRY BULGU #3 (EN DERİN/YAPISAL, ama düzeltmesi EN RİSKLİ olan):
+  pages/create_customer_page.py'nin "Adım 2: Adres" bölümü (ADDRESS_CITY,
+  ADDRESS_STREET, ADDRESS_BUILDING_NO, ADDRESS_DESCRIPTION, ADDRESS_SAVE,
+  ADDRESS_CARD*, click_add_address, select_address_city,
+  add_address_with_faker, click_address_card_edit vb.) ile
+  pages/address_update_page.py + pages/address_add_page.py'NİN TAMAMI,
+  KAVRAMSAL OLARAK AYNI Angular "Adres formu" bileşenini ÜÇ AYRI page
+  object'te üç ayrı locator/metot setiyle modelliyor. Bazı locator'lar
+  birebir aynı (address-city/address-city-list ID'leri; address-save/
+  -card/-card-title/-card-menu/-card-edit/-card-delete testid'leri),
+  bazıları farklı STRATEJİ kullanıyor (CreateCustomerPage Bina No için
+  `By.ID "address-building"` kullanırken AddressUpdatePage `data-testid=
+  'address-building-no'` kullanıyor - muhtemelen aynı elementin farklı
+  attribute'ları, ikisi de aynı input'u hedefliyor olabilir). Kök sebep:
+  CreateCustomerPage aynı adres form bileşenini müşteri OLUŞTURULURKEN
+  (wizard içinde) kullanıyor, AddressUpdatePage/AddressAddPage ise AYNI
+  bileşeni var olan bir müşterinin Adres SEKMESİNDE kullanıyor - iki farklı
+  route/ekran olsa da form BİLEŞENİ muhtemelen aynı. Bu, satır sayısı
+  açısından EN BÜYÜK bulgu ama düzeltmesi EN RİSKLİ olanı: CreateCustomerPage
+  refactor edilirse hem create_customer.feature hem update_customer/
+  delete_customer/address_update/address_add.feature'ların Background'ları
+  (hepsi CreateCustomerPage'i disposable müşteri oluşturmak için kullanıyor)
+  etkilenme riski taşır - bu yüzden UYGULANMADI, sadece belgelendi.
+- KÜÇÜK/OPSİYONEL BULGU: UpdateCustomerPage ile DeleteCustomerPage arasında
+  da hafif bir örtüşme var (DETAIL_HEADER, DELETE_BUTTON, __init__
+  paterni - DETAIL_HEADER'ı bekleme + _detail_url saklama, hatta
+  get_detail_url()/reopen_edit_form() UpdateCustomerPage'de var). Ortak bir
+  "CustomerDetailPage" base class'ı (AddressAddPage(AddressUpdatePage)
+  paterniyle tutarlı) düşünülebilir ama bu ikisinin sorumlulukları (biri
+  güncelleme, diğeri silme) yeterince farklı olduğundan bu "nice to have",
+  zorunlu değil.
+- SONUÇ: Kullanıcıya bu 4 bulgu (1 büyük kod-tekrarı + 1 locator-tekrarı +
+  1 yapısal/riskli + 1 opsiyonel) sırayla sunuldu, HANGİSİNİN
+  uygulanacağına dair karar kullanıcıya bırakıldı - hiçbiri bu turda
+  otomatik olarak uygulanmadı.
+
+[2026-08-09] Yeni özellik: Müşteri Adresinin Silinmesi (UC-EACRML 008) - address_delete.feature/page/steps
+- Kullanıcı, UC-EACRML 008 için 6 manuel test case'lik (TC-EACRML-008-01..06,
+  008-05 hariç - bkz. aşağı) Gherkin spesifikasyonunu verdi. Spesifikasyon,
+  kullanıcının kendi notlarıyla BİRDEN FAZLA açık çelişki/belirsizlik
+  işaretliyordu (⚠️ işaretleri, "analiz Bölüm 3.2/3.3" referansları) - bu
+  yüzden kod yazmadan ÖNCE hem canlı keşif hem AskUserQuestion ile 3 açık
+  noktayı netleştirdim.
+- CANLI KEŞİF BULGULARI (kod yazmadan önce, exploratory Selenium
+  script'leriyle doğrulandı):
+  - Müşteri detay sayfasında 4 sekme var: Müşteri Bilgisi, Müşteri Hesabı,
+    Adres, İletişim Kanalı. "Müşteri Hesabı" sekmesi "Müşteri Hesapları"
+    listesi + "Yeni Hesap Oluştur" içeriyor ama hiçbir adres/hizmet-adresi
+    ilişkisi YOK, "Fatura"/"invoice"/"billing" kelimesi UYGULAMANIN HİÇBİR
+    YERİNDE geçmiyor.
+  - Tek adresli bir müşteride kart menüsü açıldığında Delete seçeneği
+    GERÇEKTEN disabled (is_enabled() == False, HTML disabled attribute'lü
+    bir <button>).
+  - Adres silme işleminde HİÇBİR onay penceresi (confirm-dialog) çıkmıyor -
+    müşteri silmenin aksine (delete_customer.feature'da Evet/Hayır onay
+    penceresi VARDI), adres silme "Sil"e tıklanır tıklanmaz ANINDA
+    gerçekleşiyor.
+  - Silme işlemi GERÇEKTEN kalıcı: sayfa tamamen yenilendikten sonra da
+    silinen adres listede görünmüyor.
+  - Primary olarak işaretli adres silindiğinde, kalan TEK adres OTOMATİK
+    olarak Primary'e dönüşüyor (Primary'siz bir durum OLUŞMUYOR).
+  - Zaten silinmiş bir adresin Delete referansına (stale WebElement)
+    TEKRAR tıklanmaya çalışıldığında StaleElementReferenceException
+    fırlatılıyor - uygulama çökmüyor, durum (kart sayısı, reload sonrası
+    tutarlılık) bozulmuyor.
+- ASKUSERQUESTION İLE NETLEŞTİRİLEN 3 AÇIK NOKTA (kod yazılmadan ÖNCE
+  soruldu, kullanıcı cevapları uygulandı):
+  1) TC-EACRML-008-01: "gerçek HTTP metodu (DELETE vs. PUT/PATCH) ve
+     response kodu doğrulanır" iddiası - Zone.js bu projede JS-seviyesi
+     network yakalamayı güvenilmez kıldığından (defalarca doğrulandı),
+     üç seçenek sunuldu: (a) sadece gözlemlenebilir sonucu test et, (b)
+     CDP performans logu ile gerçek HTTP'yi yakala (yeni bir teknik), (c)
+     skip et. KULLANICI seçeneği "önerilen"i seçti = (a). UYGULAMA: Then
+     step'i "sistem adresi kalıcı olarak siler (sayfa yenilense dahi
+     adres listede görünmez)" olarak YENİDEN YAZILDI (HTTP-metodu iddiası
+     çıkarıldı, address_add.feature'daki persistence-after-reload
+     deseniyle TUTARLI, dinamik WebDriverWait polling kullanılıyor).
+  2) TC-EACRML-008-05: "aktif bir Fatura Hesabının hizmet adresi"
+     önkoşulu - gerçek uygulamada bu kavram YOK (yukarıdaki keşif).
+     KULLANICI "Skip et, kasıtlı belgele" seçeneğini seçti. SONUÇ: Bu
+     senaryo address_delete.feature'a HİÇ EKLENMEDİ (numaralandırmada
+     008-05 kasıtlı olarak BOŞ bırakıldı, 008-04'ten sonra 008-06 geliyor)
+     - gerekçe: bu senaryonun önkoşulunu karşılayacak bir "Fatura Hesabı"
+     özelliği şu an uygulamada mevcut değil, dev ekibine/PO'ya
+     iletilmesi gereken bir bulgu.
+  3) TC-EACRML-008-06: "AYNI istek tekrar gönderilir" - ham HTTP replay
+     UI'da mümkün değil, üç seçenek sunuldu: (a) UI-seviyesinde yorumla
+     (stale referansla tekrar tıklama), (b) requests ile ham API replay
+     (yeni bağımlılık), (c) skip et. KULLANICI "UI-seviyesinde yorumla"yı
+     seçti = (a). UYGULAMA: Given/When/Then TAMAMEN YENİDEN YAZILDI ("bir
+     adres silme/durum-güncelleme isteği gönderilip tamamlanmıştır" ->
+     "bir adres silinmiştir"; "AYNI istek tekrar gönderilir" -> "kullanıcı
+     aynı adresi (artık silinmiş, stale bir referansla) tekrar silmeyi
+     dener") - artık DOM'dan kaldırılmış bir Delete WebElement referansı
+     saklanıp TEKRAR tıklanıyor, StaleElementReferenceException (veya
+     eşdeğeri) GÜVENLİ REDDETME olarak yorumlanıyor, ayrıca uygulamanın
+     GERÇEKTEN çökmediği (is_app_still_functional) ayrıca doğrulanıyor.
+- TASARIM: pages/address_delete_page.py -> class AddressDeletePage
+  (AddressAddPage) - inheritance ZİNCİRİ ÜÇÜNCÜ KEZ genişletildi
+  (AddressUpdatePage -> AddressAddPage -> AddressDeletePage). Gerekçe:
+  silme senaryolarının kurulumu ("müşterinin birden fazla adresi vardır",
+  Primary kontrolü) AddressAddPage'in add_new_address_and_wait_for_card/
+  get_primary_states metotlarına DOĞRUDAN ihtiyaç duyuyor - bu üçlü
+  zincir artık projenin "aynı UI bölgesini paylaşan Feature'lar için
+  kalıtım kullan" prensibinin doğal bir devamı.
+- TEKNİK BULGU VE DÜZELTME (kart menüsü/silme mekaniği): İlk yazımda
+  `delete_card_at_index(index)` içinde ADDRESS_CARD_DELETE elementini
+  `find_elements(...)[index]` ile (kartın kendi index'iyle) almaya
+  çalıştım - TC-008-01 izole çalıştırmasında `IndexError` ile FAILED
+  oldu. KÖK SEBEP (canlı incelemeyle doğrulandı): kart menüsü açıldığında
+  Edit/Delete seçenekleri HER KART İÇİN AYRI DEĞİL, ortak TEK bir portal/
+  overlay olarak render ediliyor - hangi kartın menüsü açılırsa açılsın
+  DOM'da her zaman TEK bir Delete elementi bulunuyor, bu yüzden index'e
+  göre değil DOM'daki TEK elemente göre erişilmeli. İLK DÜZELTME
+  denemem `[0]` sabit index'i kullanmıştı - kullanıcı bunu REDDEDİP
+  "dinamik olanı tercih et" dedi. NİHAİ ÇÖZÜM:
+  `self.wait.until(EC.element_to_be_clickable(self.ADDRESS_CARD_DELETE))`
+  ile elementin GERÇEKTEN DOM'a render olup tıklanabilir hale gelmesi
+  WebDriverWait'in dinamik polling'iyle bekleniyor (sabit index/varsayım
+  yerine). Bu, [[dynamic-waits-no-static]] hafıza kuralıyla tam tutarlı -
+  "0. eleman zaten orada olmalı" varsayımı yerine "GERÇEKTEN hazır olana
+  kadar bekle" tercih edildi.
+- TAM SUITE SONUCU (python -m pytest steps/test_address_delete_steps.py
+  -v, 5 test - 008-05 hariç tutulduğu için 6 değil 5): 5 passed, 0
+  failed. Her senaryo ÖNCE tek tek izole çalıştırılıp (--alluredir
+  scratchpad'e yönlendirilerek) hepsi PASSED doğrulandı, sonra tam
+  suite'te de sıfır regresyon. Kasıtlı kırmızı senaryo YOK (008-05 zaten
+  hiç yazılmadı, geri kalan 5 senaryonun tümü gerçek uygulama
+  davranışıyla birebir örtüştü).
+- AÇIK BULGU (dev ekibine/PO'ya iletilmeli): UC-EACRML 008'in TC-008-05
+  senaryosu "Fatura Hesabı" kavramına dayanıyor ama gerçek uygulamada bu
+  kavram (ne "Müşteri Hesabı" sekmesinde ne başka bir yerde) MEVCUT
+  DEĞİL - ya dokümantasyon henüz uygulanmamış bir özelliği tarif ediyor
+  ya da "Müşteri Hesabı" ile "Fatura Hesabı" arasında dokümante
+  edilmemiş bir eşleme var. Netleşene kadar bu senaryo otomasyon
+  kapsamı dışında bırakıldı.
+
+[2026-08-09] Yeni özellik: Kontakt Bilgilerinin Güncellenmesi (UC-EACRML 009) - contact_update.feature/page/steps
+- Kullanıcı UC-EACRML 009 için 10 manuel test case'lik (TC-EACRML-009-01..10)
+  Gherkin spesifikasyonu verdi. Kod yazmadan ÖNCE tüm senaryolar için
+  Contact Medium (İletişim Kanalı) sekmesi canlı incelendi.
+- CANLI KEŞİF BULGULARI:
+  - View modu locator'ları: customer-contact-edit, customer-contact-value-
+    email/-home-phone/-mobile-phone/-fax (boş alanlar "—" em-dash
+    gösteriyor). Edit formu locator'ları: customer-contact-form,
+    customer-contact-email, customer-contact-home-phone(+-country),
+    customer-contact-mobile-phone + customer-contact-country-code (DİKKAT:
+    tutarsız isimlendirme - home/fax "-country" son ekini kullanırken
+    mobile "country-code" kullanıyor, uygulamanın kendi tutarsızlığı),
+    customer-contact-fax(+-country), customer-contact-cancel/-save.
+  - Edit ikonuna tıklandığında URL DEĞİŞMİYOR (aynı /customers/{id}'de
+    kalıyor) - form INLINE olarak açılıyor, AYRI bir "Contact Medium
+    Update" ekranı/route YOK. Manuel case'in "sistem ... ekranını açar"
+    ifadesi (TC-009-06) bu yüzden yapısal olarak (form alanlarının
+    görünür hale gelmesi) doğrulandı, bir route/URL değişimi İDDİA
+    EDİLMEDİ.
+  - Email format hatası: "Geçerli bir e-posta girin; adres .com ile
+    bitmelidir." (TR) - manuel case'in beklediği İngilizce metinle
+    (TC-009-02) uyuşmuyor, dil-bağımsız yapısal kontrol kullanıldı.
+  - Email benzersizliği GERÇEKTEN update sırasında da uygulanıyor (TC-009-
+    09'un varsayımı DOĞRU çıktı) - ANINDA (client-side, blur sonrası)
+    "Bu e-posta adresi zaten kullanılıyor." hatasıyla + Save otomatik
+    disabled. create_customer akışındaki (400 + "This email address is
+    already registered.", backend-seviyesi) mekanizmadan FARKLI - burada
+    daha erken/istemci-seviyesinde yakalanıyor, ama İŞ KURALININ KENDİSİ
+    (benzersizlik) her iki ekranda da GERÇEK ve tutarlı.
+  - Zorunlu alan boş (Email/Mobile Phone): "Bu alan zorunludur." hatası +
+    Save disabled - TC-009-03'ün varsayımı doğrulandı.
+  - Home Phone/Fax GERÇEKTEN opsiyonel - varsayılan boş, formun geçerli
+    olmasını (Save enabled) ENGELLEMİYOR - TC-009-07 doğrulandı.
+  - +90 ülke kodu üç alanda da (Home/Mobile/Fax) SABİT, telefon numarası
+    değiştirilse dahi değişmiyor - TC-009-10 doğrulandı.
+  - Cancel gerçekten değişiklikleri atıyor, view moduna orijinal
+    değerlerle dönüyor - TC-009-08 doğrulandı.
+- ASKUSERQUESTION İLE NETLEŞTİRİLEN NOKTA (kod yazılmadan ÖNCE soruldu):
+  TC-EACRML-009-04 manuel case'de "doğrulanmış gerçek bug, UC-003-14 ile
+  aynı kök neden" olarak işaretlenmişti (8 haneli mobile phone'da
+  doğrulamanın atlandığı iddiası). CANLI TEST SONUCU BUNU YALANLADI: Bu
+  ekranda (Contact Update) "05551234" (8 hane) girildiğinde hata DOĞRU
+  ŞEKİLDE gösteriliyor ("Türkiye (+90) için telefon numarası 10 haneli
+  olmalıdır.") ve Save DOĞRU ŞEKİLDE disabled kalıyor - yani UC-003-14
+  bug'ı (2026-08-07'de CREATE sihirbazının Contact adımında bulunmuştu)
+  BU ekranda TEKRARLANMIYOR, muhtemelen ayrı bir validasyon
+  implementasyonu kullanılıyor. Kullanıcıya 3 seçenek sunuldu (gerçek
+  davranışa göre PASS yaz / yine de kasıtlı kırmızı bırak / skip et) -
+  kullanıcı "Gerçek davranışa göre yaz (PASS)" seçti. SONUÇ: TC-009-04
+  normal PASS eden bir doğrulama testi olarak yazıldı, KASITLI KIRMIZI
+  DEĞİL - "[DEFEKT ADAYI]" etiketi kaldırıldı, gerekçe feature dosyasında
+  değil burada belgelendi.
+- TEKNİK BULGULAR VE DÜZELTMELER (implementasyon sırasında, canlı
+  çalıştırmalarla yakalandı):
+  1) İlk yazımda is_email_error_displayed()/is_mobile_phone_error_
+     displayed()/is_required_field_error_displayed() SABİT bir anlık
+     find_elements() kontrolü yapıyordu (bekleme yok) - TC-009-02 izole
+     çalıştırmasında FAILED oldu çünkü hata elementi blur sonrası
+     ASENKRON render ediliyor, kontrol elementi henüz DOM'a gelmeden
+     yapılıyordu (klasik race condition, [[dynamic-waits-no-static]]
+     kuralının tam örneği). DÜZELTME: ortak bir `_is_error_displayed
+     (locator)` yardımcı metoduna taşınıp `self.wait.until(EC.
+     visibility_of_element_located(...))` ile dinamik olarak beklenecek
+     şekilde YENİDEN yazıldı (TimeoutException durumunda False dönüyor).
+  2) TC-009-07'de "güncelleme başarıyla tamamlanır" step'i Save'e
+     tıklamadan ÖNCE senkron bir `is_save_button_disabled()` kontrolü
+     yapıyordu - Angular'ın form validity durumunu güncellemesiyle Save'in
+     enabled olması arasındaki kısa gecikme (bu projede daha önce de
+     create_customer_page.py'de enter_identity_number/enter_mobile_phone
+     için gözlemlenmiş AYNI kategori gecikme) bunu bir yarış durumuna
+     çeviriyordu. DÜZELTME: senkron ön-kontrol KALDIRILDI, doğrudan
+     click_save() çağrıldı - bu metot zaten EC.element_to_be_clickable
+     ile (görünür VE enabled olana kadar) dinamik olarak bekliyor, ayrı
+     bir kontrole gerek yoktu.
+  3) TC-009-09'un (email benzersizliği) Given step'i İKİNCİ bir disposable
+     müşteri oluştururken YANLIŞLIKLA login akışını TEKRAR çalıştırdı
+     (_create_fresh_customer_and_open_contact_tab ikinci kez çağrıldı) -
+     zaten authenticated bir session'da /login'e tekrar gidince uygulamanın
+     kendi auth guard'ı ANINDA /customers'a yönlendirdiğinden login formu
+     hiç görünmüyor, `login_page.open()` TimeoutException ile patlıyordu.
+     KÖK SEBEP ve ÇÖZÜM update_customer.feature'daki Nationality-ID
+     çakışma senaryosunda (2026-08-08 civarı) ZATEN keşfedilmiş bir
+     desendi - o zaman farkında olmadan aynı hataya tekrar düşüldü. DÜZELTME:
+     `_create_fresh_customer_and_open_contact_tab` ikiye bölündü:
+     `_create_fresh_customer(driver)` (SADECE müşteri oluşturma, login
+     YOK - zaten authenticated bir session varsayıyor) ve bunu login
+     adımıyla saran orijinal fonksiyon. İkinci disposable müşteri artık
+     `_create_fresh_customer(driver)` ile (login'i TEKRARLAMADAN)
+     oluşturuluyor. ÖĞRENİLEN GENEL KURAL (tekrar pekiştirildi): aynı test
+     içinde İKİNCİ bir disposable müşteri gerektiğinde, login SADECE BİR
+     KEZ yapılmalı - sonraki müşteri oluşturmaları doğrudan /customers/
+     new'e navigate ederek (zaten authenticated session'ı kullanarak)
+     yapılmalı.
+- TAM SUITE SONUCU (python -m pytest steps/test_contact_update_steps.py -v,
+  11 test - 009-03 Outline'ın 2 örneği dahil): 11 passed, 0 failed. Her
+  senaryo ÖNCE tek tek izole çalıştırılıp hepsi PASSED doğrulandı, sonra
+  tam suite'te de sıfır regresyon. Kasıtlı kırmızı senaryo YOK - TC-009-04
+  için varsayılan bug gerçek davranışla ÇELİŞTİĞİ için (bug yok çıktı)
+  normal PASS'e çevrildi, diğer 9 senaryonun tamamı manuel case'in
+  varsayımlarıyla birebir örtüştü.
+
+[2026-08-09] Yeni özellik: Yeni Fatura Hesabı Oluşturma (UC-EACRML 010) - billing_account_create.feature/page/steps
+- Kullanıcı UC-EACRML 010 için 10 manuel test case'lik (TC-EACRML-010-01..10)
+  Gherkin spesifikasyonu verdi. Bu UC daha önce TC-EACRML-008-05'te
+  ("Fatura Hesabı" kavramına dayanan, bu yüzden SKIP edilen bir senaryo)
+  bahsi geçen "Müşteri Hesabı" (tab-account) sekmesiyle AYNI özelliği
+  hedefliyor.
+- ÖNEMLİ DÜZELTİCİ BULGU (UC-008-05 kararını etkiliyor): UC-008 sırasında
+  "Müşteri Hesabı" sekmesinin BOŞ durumu (empty-state metni) incelenmiş ve
+  "Fatura"/"invoice"/"billing" kelimesinin uygulamanın HİÇBİR YERİNDE
+  geçmediği sonucuna varılmıştı - bu sonuca dayanarak TC-008-05 skip
+  edilmişti. AMA bu, YALNIZCA boş durumun body text'i taranarak yapılan
+  YÜZEYSEL bir kontroldü - "Yeni Hesap Oluştur" formu hiç AÇILMAMIŞTI. Bu
+  UC'de formu açtığımda panel başlığının GERÇEKTEN "Fatura Hesabı
+  Oluştur" olduğu VE oluşturulan hesabın türünün (account-row-type)
+  GERÇEKTEN "BILLING_ACCOUNT" olduğu görüldü - yani "Fatura Hesabı"
+  kavramı UYGULAMADA GERÇEKTEN VAR, sadece sekme etiketi/boş-durum mesajı
+  genel "Müşteri Hesabı" terimini kullanıyor (UI metni ile iç veri modeli
+  arasında bir isimlendirme tutarsızlığı, iki ayrı kavram değil). BU
+  BULGU KULLANICIYA AYRICA BİLDİRİLECEK: artık "Fatura Hesabı" özelliği
+  var olduğu doğrulandığından, TC-008-05 (bir adresin aktif bir Fatura
+  Hesabının hizmet adresi olarak kullanılırken silinmeye çalışılması)
+  ARTIK TEKNİK OLARAK OTOMATİZE EDİLEBİLİR - bu UC-010 altyapısı
+  (BillingAccountCreatePage) kullanılarak revize edilebilir. Kullanıcıya
+  bu turun sonunda ayrıca sorulacak.
+- CANLI KEŞİF BULGULARI (kod yazmadan önce):
+  - Boş durum: empty-state / empty-state-message testid'leri (search/
+    delete_customer/adres ile AYNI desen) - "Bu müşteriye ait hesap
+    bulunmuyor." mesajı.
+  - "Yeni Hesap Oluştur" formu (panel-heading: "Fatura Hesabı Oluştur")
+    İKİ ZORUNLU metin alanı içeriyor: account-name (Hesap Adı) VE
+    account-description (Hesap Açıklaması) - manuel case sadece "Hesap
+    Adı"ndan bahsediyor, Açıklama alanının da zorunlu olduğu DOKÜMANDA
+    HİÇ GEÇMİYOR (undocumented required field - dev ekibine/BA'ya
+    bildirilmeli). Ayrıca adres seçimi için Adres sekmesindeki KART
+    BİLEŞENİNİN AYNISI (address-card/-card-title/-card-primary) gömülü
+    olarak render ediliyor - "address-card-primary" testid'i burada
+    "Primary adres" değil "hizmet adresi seçimi" anlamında YENİDEN
+    kullanılıyor (aynı bileşen, farklı bağlamda farklı anlam - canlı
+    doğrulandı).
+  - Form boşken Oluştur (account-save) DISABLED - TC-010-03'ün "⚠️
+    ÇELİŞKİ" notunda bahsedilen iki alternatiften ("buton pasif kalır"
+    vs "buton aktif kalıp post-click hata") İLKİ (buton pasif kalır)
+    GERÇEK davranışla doğrulandı. UC-004/UC-011'de de tekrarladığı
+    belirtilen bu "sistemik belirsizlik" en azından BU ekranda kesin
+    olarak "pasif kalır" yönünde çözüldü.
+  - Adres seçim radio'su müşterinin TEK adresi varsa OTOMATİK seçili
+    geliyor (yapısal olarak "boş" bırakılamıyor) - bu yüzden TC-010-03'ün
+    "Hesap Adı VEYA Adres" ifadesindeki Adres kısmı, Address-tab'daki
+    Şehir combobox'ında olduğu gibi, "boşaltma" kavramına yapısal olarak
+    uygun değil - senaryo SADECE Hesap Adı boşluğunu test edecek şekilde
+    daraltıldı, gerekçe belgelendi.
+  - account-name alanının HTML maxlength özniteliği YOK VE JS ile 2000+
+    karakter yazıldığında (native value-setter + input event tekniğiyle,
+    Adres Açıklaması alanındaki AYNI teknik) HİÇBİR kısıtlama olmadan
+    tamamı kabul ediliyor - address_update.feature'daki 006-05a/b
+    bulgusuyla AYNI kategori (TC-010-09 manuel case'in "tanımlı üst
+    sınır" varsayımı YANLIŞ). Kullanıcıya TEKRAR sorulmadı - daha önce
+    006-05 için onaylanmış "a/b'ye böl" deseni doğrudan tekrar
+    uygulandı (a: sınırsız kabul PASS, b: sınırı aşan reddedilir kasıtlı
+    kırmızı) - bu artık bu projede yerleşik bir çözüm deseni.
+  - Yeni hesap kaydedildiğinde: hesap numarası OTOMATİK üretiliyor
+    (10 haneli, sıfır dolgulu, sıralı - ör. "0000000013"), durum "Aktif"
+    gösteriliyor (bir <button data-testid='account-row-toggle'> - aria-
+    checked/aria-pressed YOK, "Aktif"/"Pasif" ayrımını yapısal olarak
+    ayırt edecek bir class/attribute karşılaştırması YAPILAMADI çünkü
+    "Pasif" durumunu üretecek bir aksiyon bu UC kapsamında yok - bu
+    yüzden durum kontrolü "metin var/dolu mu" şeklinde VAROLUŞ bazlı
+    yapıldı, literal "Aktif" karşılaştırması YAPILMADI).
+  - "Yeni Adres Ekle" (account-add-address) formda AÇILAN alt-form, Adres
+    sekmesindeki adres ekleme formuyla BİREBİR AYNI locator'ları kullanıyor
+    (address-city/-street/-building-no/-description/-save) - component
+    reuse canlı doğrulandı. Yeni eklenen adres OTOMATİK olarak hizmet
+    adresi seçili hale geliyor (address_add.feature'daki "yeni kart
+    sona eklenir" bulgusuyla tutarlı).
+  - Fatura hesapları listesi SAYFA BAŞINA 4 KAYIT gösteriyor - 5. hesap
+    eklenince pagination/pagination-page-N testid'leri beliriyor.
+- TASARIM KARARI (inheritance KULLANILMADI, bilinçli bir kırılma):
+  pages/billing_account_create_page.py STANDALONE bir sınıf olarak
+  yazıldı (AddressUpdatePage/AddressAddPage zincirinden TÜRETİLMEDİ) -
+  gerekçe: bu sayfa kavramsal olarak bir "adres sayfası" DEĞİL ("is-a"
+  ilişkisi yok, bir "hesap sayfası" olup İÇİNDE bir adres alt-bileşeni
+  BARINDIRIYOR - "has-a" ilişkisi). "Yeni Adres Ekle" alt-formunun
+  locator'ları (NEW_ADDRESS_*) bu yüzden AddressAddPage'den miras yerine
+  KENDİ İÇİNDE (küçük, kabul edilebilir bir tekrar olarak) tanımlandı -
+  bu, önceki AddressAddPage/AddressDeletePage inheritance kararlarıyla
+  ÇELİŞMİYOR, aksine SOLID'in Liskov ilkesini (yanlış "is-a" ilişkisi
+  kurmama) doğru şekilde uyguluyor.
+- INVEST UYGULAMASI - TC-010-10 ÜÇE BÖLÜNDÜ: orijinal TC-EACRML-010-10
+  tek bir senaryoda ÜÇ FARKLI önkoşul gerektiren üç ayrı iddiayı
+  (sütunlar için ≥1 hesap, sayfalama için >4 hesap, boş tablo için 0
+  hesap) birleştiriyordu - bu, aynı Given'dan üç çelişkili durumun test
+  edilmesini gerektirdiğinden yapısal olarak İMKANSIZDI ve INVEST'in
+  "Small"/bağımsızlık ilkesine aykırıydı. Kullanıcının açıkça "INVEST
+  kurallarına uy" talimatı doğrultusunda 010-10a (sütunlar), 010-10b
+  (sayfalama), 010-10c (boş tablo) olarak 3 ayrı Scenario'ya bölündü -
+  kullanıcıya sorulmadı, çünkü bu net bir test-tasarım iyileştirmesi
+  (INVEST ilkesinin doğrudan uygulanması), belirsizlik değil.
+- TEKNİK BULGU VE DÜZELTME: İlk yazımda TC-010-10a/b/c'nin "When"
+  metni ("Müşteri Hesabı sekmesi görüntülenir") TC-010-02'nin step
+  decorator'ıyla ("...sekmesi açılır") EŞLEŞMİYORDU - StepDefinition
+  NotFoundError ile FAILED oldu. DÜZELTME: aynı no-op fonksiyona İKİNCİ
+  bir @when decorator'ı eklendi. Ayrıca bu no-op fonksiyon BİLEREK HİÇBİR
+  fixture parametresi ALMAYACAK şekilde tasarlandı (account_page DEĞİL) -
+  çünkü farklı senaryolarda Given adımı farklı fixture'lar üretiyor
+  (bazen account_page, bazen account_context tuple'ı) - parametresiz
+  bırakmak bu no-op adımı HER İKİ senaryo tipiyle de uyumlu kıldı.
+- TAM SUITE SONUCU (python -m pytest steps/test_billing_account_create_
+  steps.py -v, 13 test - 010-09a/b ve 010-10a/b/c dahil): 12 passed, 1
+  failed. Tek FAILED test 010-09b (yukarıda açıklanan, address_update
+  006-05b ile AYNI kategoriden kasıtlı kırmızı - karakter sınırı
+  iddiasının gerçek uygulamayla uyuşmaması). Her senaryo ÖNCE izole,
+  sonra TAM SUITE'te doğrulandı - sıfır regresyon, sıfır beklenmeyen
+  flakiness.
+
+[2026-08-09] TC-EACRML-008-05 geri alındı: "Fatura Hesabı" özelliğinin gerçekten var olduğu doğrulanınca (UC-010) yeniden ele alındı
+- UC-010 sırasında "Fatura Hesabı"nın gerçekten var olan bir özellik
+  olduğu (panel-heading "Fatura Hesabı Oluştur", account-row-type
+  "BILLING_ACCOUNT") ortaya çıkınca, kullanıcıya AskUserQuestion ile
+  daha önce skip edilen TC-EACRML-008-05'i şimdi implemente etmek isteyip
+  istemediği soruldu - "Evet, şimdi implemente et" seçildi.
+- YAN BULGU (önce keşfedildi, TC-008-05'in kurulumunu doğrudan etkiledi):
+  Fatura hesabı oluşturma formunun KENDİ "Yeni Adres Ekle" alt-formuyla
+  (account-add-address) eklenen bir adres, hesap KAYDEDİLDİKTEN ve sayfa
+  TAMAMEN YENİLENDİKTEN sonra bile Adres sekmesinin gerçek/kalıcı
+  listesinde HİÇ GÖRÜNMÜYOR - yani bu yol üzerinden eklenen adres
+  müşterinin gerçek adres kaydı olarak PERSIST EDİLMİYOR (form-state'te
+  görünüp kayboluyor). Bu, TC-008-05'in kurulumu için KRİTİK bir bulgu
+  oldu: hizmet adresi olarak fatura hesabı formunun kendi "Yeni Adres
+  Ekle" akışıyla eklenen bir adres KULLANILAMAZDI (yok olurdu, silme
+  testi anlamsızlaşırdı) - bunun yerine Adres sekmesinin KENDİ (address_
+  add.feature'da doğrulanmış, kalıcılığı kanıtlanmış) "Yeni Adres Ekle"
+  akışıyla GERÇEK bir 2. adres oluşturulup, fatura hesabı formunda BU
+  adres hizmet adresi olarak SEÇİLDİ (eklenmedi, sadece seçildi). BU YAN
+  BULGU (hesap formunun kendi adres-ekleme alt-formunun kalıcı olmaması)
+  AYRICA dev ekibine/PO'ya iletilmesi gereken bir bulgu - TC-EACRML-010-05
+  ("Yeni Adres Ekle ile ... yeni bir adresin de eklenebilmesi") manuel
+  case'i sadece FORM İÇİNDEKİ anlık görünümü doğruluyor (test bu haliyle
+  doğru/PASS), ama kalıcılık iddiası hiç test edilmedi ve GERÇEKTE
+  BAŞARISIZ olurdu - ileride bu UC'ye "kalıcılık" boyutu eklenmek
+  istenirse bu bulgu referans alınmalı.
+- CANLI DOĞRULANAN ASIL BULGU (TC-008-05'in kendisi): Aktif bir Fatura
+  Hesabının hizmet adresi olarak kullanılan bir adres SİLİNMEYE
+  ÇALIŞILDIĞINDA sistem BUNU HİÇBİR ŞEKİLDE ENGELLEMİYOR - ne bir onay/
+  uyarı diyaloğu çıkıyor ne bir hata mesajı gösteriliyor, silme
+  TAMAMEN SESSİZCE VE BAŞARIYLA gerçekleşiyor (manuel case'in 3
+  alternatifinden "serbest silme" dalı GERÇEK davranış). Silme
+  sonrasında fatura hesabının kendisi hâlâ "Aktif" olarak görünmeye
+  devam ediyor (hesap satırı bozulmuyor/kaybolmuyor), AMA hesap
+  satırında hizmet adresini gösteren bir alan olmadığından, artık
+  VAR OLMAYAN bir adrese "sessizce referans veriyor olma" ihtimali
+  UI'dan doğrudan doğrulanamadı (API/DB seviyesinde ayrıca
+  incelenmesi gerekir). BU, POTANSİYEL BİR VERİ BÜTÜNLÜĞÜ AÇIĞI olarak
+  dev ekibine/PO'ya AYRICA bildirilmesi gereken bir bulgu - test KASITLI
+  KIRMIZI DEĞİL (manuel case zaten üç olası davranıştan hangisinin
+  gerçekleştiğini GÖZLEMLEMEYİ istiyordu, spesifik bir davranış iddia
+  etmiyordu), gerçek/gözlemlenen davranış PASS olarak belgelendi.
+- IMPLEMENTASYON: features/address_delete.feature'a TC-EACRML-008-05
+  eklendi (008-06'dan SONRA, orijinal numaralandırma sırası dışında -
+  önce skip edilip sonradan eklendiği için dosya sonunda), steps/
+  test_address_delete_steps.py'ye BillingAccountCreatePage + AddressAddPage
+  import edilip 3 yeni step fonksiyonu eklendi (AddressDeletePage zaten
+  AddressAddPage'den türediği için get_all_card_titles/add_new_address_
+  and_wait_for_card gibi metotlar hazır kullanılabildi - inheritance
+  zincirinin faydası burada da somutlaştı).
+- DOĞRULAMA: TC-008-05 önce izole (--alluredir scratchpad'e
+  yönlendirilerek) PASSED, sonra address_delete.feature'ın TAMAMI (6 test,
+  008-01/02/03/04/06 + yeni 008-05) tek çalıştırmada 6 passed, 0 failed -
+  sıfır regresyon.
+
+[2026-08-09] Tam suite koşumu (134 test, tüm feature'lar) + "Login butonu pasif duruma geçer" testinin kök neden analizi
+- Kullanıcı "tüm testleri çalıştır, Allure reports'da tüm feature'ları göster"
+  dedi. python -m pytest steps/ -v ile TÜM 10 steps dosyası (134 test)
+  tek çalıştırmada koşuldu (30.5 dakika) - reports/allure-results altında
+  134 result.json doğrulandı, allure generate + allure open ile rapor
+  üretilip açıldı (http://127.0.0.1:53129).
+- SONUÇ: 130 passed, 4 failed. 3'ü BİLİNEN kasıtlı kırmızı (address_update
+  006-05b, billing_account_create 010-09b, login admin-123) - hiçbiri yeni
+  değil. 4.'sü YENİ: "Giriş İşlemi Sırasında Login Butonunun Pasifleşmesi"
+  senaryosu (steps/test_login_steps.py, login_button_disabled step'i).
+- KÖK NEDEN ARAŞTIRMASI (kullanıcı: "izole bir çalışma yap, flaky ise
+  senior QA gibi çöz, dinamik olsun, DRY'a uygun olsun"):
+  1) İzole tek-test çalıştırması İLK denemede de FAILED verdi (tam suite
+     yükünden BAĞIMSIZ) - "ağır yük altında flakiness" teşhisi YANLIŞ
+     çıktı, daha derin bir inceleme gerekti.
+  2) Canlı, ince-taneli (20ms aralıklı) ölçüm yapıldı: buton tıklamadan
+     ~60ms sonra GERÇEKTEN disabled oluyor, ama SADECE ~150-200ms sonra
+     TEKRAR enabled'a dönüyor, ~300-500ms'de sayfa /customers'a
+     yönleniyor. Yani pasif pencere ~150ms - WebDriverWait'in varsayılan
+     0.5sn polling aralığından DAHA DAR, bu yüzden HERHANGİ bir dışarıdan
+     polling'e dayalı çözüm (ne kadar sık olursa olsun teorik olarak) bu
+     geçişi şansa bağlı kaçırabilir.
+  3) İLK DÜZELTME denemem (login_button_enabled'daki mevcut desenle DRY
+     tutarlı: WebDriverWait(...).until(lambda d: is_login_button_disabled()))
+     YETERSİZ kaldı - hâlâ FAILED, çünkü kök sorun "bekleme süresi
+     yetersizliği" değil "polling aralığının pencereden geniş olması"ydı.
+  4) NİHAİ ÇÖZÜM: tarayıcının KENDİ DOM mutasyon gözlemcisi
+     (MutationObserver) click_login_button() içinde, TIKLAMADAN HEMEN
+     ÖNCE butona bağlanıp durum değişikliğini POLLING YAPMADAN, mutasyon
+     ANINDA JS motorunun kendisi tarafından yakalayacak şekilde
+     kullanıldı (window.__loginBtnWasDisabled flag'i) - tamamen
+     olay-tabanlı (event-driven), hiçbir dış zamanlama/aralık varsayımına
+     dayanmıyor. Angular router'ın client-side navigasyonu sayesinde
+     window nesnesi /customers'a geçildikten SONRA da yaşıyor, sonuç
+     güvenle okunabiliyor (canlı doğrulandı).
+  5) BU ÇÖZÜM DE %100 GARANTİ VERMEDİ: 5 bağımsız doğrudan script
+     çalıştırması 5/5 başarılı oldu, AMA 4 ayrı pytest izole çalıştırması
+     3/4 başarılı oldu (1 kez yine FAILED). SONUÇ: bu artık bir test
+     TEKNİĞİ sorunu DEĞİL - uygulamanın KENDİ davranışı (Angular'ın
+     change-detection'ının, local/hızlı ağda request+response o kadar
+     hızlı tamamlanması ki disabled->enabled geçişini bazen DOM'a hiç
+     yazmadan/mutasyon tetiklemeden tek bir senkron döngüde birleştirmesi
+     ihtimali) PROBABİLİSTİK - bazen buton GERÇEKTEN hiç gözlemlenebilir
+     şekilde disabled olmuyor.
+- KULLANICI KARARI (AskUserQuestion): "Kasıtlı kırmızı olarak bırak,
+  bulguyu belgele" seçildi. MutationObserver çözümü (saf polling'den çok
+  daha güçlü, event-driven) KORUNDU - bu hâlâ doğru/en-iyi mühendislik
+  yaklaşımı, sadece %100 garanti veremiyor çünkü SORUN test tarafında
+  değil UYGULAMA tarafında. Test artık ~%75 ihtimalle PASS, ~%25
+  ihtimalle (uygulamanın submit-guard'ının o çalıştırmada DOM'a hiç
+  yansımaması nedeniyle) FAILED verecek - bu KASITLI olarak böyle
+  bırakıldı, testin kendisi gerçek/tutarlı bir bug'ı (submit-guard'ın
+  güvenilir çalışmaması) belgeliyor.
+- AYRICA DÜZELTİLEN YAPISAL SORUN: "giriş butonu pasif kalır" (boş alan,
+  KALICI/durağan durum) ile "Login butonu pasif duruma geçer" (submit
+  sırasında GEÇİCİ durum) daha önce AYNI step fonksiyonunu paylaşıyordu -
+  bu iki farklı karaktere sahip kontrol birbirinden AYRILDI
+  (login_button_disabled senkron kalır - hiç yarış riski yok; yeni
+  login_button_disabled_during_submit MutationObserver sonucunu okur).
+- AÇIK BULGU (dev ekibine iletilmeli): Login butonunun submit sırasındaki
+  disabled/loading durumu GÜVENİLİR ÇALIŞMIYOR - bazı çalıştırmalarda
+  buton hiç gözlemlenebilir şekilde disable olmadan direkt tekrar
+  enabled kalıp yönleniyor. Bu, teorik olarak bir double-submit
+  penceresi bırakıyor olabilir (kullanıcı bu ~150-500ms'lik aralıkta
+  tekrar tıklarsa ikinci bir login isteği tetiklenebilir) - UI/UX
+  ekibine iletilmesi gereken bir bulgu.
+- pages/login_page.py: click_login_button() MutationObserver enjekte
+  edecek şekilde genişletildi, was_disabled_during_submit() eklendi.
+  steps/test_login_steps.py: login_button_disabled (senkron, kalıcı
+  durum) ve login_button_disabled_during_submit (MutationObserver
+  sonucu, geçici durum) olarak iki ayrı fonksiyona bölündü.

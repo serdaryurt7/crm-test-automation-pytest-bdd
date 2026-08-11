@@ -256,7 +256,7 @@ def fix_email(create_customer_page):
     create_customer_page.fix_email_with_faker()
 
 
-@then('"Birth Date" alanı gün/ay/yıl formatında maskeli bir metin giriş alanıdır')
+@then('"Birth Date" alanı gün,ay,yıl formatında maskeli bir metin giriş alanıdır')
 def birth_date_is_masked_text_input(create_customer_page):
     assert create_customer_page.is_birth_date_masked_text_input()
 

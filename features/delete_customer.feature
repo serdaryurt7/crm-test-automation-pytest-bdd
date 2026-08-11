@@ -5,7 +5,7 @@ Feature: Müşteri Bilgilerini Silme
 
   Scenario: TC-EACRML-005-01 - Müşteri Bilgisi ekranında Delete butonuna tıklandığında onay penceresinin görüntülenmesi
     When kullanıcı Delete ikonuna tıklar
-    Then onay penceresi, silme mesajı ve Evet/Hayır butonlarıyla birlikte görüntülenir
+    Then onay penceresi, silme mesajı ve Evet, Hayır butonlarıyla birlikte görüntülenir
 
   Scenario: TC-EACRML-005-04 - Onay penceresinde "Hayır" seçilince işlemin iptal edilip müşteri kaydının değişmeden kalması
     Given onay penceresi görüntülenmektedir
