@@ -231,7 +231,14 @@ class CustomersPage:
         return [e.text.strip() for e in self.driver.find_elements(*self.ROW_LINK)]
 
     def is_customer_id_column_sorted_ascending(self):
+        # Satırların yüklenmesini bekle - beklemeden hemen okunursa DOM
+        # henüz boşken kontrol edilebilir, bu da BOŞ liste için
+        # "ids == sorted(ids)" her zaman True döndüğünden testi
+        # SESSİZCE ve YANLIŞLIKLA PASS ettirir (hiçbir şeyi
+        # doğrulamadan). Boş liste EXPLICIT olarak reddediliyor.
+        self.wait.until(lambda d: bool(d.find_elements(*self.ROW_LINK)))
         ids = [int(value) for value in self.get_result_customer_ids()]
+        assert ids, "Sıralama kontrol edilirken sonuç listesi boştu - hiçbir kayıt doğrulanamadı"
         return ids == sorted(ids)
 
     def is_pagination_active(self):
@@ -246,8 +253,16 @@ class CustomersPage:
         self.wait.until(EC.element_to_be_clickable(self.NEXT_PAGE)).click()
 
     def verify_next_page_records_are_new(self):
+        # Not: sayfa gecisi sirasinda Angular DOM'u ANLIK olarak
+        # bosaltabiliyor (*ngFor yeniden render edilirken) - "kume eskisinden
+        # FARKLI mi" kontrolu tek basina BOS kumeyi de "farkli" say(iyord)u,
+        # bu da wait.until'in yeni sayfa GERCEKTEN yuklenmeden ERKEN
+        # tatmin olmasina ve testin BOS bir sayfayla YANLIS-POZITIF/gecici
+        # FAIL vermesine yol aciyordu (canli olarak yakalandi). Artik hem
+        # BOS OLMAMASI hem eskisinden FARKLI OLMASI birlikte bekleniyor.
         self.wait.until(
-            lambda d: set(e.text.strip() for e in d.find_elements(*self.ROW_LINK)) != self._first_page_ids
+            lambda d: (ids := {e.text.strip() for e in d.find_elements(*self.ROW_LINK)})
+            and ids != self._first_page_ids
         )
         next_page_ids = set(self.get_result_customer_ids())
         assert next_page_ids, "Sonraki sayfada hiç kayıt yok"

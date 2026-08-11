@@ -1,10 +1,10 @@
 import random
+import time
 from faker import Faker
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 
 fake = Faker("tr_TR")
@@ -21,7 +21,8 @@ class CreateCustomerPage:
     SECOND_NAME = (By.ID, "secondName")
     LAST_NAME = (By.ID, "lastName")
     BIRTH_DATE = (By.ID, "birthDate")
-    GENDER = (By.ID, "gender")
+    GENDER = (By.ID, "gender") # kullanılıyor mu ?
+    GENDER_LIST = (By.ID, "gender-list")
     FATHER_NAME = (By.ID, "fatherName")
     MOTHER_NAME = (By.ID, "motherName")
     IDENTITY_NUMBER = (By.ID, "identityNumber")
@@ -33,6 +34,7 @@ class CreateCustomerPage:
     ADDRESS_BACK = (By.CSS_SELECTOR, "[data-testid='customer-create-address-back']")
     ADDRESS_NEXT = (By.CSS_SELECTOR, "[data-testid='customer-create-address-next']")
     ADDRESS_CITY = (By.ID, "address-city")
+    ADDRESS_CITY_LIST = (By.ID, "address-city-list")
     ADDRESS_CITY_ERROR = (By.ID, "address-city-error")
     ADDRESS_STREET = (By.ID, "address-street")
     ADDRESS_BUILDING_NO = (By.ID, "address-building")
@@ -63,6 +65,13 @@ class CreateCustomerPage:
     CUSTOMER_DETAIL_HEADER = (By.CSS_SELECTOR, "[data-testid='customer-detail-header']")
     CUSTOMER_INFO_GENDER = (By.CSS_SELECTOR, "[data-testid='customer-info-value-gender']")
 
+    # Gender ve Adres Şehir alanları uygulama tarafında native <select>'ten
+    # role="combobox" olan <button> + açılır <ul role="listbox"> ikilisine
+    # geçirildi (bu oturum sırasında canlı doğrulandı - eski Select() tabanlı
+    # kod artık gerçek uygulamayla uyuşmuyordu). GENDER_VALUE_MAP görünen
+    # Türkçe metni listbox'taki data-value'ya çeviriyor.
+    GENDER_VALUE_MAP = {"Erkek": "male", "Kadın": "female"}
+
     def __init__(self, driver):
         self.driver = driver
         self.wait = WebDriverWait(driver, 10, ignored_exceptions=(StaleElementReferenceException,))
@@ -86,23 +95,25 @@ class CreateCustomerPage:
         field.send_keys(value)
 
     def enter_birth_date(self, value):
-        # value: "DD/MM/YYYY" (manuel test case'lerdeki gösterim). HTML date
-        # input'u Selenium send_keys ile MM/DD/YYYY tuş sırası bekliyor (ampirik
-        # olarak doğrulandı - 07/22/1992 -> value="1992-07-22" oluyor), bu yüzden
-        # burada dönüştürülüyor.
+        # value: "DD/MM/YYYY". Alan artık native <input type="date"> DEĞİL,
+        # maskeli bir metin input'u (type="text", placeholder="gg/aa/yyyy") -
+        # rakamlar sırayla (GGAAYYYY) yazılınca "/" otomatik ekleniyor
+        # (ampirik doğrulandı: "15061990" -> "15/06/1990"). Önceki MM/DD/YYYY
+        # tuş sırası dönüşümüne artık gerek yok.
         day, month, year = value.split("/")
         field = self.driver.find_element(*self.BIRTH_DATE)
         field.clear()
-        field.send_keys(f"{month}/{day}/{year}")
+        field.send_keys(f"{day}{month}{year}")
 
-    def is_birth_date_native_date_picker(self):
-        # Birth Date gerçek uygulamada native <input type="date"> - tıklanınca
-        # açılan takvim tarayıcı/OS seviyesinde render ediliyor, DOM'a
-        # hiçbir calendar/datepicker paneli eklenmiyor (ampirik olarak
-        # doğrulandı). Bu yüzden Selenium'la gerçek takvim gün hücrelerine
-        # tıklamak mümkün değil - type="date" olması native picker'ın var
-        # olacağının garantisi.
-        return self.driver.find_element(*self.BIRTH_DATE).get_attribute("type") == "date"
+    def is_birth_date_masked_text_input(self):
+        # Birth Date bu oturum sırasında native <input type="date">'den
+        # (tarayıcı/OS takvimi açan) gg/aa/yyyy formatında maskeli bir
+        # <input type="text">'e geçirildi (canlı doğrulandı) - bu artık bir
+        # bug değil, kasıtlı bir tasarım değişikliği. Eski
+        # is_birth_date_native_date_picker() ismi yanıltıcı olacağından
+        # gerçek davranışı yansıtacak şekilde yeniden adlandırıldı.
+        field = self.driver.find_element(*self.BIRTH_DATE)
+        return field.get_attribute("type") == "text" and field.get_attribute("placeholder") == "gg/aa/yyyy"
 
     def enter_birth_date_with_faker(self):
         birth_date = fake.date_of_birth(minimum_age=18, maximum_age=90).strftime("%d/%m/%Y")
@@ -110,22 +121,43 @@ class CreateCustomerPage:
         self._last_entered_birth_date = birth_date
         return birth_date
 
-    def get_birth_date_iso_value(self):
+    def get_birth_date_displayed_value(self):
+        # Artık native <input type="date"> olmadığı için değer ISO formatında
+        # (yyyy-mm-dd) DEĞİL, ekranda görünen gg/aa/yyyy formatında geliyor.
         return self.driver.find_element(*self.BIRTH_DATE).get_attribute("value")
 
     def is_birth_date_displayed_correctly(self):
-        day, month, year = self._last_entered_birth_date.split("/")
-        expected_iso = f"{year}-{month}-{day}"
-        return self.get_birth_date_iso_value() == expected_iso
+        return self.get_birth_date_displayed_value() == self._last_entered_birth_date
+
+    def _is_gender_list_open(self):
+        list_els = self.driver.find_elements(*self.GENDER_LIST)
+        return bool(list_els) and list_els[0].is_displayed()
 
     def click_gender_field(self):
         self.driver.find_element(*self.GENDER).click()
+        self.wait.until(EC.visibility_of_element_located(self.GENDER_LIST))
 
     def get_gender_options(self):
-        return [o.text for o in Select(self.driver.find_element(*self.GENDER)).options]
+        # Bu metod hem liste ZATEN AÇIKKEN (ör. "kullanıcı Gender alanını
+        # açar" adımından hemen sonra) hem KAPALIYKEN çağrılabiliyor - her
+        # iki durumda da güvenli çalışması için önce açık olup olmadığı
+        # kontrol ediliyor.
+        if not self._is_gender_list_open():
+            self.click_gender_field()
+        return [
+            o.text.strip()
+            for o in self.driver.find_elements(By.CSS_SELECTOR, "#gender-list li[role='option']")
+        ]
 
     def select_gender(self, value):
-        Select(self.driver.find_element(*self.GENDER)).select_by_visible_text(value)
+        if not self._is_gender_list_open():
+            self.click_gender_field()
+        data_value = self.GENDER_VALUE_MAP[value]
+        self.driver.find_element(By.CSS_SELECTOR, f"#gender-list li[data-value='{data_value}']").click()
+        # Secimden hemen sonra devam etmek (ör. form validity kontrolu)
+        # yuk altinda kacan bir race condition'a yol acabiliyordu - liste
+        # gercekten kapanip Angular'in secimi islemesini bekliyoruz.
+        self.wait.until(EC.invisibility_of_element_located(self.GENDER_LIST))
 
     def enter_father_name(self, value):
         field = self.driver.find_element(*self.FATHER_NAME)
@@ -141,6 +173,16 @@ class CreateCustomerPage:
         field = self.driver.find_element(*self.IDENTITY_NUMBER)
         field.clear()
         field.send_keys(value)
+        field.send_keys(Keys.TAB)
+        # Identity Number genelde demografik doldurma akışının SON alanı
+        # oluyor. Canlı olarak doğrulandı: TAB/blur sonrası bile DOM'daki
+        # değerler zaten doğruyken "Next" butonu ANLIK olarak hâlâ disabled
+        # dönebiliyor - Angular'ın form validity durumunu yeniden hesaplayıp
+        # butonu güncellemesi ayrı bir change-detection cycle'ında (~200ms)
+        # gerçekleşiyor. WebDriverWait ile "ne" bekleneceği duruma göre
+        # değiştiğinden (bazen disabled KALMALI) kısa sabit bir bekleme
+        # kullanılıyor.
+        time.sleep(0.3)
         self._last_identity_number = value
 
     def fill_demographic_step(self, first_name, last_name, birth_date, gender, identity_number):
@@ -156,12 +198,16 @@ class CreateCustomerPage:
 
     def fill_demographic_step_with_faker(self, gender):
         # Gender parametre olarak dışarıdan (Scenario Outline Examples'tan)
-        # veriliyor, Faker ile rastgele SEÇİLMİYOR: bu alan gerçek bir bug
-        # içeriyor (ne seçilirse seçilsin sistem her zaman "Erkek" kaydediyor
-        # - bkz. "Uçtan Uca Müşteri Yaratma" senaryosu). Senaryo hem "Kadın"
-        # hem "Erkek" ile bilerek ayrı ayrı çalıştırılıyor ki bug'ın ASİMETRİK
-        # doğası (Kadın seçilince FAIL, Erkek seçilince PASS - çünkü sistem
-        # zaten hep Erkek yazıyor) net şekilde kanıtlansın.
+        # veriliyor, Faker ile rastgele SEÇİLMİYOR. GEÇMİŞ NOT: burada uzun
+        # süre gerçek bir bug vardı (ne seçilirse seçilsin sistem her zaman
+        # "Erkek" kaydediyordu) - Kadın/Erkek AYRI AYRI çalıştırılarak bu
+        # asimetrik davranış kanıtlanıyordu. Bu oturum sırasında (Gender/
+        # Birth Date alanlarının native kontrollerden özel widget'lara
+        # geçirildiği güncellemeyle birlikte) canlı olarak yeniden
+        # doğrulandı: bug artık YOK, "Kadın" seçilince gerçekten "Kadın"
+        # kaydediliyor. Senaryo hâlâ iki cinsiyeti de ayrı ayrı çalıştırıyor
+        # (regresyon guard'ı olarak DEĞERLİ), ama artık kasıtlı kırmızı
+        # değil - ikisi de PASS etmesi beklenen normal bir doğrulama.
         first_name = fake.first_name_female() if gender == "Kadın" else fake.first_name_male()
         last_name = fake.last_name()
         birth_date = fake.date_of_birth(minimum_age=18, maximum_age=90).strftime("%d/%m/%Y")
@@ -186,6 +232,10 @@ class CreateCustomerPage:
     def fill_missing_last_name(self):
         last_name = fake.last_name()
         self.enter_last_name(last_name)
+        # enter_identity_number()'daki aynı blur/change-detection gerekçesi
+        # - burada Soyad akışın son alanı oluyor.
+        self.driver.find_element(*self.LAST_NAME).send_keys(Keys.TAB)
+        time.sleep(0.3)
         return last_name
 
     def get_first_name_value(self):
@@ -198,15 +248,13 @@ class CreateCustomerPage:
         return self.driver.find_element(*self.IDENTITY_NUMBER).get_attribute("value")
 
     def get_selected_gender_text(self):
-        return Select(self.driver.find_element(*self.GENDER)).first_selected_option.text
+        return self.driver.find_element(*self.GENDER).text.strip()
 
     def are_demographic_values_displayed(self):
-        day, month, year = self._last_birth_date.split("/")
-        expected_iso_birth_date = f"{year}-{month}-{day}"
         return (
             self.get_first_name_value() == self._last_first_name
             and self.get_last_name_value() == self._last_last_name
-            and self.driver.find_element(*self.BIRTH_DATE).get_attribute("value") == expected_iso_birth_date
+            and self.get_birth_date_displayed_value() == self._last_birth_date
             and self.get_selected_gender_text() == self._last_gender
             and self.get_identity_number_value() == self._last_identity_number
         )
@@ -237,17 +285,14 @@ class CreateCustomerPage:
         self.wait.until(EC.element_to_be_clickable(self.ADD_ADDRESS_BUTTON)).click()
 
     def select_address_city(self, city_name):
+        # Şehir alanı native <select>'ten role="combobox" olan <button> +
+        # açılır <ul id="address-city-list" role="listbox"> ikilisine
+        # geçirildi (Gender ile aynı desen, bu oturumda canlı doğrulandı).
         city_field = self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY))
-        Select(city_field).select_by_visible_text(city_name)
-        # Not: native <select>'te Selenium'un select_by_visible_text'i her zaman
-        # formun beklediği change/blur event'ini tetiklemiyor - tetiklenmezse
-        # Kaydet butonu "Bu alan zorunludur" hatasıyla pasif kalmaya devam ediyor.
-        self.driver.execute_script(
-            "arguments[0].dispatchEvent(new Event('change', {bubbles:true}));"
-            "arguments[0].dispatchEvent(new Event('input', {bubbles:true}));"
-            "arguments[0].dispatchEvent(new Event('blur', {bubbles:true}));",
-            city_field,
-        )
+        city_field.click()
+        self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY_LIST))
+        self.driver.find_element(By.CSS_SELECTOR, f"#address-city-list li[data-value='{city_name}']").click()
+        self.wait.until(EC.invisibility_of_element_located(self.ADDRESS_CITY_LIST))
 
     def enter_address_street(self, value):
         field = self.driver.find_element(*self.ADDRESS_STREET)
@@ -310,19 +355,23 @@ class CreateCustomerPage:
             self._entered_addresses.append(self._pending_address)
 
     def add_address_with_faker(self):
-        # Şehir Faker'dan DEĞİL, ekrandaki gerçek <select> seçeneklerinden
+        # Şehir Faker'dan DEĞİL, ekrandaki gerçek listbox seçeneklerinden
         # rastgele seçiliyor: address-city alanı yalnızca kendi option
         # listesindeki 81 il adından biriyle TAM eşleşirse kabul ediyor,
         # Faker'ın ürettiği bir şehir adının bu listeyle birebir eşleşeceği
         # garanti edilemez (örn. ilçe/kısaltma farkı).
         self.click_add_address()
         city_field = self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY))
-        real_city_options = [o.text for o in Select(city_field).options if o.get_attribute("value")]
-        city = random.choice(real_city_options)
+        city_field.click()
+        self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY_LIST))
+        city_options = self.driver.find_elements(By.CSS_SELECTOR, "#address-city-list li[role='option']")
+        chosen = random.choice(city_options)
+        city = chosen.get_attribute("data-value")
+        chosen.click()
+        self.wait.until(EC.invisibility_of_element_located(self.ADDRESS_CITY_LIST))
         street = fake.street_name()
         building_no = fake.building_number()
         description = fake.sentence(nb_words=4)
-        self.select_address_city(city)
         self.enter_address_street(street)
         self.enter_address_building_no(building_no)
         self.enter_address_description(description)
@@ -346,9 +395,13 @@ class CreateCustomerPage:
 
     def fill_missing_city(self):
         city_field = self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY))
-        real_city_options = [o.text for o in Select(city_field).options if o.get_attribute("value")]
-        city = random.choice(real_city_options)
-        self.select_address_city(city)
+        city_field.click()
+        self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY_LIST))
+        city_options = self.driver.find_elements(By.CSS_SELECTOR, "#address-city-list li[role='option']")
+        chosen = random.choice(city_options)
+        city = chosen.get_attribute("data-value")
+        chosen.click()
+        self.wait.until(EC.invisibility_of_element_located(self.ADDRESS_CITY_LIST))
         return city
 
     def is_address_save_disabled(self):
@@ -363,7 +416,10 @@ class CreateCustomerPage:
 
     def is_address_edit_form_prefilled_correctly(self):
         city, street, building_no, description = self._entered_addresses[-1]
-        city_value = Select(self.driver.find_element(*self.ADDRESS_CITY)).first_selected_option.text
+        # Edit formu açılırken Şehir butonu (Angular render) hemen DOM'da
+        # olmayabiliyor - canlı olarak doğrulandı (NoSuchElementException).
+        city_field = self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY))
+        city_value = city_field.text.strip()
         street_value = self.driver.find_element(*self.ADDRESS_STREET).get_attribute("value")
         building_value = self.driver.find_element(*self.ADDRESS_BUILDING_NO).get_attribute("value")
         description_value = self.driver.find_element(*self.ADDRESS_DESCRIPTION).get_attribute("value")
@@ -430,6 +486,14 @@ class CreateCustomerPage:
     def fix_email_with_faker(self):
         email = f"{fake.user_name()}.{fake.random_number(digits=6, fix_len=True)}@example.com"
         self.enter_email(email)
+        self.driver.find_element(*self.EMAIL).send_keys(Keys.TAB)
+        # Sabit bir sleep süresi güvenilir değildi (canlı ölçümde gecikme
+        # ~0.3-0.6s arasında değişiyordu) - bunun yerine önceki hata
+        # elementinin GERÇEKTEN kaybolmasını bekliyoruz. Hiç hata
+        # gösterilmiyorsa (element DOM'da yok) EC.invisibility_of_element_
+        # located zaten anında True döner, bu yüzden "temiz" email girişini
+        # de güvenle kapsıyor.
+        self.wait.until(EC.invisibility_of_element_located(self.EMAIL_ERROR))
         return email
 
     def fill_mobile_phone_with_faker(self):
@@ -465,6 +529,11 @@ class CreateCustomerPage:
         field = self.driver.find_element(*self.MOBILE_PHONE)
         field.clear()
         field.send_keys(value)
+        # Mobile Phone genelde İletişim Kanalı adımının SON alanı oluyor -
+        # enter_identity_number()'daki aynı gecikmeli form-validity
+        # gerekçesiyle blur + kısa bekleme ekleniyor.
+        field.send_keys(Keys.TAB)
+        time.sleep(0.3)
 
     def enter_fax(self, value):
         field = self.driver.find_element(*self.FAX)

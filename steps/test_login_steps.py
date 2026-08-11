@@ -56,7 +56,11 @@ def user_clicks_login_button(login_page):
 
 @then("giriş butonu aktif hale gelir")
 def login_button_enabled(login_page):
-    assert not login_page.is_login_button_disabled()
+    # Diğer benzer "X aktif hale gelir" step'leriyle tutarlı olarak:
+    # ağır/uzun suite koşumlarında form geçerlilik durumunun anlık
+    # okumadan hemen sonra güncellenmesi garanti değil - gerçekten
+    # aktif olana kadar bekleniyor, sabit sleep yerine.
+    WebDriverWait(login_page.driver, 10).until(lambda d: not login_page.is_login_button_disabled())
 
 
 @then("herhangi bir script çalıştırılmaz ve yetkisiz erişim sağlanmaz")

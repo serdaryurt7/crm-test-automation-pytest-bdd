@@ -67,7 +67,13 @@ def contact_step_opened(create_customer_page):
 
 @then("Create butonu aktif hale gelir")
 def submit_button_enabled(create_customer_page):
-    assert not create_customer_page.is_submit_disabled()
+    # Form-level gecerlilik durumu (Angular change-detection) DOM'daki
+    # deger degisikliginden hemen sonra degil, kisa bir gecikmeyle
+    # guncelleniyor (canli olcumde ~0.3-0.6s arasi degisken cikti) - bu
+    # yuzden sabit bir sleep yerine "aktif olana kadar" bekleniyor. Bu
+    # step yalnizca aktif OLMASI beklenen yerlerde kullanildigindan
+    # (pasif kalmasi beklenen durumlar icin ayri bir step var) guvenli.
+    create_customer_page.wait.until(lambda d: not create_customer_page.is_submit_disabled())
 
 
 @when("kullanıcı Create butonuna tıklar")
@@ -181,7 +187,7 @@ def fill_missing_last_name(create_customer_page):
 
 @then('"Next" butonu aktif hale gelir')
 def demographic_next_enabled(create_customer_page):
-    assert not create_customer_page.is_demographic_next_disabled()
+    create_customer_page.wait.until(lambda d: not create_customer_page.is_demographic_next_disabled())
 
 
 @given("kullanıcı adres girişi penceresini açmıştır")
@@ -210,7 +216,7 @@ def fill_missing_city(create_customer_page):
 
 @then('"Save" butonu aktif hale gelir')
 def address_save_enabled(create_customer_page):
-    assert not create_customer_page.is_address_save_disabled()
+    create_customer_page.wait.until(lambda d: not create_customer_page.is_address_save_disabled())
 
 
 @given('kullanıcı "Contact Medium" ekranındadır')
@@ -250,9 +256,9 @@ def fix_email(create_customer_page):
     create_customer_page.fix_email_with_faker()
 
 
-@then('"Birth Date" alanı bir date-picker açacak şekilde native tarih giriş alanıdır')
-def birth_date_is_native_date_input(create_customer_page):
-    assert create_customer_page.is_birth_date_native_date_picker()
+@then('"Birth Date" alanı gün/ay/yıl formatında maskeli bir metin giriş alanıdır')
+def birth_date_is_masked_text_input(create_customer_page):
+    assert create_customer_page.is_birth_date_masked_text_input()
 
 
 @when('kullanıcı "Birth Date" alanına bir tarih girer')

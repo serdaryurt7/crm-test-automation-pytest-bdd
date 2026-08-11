@@ -2794,3 +2794,549 @@ Her yeni değişiklikte bu dosyanın sonuna yeni bir madde eklenir.
 - SONUÇ: update_customer.feature artık 11 test case içeriyor (1 baştan +
   2 zorunlu alan + 7 yeni senaryodan gelen 8 = 11). Excel bu turda
   güncellenmedi.
+
+[2026-08-09] TÜM 4 FEATURE DOSYASI BİRLİKTE ÇALIŞTIRILDI - ÖNEMLİ BULGU: Gender ve Birth Date alanları GERÇEK UYGULAMADA native HTML kontrollerinden özel widget'lara değişmiş
+- İSTEK: Kullanıcı login/create_customer/search_customers/update_customer
+  suite'lerinin TAMAMINI birlikte çalıştırıp Allure raporunu görmek,
+  önceki (bilinen) hataların çözülüp çözülmediğini kontrol etmek istedi.
+- 1. ÇALIŞTIRMA (17 dakika, 17 failed / 58 passed): create_customer.feature'da
+  14 senaryo, update_customer.feature'da 2 senaryo "selenium.common.
+  exceptions.UnexpectedTagNameException: Select only works on <select>
+  elements, not on button" hatasıyla FAIL verdi. İlk hipotez YANLIŞ
+  ÇIKTI: driver.maximize_window()'ın uzun/ağır kosumlarda güvenilmez
+  kalabileceği ve responsive breakpoint tetikleyebileceği düşünülüp
+  conftest.py'ye driver.set_window_size(1920, 1080) eklendi (BU DEĞİŞİKLİK
+  KALICI OLARAK BIRAKILDI - zararsız, savunma amaçlı iyi bir pratik,
+  ama gerçek kök neden bu DEĞİLDİ).
+- 2. ÇALIŞTIRMA (set_window_size fix'iyle, 18 dakika, 18 failed / 57 passed):
+  AYNI hata devam etti (hatta 1 fazla). Bu, hipotezi çürüttü.
+- GERÇEK KÖK NEDEN (canlı doğrulama ile bulundu -
+  scratchpad/explore_create_gender.py, explore_confirm_scope.py):
+  Uygulamanın GERÇEK, ÇALIŞAN app'inde (muhtemelen BU OTURUM SIRASINDA,
+  aktif geliştirme/deploy nedeniyle) Gender ve Birth Date alanlarının
+  DOM YAPISI DEĞİŞMİŞ:
+    - Gender: ÖNCEDEN native <select id="gender">/<select data-testid=
+      'customer-info-gender'> idi, ŞİMDİ her iki ekranda da (create
+      wizard'ın customer-create-gender'ı VE update formunun
+      customer-info-gender'ı) role="combobox" olan bir <button id="gender">
+      (özel accessible combobox widget, aria-controls="gender-list").
+    - Birth Date: ÖNCEDEN native <input type="date"> idi, ŞİMDİ her iki
+      ekranda da <input type="text" inputmode="numeric" placeholder=
+      "gg/aa/yyyy" maxlength="10"> (maskeli metin input).
+    - ÖNEMLİ KANIT: update_customer_page.py'nin GENDER_SELECT/BIRTH_DATE_
+      INPUT locator'ları BU OTURUM İÇİNDE daha önce (explore_gender_select.py,
+      explore_customer_edit_form.py ile) GERÇEKTEN native <select>/
+      type="date" olarak doğrulanmış ve TÜM update_customer testleri
+      (11 test, birden fazla kez) izole çalıştırıldığında SORUNSUZ
+      PASSED olmuştu - bu da değişikliğin GERÇEKTEN bu oturum sırasında,
+      benim update_customer.feature üzerinde çalışmamla bu 4-suite
+      birleşik çalıştırması arasındaki zaman diliminde gerçekleştiğini
+      gösteriyor. Bu bir test flakiness/timing sorunu DEĞİL, GERÇEK bir
+      uygulama/frontend değişikliği.
+  - Bu nedenle create_customer_page.py'deki select_gender()/
+    get_gender_options()/get_selected_gender_text()/is_birth_date_
+    native_date_picker() VE update_customer_page.py'deki
+    is_form_prefilled_correctly() (Gender Select() sarmalaması + Birth
+    Date ISO format dönüşüm varsayımı) artık GERÇEK UYGULAMAYLA UYUŞMUYOR.
+- KULLANICI KARARI (AskUserQuestion): "Sadece bulguyu logla, şimdilik
+  dokunma" seçildi - page object'lerde HİÇBİR DÜZELTME YAPILMADI, sadece
+  bu bulgu belgelendi. create_customer_page.py ve update_customer_page.py
+  Gender/Birth Date etkileşim kodu HALEN ESKİ (native select/date)
+  varsayımıyla yazılı durumda ve gerçek uygulamayla uyuşmuyor - GELECEKTE
+  bu iki dosyada Gender/Birth Date ile ilgili HERHANGİ bir çalışma
+  yapılmadan önce bu not dikkate alınmalı.
+- SONUÇ (mevcut/son durum, 2. çalıştırmadan): 57 passed, 18 failed.
+  Bilinen/beklenen kasıtlı kırmızı (3): login admin-123 lockout mesajı,
+  create_customer Kadın-gender bug'ı, update_customer TC-EACRML-004-03
+  Nationality ID mesaj uyuşmazlığı. YENİ/bu turda tespit edilen (~15):
+  create_customer.feature'daki neredeyse TÜM Gender/Birth Date'e dokunan
+  senaryolar (Erkek varyantı dahil - normalde PASS olması gerekirken artık
+  FAIL) + update_customer'ın 004-01/004-04/004-06'sı - hepsi TEK bir kök
+  nedene (yukarıdaki UI değişikliği) bağlanıyor, birbirinden bağımsız
+  farklı bug'lar DEĞİL.
+  search_customers.feature ve login.feature'da (admin-123 hariç) hiçbir
+  yeni sorun YOK - bu ikisi tamamen sağlam.
+- Allure raporu üretildi (reports/allure-report) ve `allure open` ile
+  http://127.0.0.1:49676 adresinde canlı olarak açıldı.
+
+[2026-08-09] BÜYÜK DÜZELTME: create_customer.feature ve update_customer.feature, Gender/Birth Date/City Widget Değişikliğine ve Angular Timing Sorunlarına Karşı Onarıldı (14/14 ve 10/11 PASS)
+- BAĞLAM: Önceki turda (4 feature'ı birlikte çalıştırıp Allure raporu
+  üretirken) create_customer.feature'ın neredeyse tamamının (14 senaryodan
+  13'ü) "Select only works on <select> elements, not on button" hatasıyla
+  kırıldığı tespit edilmiş, kullanıcı o an "sadece bulguyu logla, dokunma"
+  demişti. Bu turda kullanıcı "delete_customer.feature implement et"
+  isteğinde bulununca, silme testleri için gereken YENİ bir disposable
+  müşteri oluşturmak amacıyla create_customer akışını kullanmam gerekti -
+  bu da düzeltmeyi ZORUNLU hale getirdi, kullanıcı "önce create_customer_
+  page.py'yi düzelt" onayını verdi (AskUserQuestion).
+- SORUN 1 - WIDGET DEĞİŞİKLİĞİ (kapsamı önceki turdaki bulgudan DAHA GENİŞ
+  çıktı): Yalnızca Gender/Birth Date değil, Adres formundaki City alanı
+  DA native <select>'ten role="combobox" <button> + <ul role="listbox">
+  ikilisine geçirilmiş (canlı doğrulandı: id="address-city",
+  aria-controls="address-city-list", 81 il option olarak listeleniyor).
+  create_customer_page.py'de TÜM Select() kullanımları (select_gender,
+  get_gender_options, get_selected_gender_text, select_address_city,
+  add_address_with_faker, fill_missing_city, is_address_edit_form_
+  prefilled_correctly - 7 metod) yeni buton+listbox pattern'ine göre
+  yeniden yazıldı, Select import'u kaldırıldı. update_customer_page.py'de
+  is_form_prefilled_correctly() aynı şekilde güncellendi (Gender artık
+  buton text okuma, Birth Date artık ISO format dönüşümü YOK - ikisi de
+  gg/aa/yyyy formatında maskeli text input).
+  - Birth Date: is_birth_date_native_date_picker() -> is_birth_date_
+    masked_text_input() olarak DÜRÜSTÇE yeniden adlandırıldı (artık
+    native değil, bu bir bug değil kasıtlı tasarım değişikliği).
+    create_customer.feature'daki "native tarih giriş alanıdır" step
+    metni de gerçek davranışı yansıtacak şekilde güncellendi.
+  - ÖNEMLİ EK BULGU: Gender bug'ı (backend'in "Kadın" seçilse dahi her
+    zaman "Erkek" kaydetmesi - projenin en eski, en çok belgelenmiş
+    kasıtlı kırmızı senaryosu) CANLI OLARAK YENİDEN TEST EDİLDİ ve
+    ARTIK DÜZELTİLMİŞ bulundu (müşteri 83 ile doğrulandı: Kadın seçilip
+    gerçekten Kadın kaydedildi). "Uçtan Uca Müşteri Yaratma" senaryosu
+    artık her iki gender varyantında da (Kadın dahil) PASS ediyor -
+    kasıtlı kırmızı statüsü kaldırıldı, ilgili page object yorumu
+    güncellendi.
+- SORUN 2 - implicitly_wait ANTI-PATTERN'İ (conftest.py): driver fixture'ında
+  aylardır duran driver.implicitly_wait(10), bu turda eklenen
+  EC.invisibility_of_element_located çağrılarıyla (yeni listbox kapanma
+  kontrolleri) ÇOK KÖTÜ etkileşime girdi - canlı ölçümde bir demografik
+  doldurma işlemi implicit_wait AKTİFKEN 21+ saniye sürdü VE sonunda
+  form'un Angular gecerlilik durumu bozularak "Next" butonu tüm alanlar
+  dolu olsa dahi disabled kaldı. Resmi Selenium dokümantasyonunda da
+  uyarılan "implicit+explicit wait karıştırma" anti-pattern'i - KALICI
+  OLARAK KALDIRILDI (tüm page object'ler zaten kendi WebDriverWait
+  instance'larını kullanıyor, implicit wait'e hiç ihtiyaç yoktu).
+  Aynı satırda daha önce (yanlış teşhisle) eklenmiş "set_window_size
+  responsive breakpoint'i önlüyor" yorumu da düzeltilip doğru gerekçeyle
+  (implicit/explicit wait çakışması) değiştirildi.
+- SORUN 3 - ANGULAR FORM VALİDASYONU ASENKRON GECİKMESİ: implicitly_wait
+  kaldırıldıktan sonra bile, DOM'daki alan değerleri doğru olsa dahi
+  "Next"/"Create" butonlarının disabled kalmaya devam ettiği durumlar
+  tespit edildi - Angular'ın form-level geçerlilik durumunu yeniden
+  hesaplayıp butonu güncellemesi AYRI bir change-detection cycle'ında
+  (~0.3-0.6s, ÖLÇÜMDEN ÖLÇÜME DEĞİŞKEN) gerçekleşiyor. İki farklı çözüm
+  katmanı uygulandı:
+  1) Sayfa objesi metodlarına (enter_identity_number, fill_missing_last_
+     name, enter_mobile_phone) TAB (blur tetikleme) + kısa time.sleep(0.3)
+     eklendi - "form'un SON alanı doldurulduğunda" senaryoları için.
+  2) fix_email_with_faker() içinde sabit sleep YETERSİZ çıktığından
+     (ölçümde 0.3-0.6s arası değişken gecikme), EC.invisibility_of_
+     element_located(EMAIL_ERROR) ile GERÇEK durumun oluşmasını bekleyen
+     daha sağlam bir yaklaşıma geçildi.
+  3) EN SAĞLAM VE GENEL çözüm: test_create_customer_steps.py'deki "X
+     butonu aktif hale gelir" step'lerinin HEPSİ (submit_button_enabled,
+     demographic_next_enabled, address_save_enabled) artık sabit sleep'e
+     GÜVENMİYOR, page_object.wait.until(lambda d: not is_X_disabled())
+     ile GERÇEKTEN aktif olana kadar bekliyor - bu step'ler SADECE "aktif
+     OLMASI beklenen" yerlerde kullanıldığından güvenli (disabled kalması
+     gereken durumlar için ayrı step'ler zaten var, onlara dokunulmadı).
+  4) update_customer_page.py tarafında da benzer bir asenkron gecikme
+     TC-EACRML-004-03b'de bulundu (Kaydet sonrası gerçek PUT isteği +
+     görüntüleme moduna dönüş asenkron) - ilgili step
+     update_customer_page.wait.until(is_read_only_view_mode) ile
+     düzeltildi.
+- SORUN 4 - EKSİK BEKLEME (adres edit formu): is_address_edit_form_
+  prefilled_correctly() metodu Edit formu açılırken Şehir butonunun DOM'a
+  render edilmesini beklemeden find_element çağırıyordu
+  (NoSuchElementException) - EC.visibility_of_element_located eklenerek
+  düzeltildi.
+- DOĞRULAMA: create_customer.feature TAM SUITE 3 kez baştan sona
+  çalıştırıldı (her düzeltme turundan sonra) - SON ÇALIŞTIRMA: 14 passed,
+  0 failed (164s). update_customer.feature TAM SUITE 2 kez çalıştırıldı -
+  SON ÇALIŞTIRMA: 10 passed, 1 failed (yalnızca bilinen kasıtlı kırmızı
+  004-03, ilgisiz). Regresyon YOK.
+- SONUÇ: Proje artık gerçekten "yeşil" durumda (login: 21/22 bilinen,
+  search: sorunsuz, create_customer: 14/14, update_customer: 10/11
+  bilinen). delete_customer.feature implementasyonuna güvenle devam
+  edilebilir - create_customer akışı artık YENİ bir disposable müşteri
+  oluşturmak için kullanılabilir durumda.
+
+[2026-08-09] YENİ ÖZELLİK ALANI: Müşteri Bilgilerini Silme (features/delete_customer.feature, pages/delete_customer_page.py, steps/test_delete_customer_steps.py) - 6/7 senaryo implement edildi, 6/6 PASS
+- BAĞLAM: Kullanıcı UC-EACRML 005 için 7 senaryoluk bir Gherkin taslağı
+  verdi (kendi dokümanından, TC-EACRML-005-01..07). Taslakta kullanıcının
+  KENDİ notu vardı: "❓ ÇELİŞKİ: Kaynak senaryoda 'müşteri silinir'
+  deniyordu; dokümana göre bu bir soft-delete (Status=Passive). BA/
+  geliştirici teyidi gerekli." - bu belirsizlik canlı olarak netleştirildi.
+- ÖNEMLİ MİMARİ KARAR: Silme (Passive'e alma/erişilemez hale getirme)
+  GERİ DÖNÜŞÜ OLMAYAN bir mutasyon. update_customer.feature'ın bağımlı
+  olduğu disposable müşteri 80'e KESİNLİKLE dokunulmadı - Background
+  step'i HER SENARYO İÇİN, HER ÇALIŞTIRMADA fresh bir disposable müşteri
+  create_customer akışıyla oluşturacak şekilde tasarlandı (sabit bir ID
+  kullanmak, suite'in İKİNCİ çalıştırmasında "müşteri zaten silinmiş"
+  hatasıyla TÜM senaryoları bozardı - test tekrarlanabilirliği için bu
+  zorunluydu). Bu yaklaşım create_customer.feature'ın az önce tam olarak
+  düzeltilmiş olmasından FAYDALANDI.
+- CANLI KEŞİF VE ÇÖZÜLEN ÇELİŞKİ (TC-EACRML-005-02):
+  - Onay penceresi yapısı doğrulandı: confirm-dialog, confirm-dialog-
+    message ("Bu müşteriyi silmek istediğinize emin misiniz?"),
+    confirm-dialog-cancel (Hayır), confirm-dialog-confirm (Evet).
+  - "Evet" tıklanınca müşteri Müşteri Arama ekranına yönlendiriliyor
+    (dokümanla uyumlu) AMA sonrasında müşteri GERÇEKTEN ERİŞİLEMEZ hale
+    geliyor: (a) varsayılan aramada ID'siyle aransa dahi HİÇ sonuç
+    vermiyor, (b) eski detay URL'sine doğrudan gidildiğinde
+    customer-detail-header HİÇ render edilmiyor, bunun yerine empty-state
+    ile "Müşteri bilgileri yüklenemedi." mesajı gösteriliyor (muhtemelen
+    backend 404 dönüyor). BULGU: Kullanıcının dokümanındaki "Status=
+    Passive olarak güncellenir, ekranda görüntülenmeye devam eder"
+    varsayımı GERÇEKLEŞMİYOR - müşteri "Passive ama görünür" değil,
+    "tamamen erişilemez" hale geliyor.
+  - KULLANICI KARARI (AskUserQuestion): "Gerçek davranışa uyarla"
+    seçildi - bu bir bug olarak değil, dokümandaki teyitsiz bir tahminin
+    gerçek davranışla düzeltilmesi olarak ele alındı. 005-02/05/06
+    senaryoları gerçek davranışı (yönlendirme + arama sonucunda yokluk +
+    "Müşteri bilgileri yüklenemedi." mesajı) doğrulayacak şekilde
+    yazıldı, hepsi PASS.
+- MODAL DAVRANIŞI DOĞRULAMASI (005-07): native "is_enabled()" kontrolü
+  YETERSİZ kalıyordu (buton teknik olarak enabled görünüyor) - gerçek
+  kanıt için dialog açıkken arka plandaki bir nav elementine GERÇEKTEN
+  TIKLAMAYI DENEYİP ElementClickInterceptedException'ın fırlatıldığı
+  canlı doğrulandı (attempt_background_interaction() metodu bu şekilde
+  tasarlandı).
+- TC-EACRML-005-03 (aktif ürünü olan müşteri silinemez) - ATLANDI:
+  Güvenli test müşterisi hazırlamak için seed müşteri 1'in (Ahmet,
+  gerçekten birden fazla aktif ürünü var) KULLANILMASI riskli bulundu
+  (eğer sistem BEKLENMEDİK şekilde silmeye izin verirse - bug ihtimali -
+  paylaşılan seed müşteri geri dönüşü olmayan şekilde zarar görürdü).
+  Bunun yerine YENİ bir disposable müşteriye GERÇEK bir satış akışıyla
+  (Müşteri Hesabı sekmesi -> Yeni Hesap Oluştur -> Yeni Satış Başlat ->
+  Teklif Seçimi -> Ürün Konfigürasyonu -> Sipariş Gönder) ürün eklenmeye
+  çalışıldı - akış KISMEN keşfedildi (Teklif Seçimi ekranı, sepete
+  ekleme, tamamlayıcı ürün ekleme testid'leri: sales-tab-catalog,
+  sales-offer-row, sales-add-to-cart, sales-cart-relation-add vb. hepsi
+  doğrulandı) AMA Ürün Konfigürasyonu ekranının kendi zorunlu alanları
+  netleştirilemeden (form input yapısı beklenenden farklı çıktı,
+  sales-cart-relation-add gibi bazı testid'ler İKİ FARKLI amaçla
+  (tamamlayıcı+önerilen ürün) paylaşılıyor gibi görünüyor, kırılgan)
+  kullanıcıya danışıldı. KULLANICI KARARI: 005-03'ü şimdilik atla - bu,
+  ayrı ve kapsamlı bir UC-014/Teklif Seçimi + UC-015/Ürün Konfigürasyonu
+  + UC-016/Sipariş Tamamlama page object'i gerektiren, delete_customer.
+  feature'ın kapsamının ötesinde bir görev olarak not düşüldü.
+- IMPLEMENTASYON:
+  - features/delete_customer.feature: 6 senaryo (Background + 005-01,
+    005-04, 005-07, 005-02, 005-05, 005-06).
+  - pages/delete_customer_page.py: DeleteCustomerPage sınıfı - click_delete()
+    (onay penceresinin açılmasını bekler), is_confirm_dialog_displayed_
+    with_buttons(), get_confirm_dialog_message(), click_confirm_no()/
+    click_confirm_yes(), is_dialog_open(), attempt_background_interaction()
+    (ElementClickInterceptedException tabanlı GERÇEK modal doğrulaması),
+    get_customer_id(), wait_for_redirect_to_search(), reload_detail_url(),
+    get_empty_state_message().
+  - steps/test_delete_customer_steps.py: Background
+    ("kullanıcı silinecek müşterinin Müşteri Bilgisi ekranındadır")
+    CreateCustomerPage akışını TAMAMEN yeniden kullanarak (DRY) her
+    seferinde fresh bir müşteri oluşturuyor. "kullanıcı Delete ikonuna
+    tıklar" step'i login.feature'daki stacking-decorator deseniyle
+    ("onay penceresi görüntülenmektedir" Given'ı için de) yeniden
+    kullanıldı.
+- DOĞRULAMA: 3 senaryo (005-01/04/07) önce izole doğrulandı (3 passed),
+  sonra 3 yeni senaryo (005-02/05/06) izole doğrulandı (3 passed), son
+  olarak TÜM 6 senaryo birlikte çalıştırıldı: 6 passed, 0 failed (78s -
+  her senaryo kendi fresh müşterisini oluşturduğu için önceki
+  feature'lara göre nispeten yavaş, ama tamamen izole ve tekrarlanabilir).
+- SONUÇ: Proje artık 5 feature dosyasına sahip (login, search_customers,
+  create_customer, update_customer, delete_customer). Tüm 5 dosyadaki
+  bilinen/beklenen hatalar (admin-123, TC-EACRML-004-03) dışında hiçbir
+  sorun yok. Excel bu turda güncellenmedi.
+
+[2026-08-09] TÜM PROJE DOSYALARI STATİK YAPI/TEST BAĞIMSIZLIĞI DENETİMİ
+- İSTEK: Kullanıcı "tüm proje dosyalarını incele, dinamik ve testlerin
+  bağımsız olmasını istiyorum, statik hiçbir yapıya yer vermek
+  istemiyorum" dedi, bulguları sırayla sunmamı istedi.
+- BULGULAR (kullanıcıya sırayla sunuldu, henüz hiçbiri UYGULANMADI -
+  onay bekleniyor):
+  1) [GÜNCELLENMELİ] steps/test_update_customer_steps.py:
+     DISPOSABLE_TEST_CUSTOMER_ID = "80" sabit kodlanmış.
+     delete_customer.feature'daki "her senaryo kendi taze disposable
+     müşterisini create_customer akışıyla oluşturur" deseni burada da
+     uygulanmalı - şu an ÇALIŞIYOR (hiçbir şey customer 80'i silmiyor)
+     ama kırılgan bir varsayıma dayanıyor, tam bağımsızlık için
+     düzeltilmeli.
+  2) [GÜNCELLENMELİ] steps/test_update_customer_steps.py:
+     OTHER_CUSTOMERS_NATIONALITY_ID = "10000000146" (seed müşteri 1'in
+     TC no'su) - Nationality ID çakışma testinde (TC-EACRML-004-03/03b)
+     kullanılıyor, seed veriye bağımlı. İKİ disposable müşteri
+     oluşturup birinin TC'sini diğerine yazmaya çalışarak
+     dinamikleştirilebilir.
+  3) [GÜNCELLENMEMELİ - kasıtlı/gerekli statik] features/
+     search_customers.feature: Aranan değerler (İbrahim, Ahmet, Yılmaz,
+     "10000000146", Customer ID "1"/"5" vb.) seed veriye bağımlı ama
+     KAÇINILMAZ şekilde öyle olmalı - arama testinin doğası "bilinen
+     veriyi bulma" olduğu için sabit/bilinen referans veri gerektirir,
+     rastgele Faker verisiyle arama testi YAZILAMAZ (sonuç hiç
+     bulunamaz).
+  4) [GÜNCELLENMEMELİ - kasıtlı/gerekli statik] login.feature ve tüm
+     steps dosyalarındaki "demo"/"Password123": test ortamının sabit
+     giriş hesabı, doğası gereği sabit olmalı.
+  5) [GÜNCELLENEBİLİR - küçük iyileştirme] pages/search_customers_page.py
+     fill_all_search_fields_via_tab_navigation(): "Ahmet"/"Yilmaz"
+     hardcoded - SADECE Clear butonu testinde "alanlar dolu mu" kontrolü
+     için kullanılıyor, gerçek veri olması ŞART DEĞİL, Faker ile rastgele
+     değere çevrilebilir.
+  6) [GÜNCELLENMEMELİ - kasıtlı/gerekli statik] pages/create_customer_page.py
+     enter_invalid_mobile_phone_format(): "05551234" (8 haneli mobile
+     phone bug'ını test eden BİLİNÇLİ sabit değer) - test ettiği şey TAM
+     OLARAK "8 hane" durumu, rastgele olursa testin anlamı kaybolur.
+  7) [GÜNCELLENMEMELİ - kasıtlı/gerekli statik] pages/create_customer_page.py
+     GENDER_VALUE_MAP ({"Erkek": "male", "Kadın": "female"}): bu bir test
+     verisi DEĞİL, uygulamanın kendi sabit domain değerlerinin eşlemesi.
+  8) [SORUN YOK] conftest.py driver fixture: zaten function-scoped
+     (varsayılan pytest davranışı), her test kendi bağımsız driver'ını
+     alıyor - paylaşılan state/sıra bağımlılığı riski yok.
+- GENEL PRENSİP (gelecekte benzer denetimlerde kullanılmalı): "statik
+  değer" başlı başına kötü değildir - AYIRT EDİCİ soru şu: bu değer
+  TESTİN KENDİSİNİN anlamının/amacının bir PARÇASI mı (o zaman sabit
+  kalmalı - ör. arama testinde aranan bilinen isim, bug testinde tam
+  8 hane, sabit test hesabı) yoksa sadece KEYFİ bir dolgu veri mi
+  (o zaman Faker ile dinamikleştirilmeli)? Ayrıca PAYLAŞILAN/SEED
+  veriye (özellikle mutasyon riski taşıyan akışlarda - customer ID,
+  Nationality ID gibi) bağımlılık, test tekrarlanabilirliği ve
+  izolasyonu için ayrı bir risk kategorisi - bunlar mümkün olduğunca
+  her testin kendi taze verisini üretmesiyle ORTADAN KALDIRILMALI.
+- SONUÇ: Kullanıcıdan 1 ve 2 numaralı gerçek düzeltmelerin uygulanıp
+  uygulanmayacağına dair onay bekleniyor, henüz kod değişikliği
+  YAPILMADI (yalnızca denetim ve rapor).
+
+[2026-08-09] STATİK YAPI DENETİMİ UYGULANDI: update_customer.feature Artık Tamamen Dinamik ve 11/11 PASS (Bilinen Hata Kalmadı)
+- BAĞLAM: Önceki denetimde tespit edilen bulgu #1'i (DISPOSABLE_TEST_
+  CUSTOMER_ID = "80" sabit kodlanmış) kullanıcı IDE'de ilgili log
+  satırını seçip onaylayarak uygulanmasını istedi.
+- UYGULANAN DEĞİŞİKLİK: steps/test_update_customer_steps.py'nin
+  Background Given step'i ("kullanıcı bir müşterinin Müşteri Bilgisi
+  ekranındadır") artık sabit customer 80'i ARAMAK yerine,
+  delete_customer.feature'daki desenle TUTARLI olarak, HER SENARYO İÇİN
+  HER ÇALIŞTIRMADA fresh bir disposable müşteri create_customer
+  akışıyla oluşturuyor. CustomersPage/arama importu artık kullanılmıyor,
+  kaldırıldı.
+- BEKLENMEYEN AMA ÖNEMLİ BULGU: Dinamik müşteriyle test edilince
+  TC-EACRML-004-03 (Nationality ID çakışması) FARKLI bir hatayla FAIL
+  vermeye başladı (AssertionError yerine TimeoutException - click_save()
+  Kaydet butonunun tıklanabilir olmasını beklerken timeout). Canlı
+  izleme scripti (t=0'dan t=5.7s'ye kadar Save butonu durumu izlendi)
+  ile GERÇEK KÖK NEDEN bulundu: uygulama TEKRAR DEĞİŞMİŞ - Nationality
+  ID çakışması artık Kaydet'e basılıp backend'e istek gönderilmesini
+  BEKLEMEDEN, ANLIK (client-side) bir doğrulama hatasıyla
+  ("info-identityNumber-error" testid, mesaj: "Bu kimlik numarasıyla
+  kayıtlı bir müşteri zaten var.") yakalanıyor VE Kaydet butonu bu
+  yüzden HİÇ enabled olmuyor (backend'e istek gitmiyor). Bu, önceki
+  turda "kasıtlı kırmızı" olarak belgelenen generic-mesaj bug'ının
+  ARTIK DÜZELTİLDİĞİNİ, hatta DAHA İYİ bir UX ile (anlık, önleyici
+  doğrulama) yeniden implement edildiğini gösteriyor. Uygulama HÂLÂ
+  aktif geliştiriliyor (Gender bug'ının düzelmesiyle AYNI desen).
+- SENARYO GÜNCELLEMESİ: TC-EACRML-004-03 gerçek davranışa göre yeniden
+  yazıldı ("...Anlık Doğrulama Hatası Gösterilip Kaydet Butonunun Pasif
+  Kalması"). ÖNEMLİ KULLANICI GERİ BİLDİRİMİ: İlk yazdığım versiyon
+  hatayı yine literal Türkçe metinle assert ediyordu - kullanıcı
+  "doğrulama hatasını dilden bağımsız çöz, mesaj İngilizce de olabilir"
+  diye düzeltti. Bu, session boyunca zaten uygulanan "dil-dirençli
+  test" prensibinin (literal metin yerine yapısal/element-görünürlük
+  kontrolü) BU YENİ senaryoya da tutarlı şekilde uygulanması gerektiğini
+  hatırlattı - is_identity_number_error_displayed() SADECE elementin
+  görünürlüğünü kontrol edecek şekilde yazıldı, hiçbir dile özel metin
+  karşılaştırılmıyor.
+  - pages/update_customer_page.py: IDENTITY_NUMBER_ERROR locator'ı ve
+    is_identity_number_error_displayed() (dil-bağımsız, yapısal) eklendi.
+    update_identity_number() artık TAB (blur) tetikliyor.
+  - steps/test_update_customer_steps.py: "sistem güncellemeyi reddedip
+    ... mesajını gösterir" + "kullanıcı formda kalır" step'leri
+    kaldırılıp yerine "Nationality ID alanında bir doğrulama hatası
+    anlık olarak görüntülenir" (dil-bağımsız) eklendi; "Kaydet butonu
+    pasif kalır" (zaten var olan step) DRY şekilde yeniden kullanıldı.
+- DOĞRULAMA: Önce 004-03 izole test edildi (PASSED), sonra TÜM 11
+  senaryo (her biri artık kendi fresh disposable müşterisini
+  oluşturuyor) birlikte çalıştırıldı: 11 passed, 0 failed (164s).
+  update_customer.feature artık HİÇBİR bilinen/beklenen hata İÇERMİYOR
+  - hem statik-yapı denetiminin #1 bulgusu düzeltildi HEM DE app'in
+  kendi Nationality ID doğrulama davranışındaki iyileşme yakalandı.
+- KALAN AÇIK MADDE (statik yapı denetiminden, henüz uygulanmadı):
+  Bulgu #5 (search_customers_page.py fill_all_search_fields_via_tab_
+  navigation() içindeki "Ahmet"/"Yilmaz" hardcoded değerleri, Faker'a
+  çevrilebilir küçük bir iyileştirme) - kullanıcı onayı bekleniyor.
+
+[2026-08-09] STATİK YAPI DENETİMİ BULGU #2 UYGULANDI: OTHER_CUSTOMERS_NATIONALITY_ID Artık Tamamen Dinamik - Seed Veriye Sıfır Bağımlılık
+- İSTEK: Kullanıcı IDE'de ilgili log satırını (OTHER_CUSTOMERS_
+  NATIONALITY_ID = "10000000146", seed müşteri 1'in TC no'su) seçip
+  "bir senior QA test engineer gibi çöz, TR/EN dilden bağımsız bir
+  çözüm olsun, çözüm dinamik olsun" dedi.
+- UYGULANAN ÇÖZÜM: TC-EACRML-004-03'ün "Nationality ID, başka bir
+  müşteriye zaten kayıtlı bir değerle değiştirilir" step'i artık
+  sabit/seed bir TC numarası KULLANMIYOR. Bunun yerine:
+  1) Test müşterisinin (A) mevcut detay URL'si saklanıyor
+     (UpdateCustomerPage.get_detail_url()).
+  2) İKİNCİ, tamamen bağımsız bir disposable müşteri (B) create_customer
+     akışıyla oluşturuluyor, B'nin GERÇEK/GÜNCEL TC numarası (Faker ile
+     üretilip backend'e KAYDEDİLMİŞ) yakalanıyor.
+  3) A'nın düzenleme formuna geri dönülüp (UpdateCustomerPage.
+     reopen_edit_form()) Nationality ID alanına B'nin TC numarası
+     yazılıyor - bu, backend'de GERÇEKTEN "zaten kayıtlı" bir değer
+     olduğu için çakışma güvenilir şekilde tetikleniyor.
+  - Mimari not: Orchestration (CreateCustomerPage + UpdateCustomerPage'in
+    birlikte kullanımı) bilinçli olarak STEP katmanında tutuldu, page
+    object'lerin birbirini import edip çağırmaması için (page object'ler
+    yalnızca kendi ekranlarından sorumlu kalmalı).
+  - pages/update_customer_page.py: get_detail_url() ve reopen_edit_form()
+    (yeniden navigasyon + Edit'e tekrar tıklama) eklendi.
+  - steps/test_update_customer_steps.py: OTHER_CUSTOMERS_NATIONALITY_ID
+    sabiti tamamen kaldırıldı.
+- YAN KEŞİF VE DÜZELTME: Tam suite çalıştırmasında (004-03 artık ekstra
+  bir müşteri oluşturduğu için toplam süre ~170s'ye çıktı) TC-EACRML-
+  004-04 (İptal butonuna tıklanınca view mode'a dönüş) BEKLENMEDİK
+  şekilde FAIL verdi - izole çalıştırıldığında PASSED olduğu
+  doğrulanınca bunun benim değişikliğimden kaynaklı KALICI bir
+  regresyon DEĞİL, tam suite altındaki sistem yükünden kaynaklanan
+  flakiness olduğu netleşti. Yine de kök nedeni (Cancel sonrası view
+  mode'a geçişin ASENKRON olabileceği, anlık kontrolün yarış durumuna
+  açık olduğu) ele alarak "form kapanır, görüntüleme moduna dönülür"
+  step'i WebDriverWait ile güçlendirildi (sabit sleep değil, "view mode
+  olana kadar" bekleme) - bu turdaki diğer benzer düzeltmelerle
+  (submit/next/save enabled kontrolleri) tutarlı bir yaklaşım.
+- DOĞRULAMA: 004-03 izole test edildi (PASSED), 004-04 izole test edildi
+  (PASSED, flakiness doğrulandı), düzeltme sonrası TÜM 11 senaryo
+  birlikte çalıştırıldı: 11 passed, 0 failed (172.69s).
+- SONUÇ: update_customer.feature artık HEM statik yapı denetiminin her
+  iki gerçek bulgusu (customer ID + Nationality ID) da düzeltilmiş HEM
+  DE hiçbir bilinen/beklenen hata İÇERMİYOR, tamamen dinamik ve bağımsız.
+  Kalan tek statik yapı denetimi maddesi: bulgu #5 (search_customers_
+  page.py'deki "Ahmet"/"Yilmaz" hardcoded değerleri, küçük bir
+  iyileştirme) - kullanıcı onayı hâlâ bekleniyor.
+
+[2026-08-09] delete_customer.feature - Onay Penceresi Mesajları Dil-Bağımsız (Yapısal) Kontrole Çevrildi
+- İSTEK: Kullanıcı IDE'de TC-EACRML-005-01'in "Bu müşteriyi silmek
+  istediğinize emin misiniz?" literal metin karşılaştırmasını seçip
+  "dilden bağımsız hale getir ve dinamik bir yapı olmasını sağla" dedi.
+- UYGULANAN DEĞİŞİKLİK: pages/delete_customer_page.py:
+  is_confirm_dialog_displayed_with_buttons() artık mesaj metnini
+  KARŞILAŞTIRMIYOR - yalnızca mesaj elementinin görünür VE boş olmadığını
+  (gerçekten bir mesaj içerdiğini) yapısal olarak doğruluyor. Artık
+  kullanılmayan get_confirm_dialog_message() kaldırıldı. features/
+  delete_customer.feature'da TC-EACRML-005-01'in Then step'i "onay
+  penceresi, silme mesajı ve Evet/Hayır butonlarıyla birlikte
+  görüntülenir" olarak güncellendi (literal mesaj metni kaldırıldı).
+- TUTARLILIK İÇİN AYRICA GÜNCELLENDİ (kullanıcı sadece 005-01'i seçmişti
+  ama AYNI dosyada AYNI desendeki bir başka örnek olduğu için proaktif
+  olarak da düzeltildi): TC-EACRML-005-06'daki "Müşteri bilgileri
+  yüklenemedi." literal mesaj karşılaştırması da aynı şekilde
+  is_empty_state_message_displayed() (yapısal, dil-bağımsız) ile
+  değiştirildi, get_empty_state_message() yerine.
+- DOĞRULAMA: Her iki senaryo izole test edildi (PASSED), sonra TÜM
+  delete_customer.feature suite'i (6 senaryo) birlikte çalıştırıldı:
+  6 passed, 0 failed (91.92s).
+- SONUÇ: delete_customer.feature artık login.feature'daki SQL Injection
+  senaryosu ve update_customer.feature'daki Nationality ID hatası
+  gibi, projedeki genel "dil-dirençli test" prensibiyle TAM TUTARLI -
+  hiçbir Then step'i artık TR/EN'e özel literal metin karşılaştırması
+  yapmıyor, hepsi yapısal (element görünürlüğü/doluluğu) kontrol ediyor.
+
+[2026-08-09] "SAHTE-PASS" (YANLIŞ POZİTİF) DENETİMİ: search_customers_page.py'de İKİ Gerçek Kusur Bulundu ve Düzeltildi
+- İSTEK: Kullanıcı "testlerde, passed olan fakat görevini yerine
+  getirmeyen test var mıdır" diye sordu, tüm uygulamayı Allure ile
+  görmek istedi.
+- METODOLOJİ: Tüm page object'lerdeki (login, search, create, update,
+  delete) doğrulama metodları sistematik olarak "boş liste/boş küme/boş
+  string durumunda YANLIŞLIKLA True dönebilir mi" sorusuyla tarandı.
+  Login/create/update/delete page object'lerinde ciddi bir risk
+  bulunmadı (mevcut kontroller zaten `bool(...)` guard'larıyla veya
+  Faker kaynaklı-hiçbir-zaman-boş-olmayan değerlerle korunuyordu).
+  search_customers_page.py'de İKİ GERÇEK kusur bulundu:
+  1) is_customer_id_column_sorted_ascending(): `ids == sorted(ids)` -
+     eğer sonuç listesi BOŞSA `[] == sorted([])` HER ZAMAN True döner.
+     "Sonuç Listesinin Varsayılan Olarak Customer ID'ye Göre Artan
+     Sıralanması" senaryosunda HİÇBİR ön satır-sayısı kontrolü olmadan
+     kullanılıyordu - eğer sayfa henüz yüklenmeden kontrol edilseydi
+     (find_elements için wait YOKTU), test HİÇBİR ŞEYİ doğrulamadan
+     sessizce PASS olabilirdi. DÜZELTME: metoda satırların yüklenmesini
+     bekleyen bir wait + `assert ids, "..."` (boş liste explicit
+     reddediliyor) eklendi.
+  2) verify_next_page_records_are_new(): "kayıt kaybolmaz/tekrarlanmaz"
+     kontrolünün wait.until'i `set(...) != self._first_page_ids` ile
+     "sayfa değişti mi" bekliyordu - Angular'ın sayfa geçişinde DOM'u
+     ANLIK olarak boşaltması (yeni *ngFor render'ı öncesi) nedeniyle,
+     BOŞ küme de "eski kümeden farklı" sayıldığından wait.until yeni
+     sayfa GERÇEKTEN yüklenmeden ERKEN tatmin oluyordu. BU KUSUR CANLI
+     OLARAK YAKALANDI: "15 Kaydı Aşan Sonuç Kümesinde İlk Sayfada 15
+     Kayıt ve Sayfalama" senaryosu, bugün onlarca yeni disposable
+     müşteri oluşturulup toplam kayıt/sayfa sayısı değiştiği için bu
+     kusuru YÜZEYE ÇIKARDI (daha önce hep tesadüfen zamanlaması
+     tutuyordu). DÜZELTME: wait koşulu artık hem "boş değil" hem
+     "eskisinden farklı" birlikte bekliyor (walrus operator ile
+     `(ids := {...}) and ids != self._first_page_ids`).
+- ÖNEMLİ GÖZLEM: Bu iki kusur da "geçmişte hep PASS olmuş" testlerdi -
+  yani KULLANICININ SORUSU tam isabetliydi: PASS olan ama görevini TAM
+  olarak GÜVENİLİR şekilde yerine getirmeyen (şans eseri/zamanlama
+  sayesinde doğru sonuç veren, ama YAPISAL OLARAK yanlış-pozitif riski
+  taşıyan) testler gerçekten VARDI.
+- DOĞRULAMA: Her iki düzeltme izole test edildi (PASSED), sonra TÜM
+  search_customers.feature suite'i (28 senaryo) baştan sona çalıştırıldı:
+  28 passed, 0 failed (257s).
+- DEVAM EDİYOR: Tüm 5 feature dosyası (login, search_customers,
+  create_customer, update_customer, delete_customer - toplam ~81 test)
+  birlikte çalıştırılıp Allure raporu üretilecek.
+
+[2026-08-09] TÜM UYGULAMA (5 FEATURE) BİRLİKTE ÇALIŞTIRILDI, ALLURE RAPORU ÜRETİLDİ - Sistem-Kaynaklı Flakiness Paterni Netleşti
+- İSTEK: Kullanıcı, sahte-PASS denetiminden sonra tüm uygulamayı Allure
+  raporuyla görmek istedi (tüm 5 feature Allure raporunda olacak şekilde).
+- TAM SUITE 3 KEZ ÇALIŞTIRILDI (her biri ~81 test, 14-15 dakika):
+  1. deneme: 79 passed, 2 failed (admin-123 bilinen + "Her İki Alan Dolu
+     Olduğunda Login Butonunun Aktif Hale Gelmesi" YENİ).
+  2. YENİ hatayı düzeltmek için login_button_enabled step'i WebDriverWait
+     ile güçlendirildi (diğer "X aktif hale gelir" düzeltmeleriyle
+     tutarlı), izole + login.feature tam suite ile doğrulandı (21/22 PASS).
+  2. deneme (düzeltme sonrası): 78 passed, 3 failed (admin-123 bilinen +
+     "Adres Kartında Delete Seçeneğiyle Adresin Silinmesi" + "Giriş
+     İşlemi Sırasında Login Butonunun Pasifleşmesi" - İKİSİ DE YENİ ve
+     BİRBİRİNDEN VE 1. denemedeki hatadan TAMAMEN FARKLI testler).
+- ÖNEMLİ SONUÇ/DESEN TESPİTİ: Her iki yeni "başarısız" test de İZOLE
+  çalıştırıldığında PASSED verdi. HER ÇALIŞTIRMADA FARKLI, RASTGELE 1-2
+  testin etkilenmesi (belirli bir tekrarlayan test DEĞİL), bunun
+  BELİRLİ bir kod kusuru olmadığını, TAM SUITE'İ 14-15 dakika boyunca
+  ARALIKSIZ çalıştırmanın (art arda ~81 kez Chrome/ChromeDriver process'i
+  açılıp kapanması) SİSTEM KAYNAKLARINI (CPU/RAM) zorlayıp GENEL bir
+  timing-hassasiyeti yarattığını gösteriyor. Bu, "her yeni flaky testi
+  sonsuza kadar kovalamak" yerine KULLANICIYA AÇIKÇA bildirilmesi
+  gereken bir ortam/kaynak kısıtı olarak değerlendirildi - 3. bir
+  düzeltme turuna girmek yerine (ki YİNE farklı rastgele testler
+  etkilenebilirdi), 2. deneme'nin sonuçlarından Allure raporu üretilip
+  DÜRÜSTÇE (gerçek 78/3 durumuyla) sunuldu.
+- ALLURE RAPORU: reports/allure-report altında üretildi, `allure open`
+  ile http://127.0.0.1:54874 adresinde canlı olarak açıldı. Tüm 5
+  feature'ın (login, search_customers, create_customer, update_customer,
+  delete_customer) sonuçları raporda mevcut (--clean-alluredir sayesinde
+  sadece bu SON çalıştırmanın verileri).
+- GENEL SONUÇ (bu oturumun tamamı için): Projede artık BİLİNEN sadece
+  1 kasıtlı kırmızı kalıyor (admin-123 lockout mesajı, gerçek uygulama
+  bug'ı). search_customers_page.py'deki 2 gerçek "sahte-PASS" kusuru
+  (is_customer_id_column_sorted_ascending, verify_next_page_records_
+  are_new) düzeltildi. update_customer.feature tamamen dinamik/bağımsız
+  hale getirildi (sabit customer ID + sabit Nationality ID kaldırıldı).
+  delete_customer.feature tamamen dil-bağımsız hale getirildi. create_
+  customer.feature'daki Gender/Birth Date/City widget migration'ı
+  düzeltildi (14/14 PASS). TÜM SUITE'İN UZUN/ARALIKSIZ çalıştırılması
+  durumunda GÖZLEMLENEN sistem-kaynaklı flakiness paterni, GELECEKTEKİ
+  oturumlar için ÖNEMLİ bir bağlam: tek tek feature dosyaları
+  çalıştırıldığında testler SAĞLAM, sadece TAM SUITE'İN (~15dk)
+  aralıksız koşumunda ARA SIRA rastgele 1-2 test etkilenebilir - bu
+  durumda İZOLE tekrar çalıştırmak GERÇEK durumu netleştirir.
+
+[2026-08-09] ÖNEMLİ İŞ AKIŞI KURALI: İzole Pytest Doğrulama Çalıştırmaları Allure Sonuçlarını SİLİYOR
+- SORUN: pytest.ini'deki addopts `--alluredir=reports/allure-results
+  --clean-alluredir` içeriyor - bu, HER pytest çağrısında (varsayılan
+  addopts kullanan) sonuç klasörünü BAŞTAN SIFIRLIYOR. Bugün tam suite'i
+  (81 test) çalıştırdıktan SONRA, flaky testleri doğrulamak için birkaç
+  KÜÇÜK izole test çalıştırdım (`pytest steps/test_login_steps.py -k
+  pasifle`, `pytest steps/test_create_customer_steps.py -k statusupdate`)
+  - HER BİRİ kendi --clean-alluredir'i tetikleyip reports/allure-results
+  klasörünü SIFIRLAYIP SADECE KENDİ 1 TESTİNİN sonucuyla doldurdu. Allure
+  raporunu SONRADAN ürettiğimde, raporda TAM SUITE'İN 81 testi DEĞİL,
+  SADECE en son çalıştırdığım 1 izole test görünüyordu. Kullanıcı bunu
+  fark edip düzeltilmesini istedi.
+- KALICI KURAL (bundan sonra HER ZAMAN uygulanmalı): Eğer bir TAM
+  SUITE çalıştırmasının Allure sonuçlarını KORUMAK istiyorsam, o
+  çalıştırmadan SONRA yapılacak HERHANGİ bir izole/debug pytest
+  komutuna (flaky test doğrulama, tek senaryo kontrolü vb.) VARSAYILAN
+  addopts'u KULLANDIRMAMALIYIM - bunun yerine `--alluredir` parametresini
+  AÇIKÇA scratchpad altında AYRI bir klasöre (ör.
+  --alluredir=<scratchpad>/debug-allure-results) yönlendirmeliyim, ya
+  da `-p no:cacheprovider` gibi diğer override'larla BİRLİKTE
+  `--alluredir=<gecici-yol>` eklemeliyim. Böylece izole doğrulamalar
+  reports/allure-results'a HİÇ dokunmaz, TAM SUITE'İN sonuçları
+  bozulmadan kalır. Rapor üretimi/açılması İŞİN GERÇEKTEN EN SON
+  ADIMI olmalı - araya HİÇBİR başka pytest çağrısı (varsayılan
+  addopts'la) girmemeli.

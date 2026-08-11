@@ -1,21 +1,13 @@
+from urllib.parse import urlparse
+
 from pytest_bdd import given, parsers, scenarios, then, when
 from selenium.webdriver.support.ui import WebDriverWait
 
+from pages.create_customer_page import CreateCustomerPage
 from pages.login_page import LoginPage
-from pages.search_customers_page import CustomersPage
 from pages.update_customer_page import UpdateCustomerPage
 
 scenarios("update_customer.feature")
-
-# Ortak proje kuralı: paylaşılan seed müşterileri (1-3) asla mutasyona
-# uğratılmaz; her Edit/Delete/CRUD keşfi tek bir disposable test
-# müşterisi (ID 80) üzerinde yapılır.
-DISPOSABLE_TEST_CUSTOMER_ID = "80"
-
-# Seed müşteri 1'in gerçek, sistemde zaten kayıtlı Nationality ID'si -
-# çakışma (conflict) senaryosunu güvenilir şekilde tetiklemek için
-# kullanılıyor (yalnızca okunuyor, seed müşteriye hiçbir mutasyon yapılmaz).
-OTHER_CUSTOMERS_NATIONALITY_ID = "10000000146"
 
 
 @given("kullanıcı bir müşterinin Müşteri Bilgisi ekranındadır", target_fixture="update_customer_page")
@@ -25,12 +17,25 @@ def user_on_customer_info_screen(driver, base_url):
     login_page.login("demo", "Password123")
     WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
 
-    customers_page = CustomersPage(driver)
-    customers_page.enter_customer_id(DISPOSABLE_TEST_CUSTOMER_ID)
-    customers_page.submit_search()
-    customers_page.wait_for_matching_customer_id()
-    customers_page.click_customer_row_link()
-    customers_page.verify_navigated_to_customer_detail_same_tab(DISPOSABLE_TEST_CUSTOMER_ID)
+    # Sabit bir müşteri ID'sine (paylaşılan, kalıcı bir disposable kayıt)
+    # bağımlı olmak yerine - delete_customer.feature'da uygulanan desenle
+    # tutarlı olarak - her senaryo için HER SEFERİNDE fresh bir disposable
+    # müşteri create_customer akışıyla oluşturuluyor. Bu, testleri
+    # birbirinden ve önceki çalıştırmalarda oluşabilecek herhangi bir
+    # yan etkiden tamamen bağımsız kılıyor.
+    origin = urlparse(driver.current_url)
+    driver.get(f"{origin.scheme}://{origin.netloc}/customers/new")
+    create_page = CreateCustomerPage(driver)
+    create_page.fill_demographic_step_with_faker(gender="Erkek")
+    create_page.click_demographic_next()
+    create_page.wait_for_address_step()
+    create_page.add_address_with_faker()
+    create_page.wait_for_address_saved()
+    create_page.click_address_next()
+    create_page.wait_for_contact_step()
+    create_page.fill_contact_step_with_faker()
+    create_page.click_submit()
+    create_page.wait_for_navigated_to_customer_info()
 
     return UpdateCustomerPage(driver)
 
@@ -72,20 +77,39 @@ def save_button_disabled(update_customer_page):
     assert update_customer_page.is_save_button_disabled()
 
 
-@when("Nationality ID, başka bir müşteriye zaten kayıtlı bir değerle değiştirilip kaydedilir")
-def user_sets_conflicting_nationality_id_and_saves(update_customer_page):
-    update_customer_page.update_identity_number(OTHER_CUSTOMERS_NATIONALITY_ID)
-    update_customer_page.click_save()
+@when("Nationality ID, başka bir müşteriye zaten kayıtlı bir değerle değiştirilir")
+def user_sets_conflicting_nationality_id(update_customer_page, driver):
+    # Seed veriye (paylaşılan müşteri 1'in TC no'su) bağımlı kalmak
+    # yerine, testin KENDİSİ ikinci, bağımsız bir disposable müşteri (B)
+    # oluşturup GERÇEK/GÜNCEL bir "zaten kayıtlı" TC numarası elde
+    # ediyor - bu, çakışma senaryosunu seed veri değişse/silinse dahi
+    # her çalıştırmada güvenilir şekilde tekrarlanabilir kılıyor.
+    # Orchestration (iki page object'in birlikte kullanımı) bilinçli
+    # olarak burada, step katmanında tutuluyor - page object'lerin
+    # birbirini çağırmaması için.
+    original_url = update_customer_page.get_detail_url()
+
+    origin = urlparse(driver.current_url)
+    driver.get(f"{origin.scheme}://{origin.netloc}/customers/new")
+    create_page = CreateCustomerPage(driver)
+    _, _, _, other_identity_number = create_page.fill_demographic_step_with_faker(gender="Kadın")
+    create_page.click_demographic_next()
+    create_page.wait_for_address_step()
+    create_page.add_address_with_faker()
+    create_page.wait_for_address_saved()
+    create_page.click_address_next()
+    create_page.wait_for_contact_step()
+    create_page.fill_contact_step_with_faker()
+    create_page.click_submit()
+    create_page.wait_for_navigated_to_customer_info()
+
+    update_customer_page.reopen_edit_form(original_url)
+    update_customer_page.update_identity_number(other_identity_number)
 
 
-@then(parsers.parse('sistem güncellemeyi reddedip "{expected_message}" mesajını gösterir'))
-def update_rejected_with_message(update_customer_page, expected_message):
-    assert update_customer_page.get_save_error_text() == expected_message
-
-
-@then("kullanıcı formda kalır")
-def user_stays_in_form(update_customer_page):
-    assert not update_customer_page.is_read_only_view_mode()
+@then("Nationality ID alanında bir doğrulama hatası anlık olarak görüntülenir")
+def identity_number_error_displayed(update_customer_page):
+    assert update_customer_page.is_identity_number_error_displayed()
 
 
 @when("kullanıcı Nationality ID alanını değiştirmeden Kaydet'e tıklar")
@@ -95,8 +119,13 @@ def user_saves_without_changing_nationality_id(update_customer_page):
 
 @then('"already exist" hatası tetiklenmez, güncelleme normal şekilde tamamlanır')
 def no_duplicate_nationality_error(update_customer_page):
+    # Kaydet sonrası gerçek bir PUT isteği + görüntüleme moduna dönüş
+    # asenkron - implicitly_wait kaldırıldıktan sonra kontrol çok daha
+    # hızlı çalıştığından, API yanıtı gelmeden anlık okuma yapmak
+    # yarış durumuna yol açıyordu. Görüntüleme moduna dönülene kadar
+    # bekleniyor.
+    update_customer_page.wait.until(lambda d: update_customer_page.is_read_only_view_mode())
     assert not update_customer_page.is_save_error_displayed()
-    assert update_customer_page.is_read_only_view_mode()
 
 
 @when("kullanıcı Ad alanını değiştirip İptal butonuna tıklar")
@@ -107,7 +136,11 @@ def user_changes_first_name_then_cancels(update_customer_page):
 
 @then("form kapanır, görüntüleme moduna dönülür")
 def form_returns_to_view_mode(update_customer_page):
-    assert update_customer_page.is_read_only_view_mode()
+    # İptal sonrası görüntüleme moduna dönüş Angular'ın DOM'u güncellemesi
+    # için kısa bir change-detection cycle'ı gerektirebiliyor (diğer
+    # benzer asenkron durumlarla tutarlı olarak anlık kontrol yerine
+    # bekleniyor).
+    update_customer_page.wait.until(lambda d: update_customer_page.is_read_only_view_mode())
 
 
 @then("ekran güncelleme öncesi orijinal değerleri gösterir")

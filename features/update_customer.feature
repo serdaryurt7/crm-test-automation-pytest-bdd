@@ -21,11 +21,11 @@ Feature: Müşteri Bilgilerini Güncelleme
       | Ad    |
       | Soyad |
 
-  Scenario: TC-EACRML-004-03 - Nationality ID Başka Bir Müşteriye Ait Olduğunda Güncellemenin Reddedilmesi
+  Scenario: TC-EACRML-004-03 - Nationality ID Başka Bir Müşteriye Ait Olduğunda Anlık Doğrulama Hatası Gösterilip Kaydet Butonunun Pasif Kalması
     Given kullanıcı düzenleme formundadır
-    When Nationality ID, başka bir müşteriye zaten kayıtlı bir değerle değiştirilip kaydedilir
-    Then sistem güncellemeyi reddedip "A customer is already exist with this Nationality ID." mesajını gösterir
-    And kullanıcı formda kalır
+    When Nationality ID, başka bir müşteriye zaten kayıtlı bir değerle değiştirilir
+    Then Nationality ID alanında bir doğrulama hatası anlık olarak görüntülenir
+    And Kaydet butonu pasif kalır
 
   Scenario: TC-EACRML-004-03b - Mevcut Nationality ID Değiştirilmeden Kaydetmenin Hata Tetiklememesi
     Given kullanıcı düzenleme formundadır

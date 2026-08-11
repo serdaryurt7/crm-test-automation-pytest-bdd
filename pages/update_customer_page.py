@@ -1,11 +1,9 @@
-from datetime import datetime
-
 from faker import Faker
 from selenium.common.exceptions import NoAlertPresentException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import Select, WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait
 
 fake = Faker("tr_TR")
 
@@ -30,6 +28,7 @@ class UpdateCustomerPage:
     BIRTH_DATE_INPUT = (By.CSS_SELECTOR, "[data-testid='customer-info-birth-date']")
     GENDER_SELECT = (By.CSS_SELECTOR, "[data-testid='customer-info-gender']")
     IDENTITY_NUMBER_INPUT = (By.CSS_SELECTOR, "[data-testid='customer-info-identity-number']")
+    IDENTITY_NUMBER_ERROR = (By.CSS_SELECTOR, "[data-testid='info-identityNumber-error']")
 
     REQUIRED_FIELD_LOCATORS = {
         "Ad": FIRST_NAME_INPUT,
@@ -47,6 +46,19 @@ class UpdateCustomerPage:
         self._pre_edit_gender = None
         self._pre_edit_identity_number = None
         self._new_first_name = None
+
+    def get_detail_url(self):
+        return self._detail_url
+
+    def reopen_edit_form(self, detail_url):
+        # driver.get ile baska bir sayfaya (ör. yeni bir musteri
+        # olusturma akisina) gidip geri donuldukten sonra duzenleme
+        # formunu tekrar acmak icin kullaniliyor - navigasyon, devam eden
+        # herhangi bir edit-mode durumunu sifirladigindan Edit'e tekrar
+        # tiklanmasi gerekiyor.
+        self.driver.get(detail_url)
+        self.wait.until(EC.visibility_of_element_located(self.DETAIL_HEADER))
+        self.click_edit()
 
     def get_displayed_first_name(self):
         return self.driver.find_element(*self.VALUE_FIRST_NAME).text
@@ -67,16 +79,17 @@ class UpdateCustomerPage:
         self.wait.until(EC.visibility_of_element_located(self.FIRST_NAME_INPUT))
 
     def is_form_prefilled_correctly(self):
-        # Goruntuleme modu tarihi "dd/mm/yyyy" formatinda, <input type="date">
-        # ise "yyyy-mm-dd" (ISO) formatinda tutuyor - karsilastirmadan once
-        # ayni formata cevriliyor.
-        expected_iso_birth_date = datetime.strptime(self._pre_edit_birth_date, "%d/%m/%Y").strftime("%Y-%m-%d")
+        # Gender ve Birth Date bu oturum sirasinda native <select>/<input
+        # type="date">'den role="combobox" olan <button> ve gg/aa/yyyy
+        # formatinda maskeli <input type="text">'e gecirildi (canli
+        # dogrulandi) - goruntuleme modu ile ayni format/metni kullaniyorlar,
+        # ayrica bir format donusumune gerek yok.
         actual_birth_date = self.driver.find_element(*self.BIRTH_DATE_INPUT).get_attribute("value")
-        selected_gender_text = Select(self.driver.find_element(*self.GENDER_SELECT)).first_selected_option.text.strip()
+        selected_gender_text = self.driver.find_element(*self.GENDER_SELECT).text.strip()
         return (
             self.driver.find_element(*self.FIRST_NAME_INPUT).get_attribute("value") == self._pre_edit_first_name
             and self.driver.find_element(*self.LAST_NAME_INPUT).get_attribute("value") == self._pre_edit_last_name
-            and actual_birth_date == expected_iso_birth_date
+            and actual_birth_date == self._pre_edit_birth_date
             and selected_gender_text == self._pre_edit_gender
             and self.driver.find_element(*self.IDENTITY_NUMBER_INPUT).get_attribute("value") == self._pre_edit_identity_number
         )
@@ -115,6 +128,19 @@ class UpdateCustomerPage:
         field.send_keys(Keys.CONTROL + "a")
         field.send_keys(Keys.BACK_SPACE)
         field.send_keys(new_value)
+        field.send_keys(Keys.TAB)
+
+    def is_identity_number_error_displayed(self):
+        # Canli dogrulandi: Nationality ID baska bir musteriye ait bir
+        # degerle degistirildiginde sistem ANLIK (client-side) bir
+        # benzersizlik hatasi gosteriyor ve Kaydet butonu bu yuzden hic
+        # enabled olmuyor - Save'e basmaya/backend'e istek gitmesine hic
+        # gerek kalmiyor. Mesaj metni dile gore degisebilecegi icin
+        # (TR/EN) yapisal olarak (hata elementinin gorunurlugu) kontrol
+        # ediliyor, literal metin karsilastirilmiyor.
+        self.wait.until(EC.visibility_of_element_located(self.IDENTITY_NUMBER_ERROR))
+        return self.driver.find_element(*self.IDENTITY_NUMBER_ERROR).is_displayed()
+        field.send_keys(Keys.TAB)
 
     def get_save_error_text(self):
         return self.wait.until(EC.visibility_of_element_located(self.SAVE_ERROR)).text

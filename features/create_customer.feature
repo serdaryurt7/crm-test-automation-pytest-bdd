@@ -68,7 +68,7 @@ Feature: Müşteri Oluşturma
     Then Create butonu aktif hale gelir
 
   Scenario: Birth Date ve Gender Alan Davranışlarının Doğrulanması
-    Then "Birth Date" alanı bir date-picker açacak şekilde native tarih giriş alanıdır
+    Then "Birth Date" alanı gün/ay/yıl formatında maskeli bir metin giriş alanıdır
     When kullanıcı "Birth Date" alanına bir tarih girer
     Then seçilen tarih "Birth Date" alanına doğru şekilde yazılır
     And "Gender" alanı ekrana ilk geldiğinde varsayılan olarak "Erkek" seçili görüntülenir
