@@ -4,6 +4,8 @@ from faker import Faker
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
     ElementNotInteractableException,
+    NoSuchElementException,
+    StaleElementReferenceException,
     TimeoutException,
 )
 from selenium.webdriver.common.by import By
@@ -71,8 +73,23 @@ class BillingAccountCreatePage:
         # Mesaj metni dile göre değişebileceğinden yapısal olarak (mesaj
         # elementinin görünür VE dolu olması) kontrol ediliyor - projedeki
         # diğer empty-state kontrolleriyle (search/delete_customer) tutarlı.
-        errors = self.driver.find_elements(*self.EMPTY_STATE_MESSAGE)
-        return bool(errors) and errors[0].is_displayed() and bool(errors[0].text.strip())
+        # Bir silme işleminin HEMEN ardından çağrıldığında Angular'ın
+        # DOM'u yeniden render etmesiyle (boş durum bileşeninin
+        # oluşturulmasıyla) yarışabiliyor (canlı doğrulandı - ara sıra
+        # StaleElementReferenceException) - bu yüzden anlık tek bir
+        # find_elements yerine, stale durumunu KENDİ İÇİNDE tolere edip
+        # yeniden deneyen dinamik bir WebDriverWait predicate'i kullanılıyor.
+        def _message_visible_and_filled(driver):
+            try:
+                message = driver.find_element(*self.EMPTY_STATE_MESSAGE)
+                return message.is_displayed() and bool(message.text.strip())
+            except (NoSuchElementException, StaleElementReferenceException):
+                return False
+
+        try:
+            return self.wait.until(_message_visible_and_filled)
+        except TimeoutException:
+            return False
 
     def click_create_account(self):
         self.wait.until(EC.element_to_be_clickable(self.CREATE_BUTTON)).click()
@@ -95,13 +112,17 @@ class BillingAccountCreatePage:
         field.send_keys(Keys.BACK_SPACE)
         field.send_keys(value)
 
+    def _generate_account_name_and_description(self):
+        name = f"Hesap {fake.word().title()} {fake.random_number(digits=4, fix_len=True)}"
+        description = fake.sentence(nb_words=4)
+        return name, description
+
     def fill_required_fields_with_faker(self):
         # Adres alanı dışarıda bırakılıyor - müşterinin en az 1 kayıtlı
         # adresi her zaman olduğundan (create_customer akışının garantisi)
         # ve formda İLK adres varsayılan olarak zaten seçili geldiğinden
         # (canlı doğrulandı) ayrıca bir seçim yapmaya gerek yok.
-        name = f"Hesap {fake.word().title()} {fake.random_number(digits=4, fix_len=True)}"
-        description = fake.sentence(nb_words=4)
+        name, description = self._generate_account_name_and_description()
         self.fill_account_name(name)
         self.fill_account_description(description)
         return name, description
@@ -183,22 +204,43 @@ class BillingAccountCreatePage:
         self.wait.until(EC.element_to_be_clickable(self.CANCEL_BUTTON)).click()
 
     def create_account_and_wait(self, name=None, description=None):
+        # name/description BAĞIMSIZ olarak varsayılana düşer - önceki
+        # sürümde "ikisinden biri eksikse İKİSİNİ DE Faker'a ez" gibi
+        # yanlış bir "or" mantığı vardı: sadece name verilip description
+        # verilmediğinde name'in KENDİSİ de rastgele bir değerle
+        # değiştiriliyordu (canlı çalıştırmada AttributeError/satır
+        # bulunamama olarak ortaya çıktı - gerçek bir bug, sahte-PASS
+        # değil ama sessizce yanlış veri üretiyordu).
         self.click_create_account()
-        used_name, used_description = name, description
-        if used_name is None or used_description is None:
-            used_name, used_description = self.fill_required_fields_with_faker()
-        else:
-            self.fill_account_name(used_name)
-            self.fill_account_description(used_description)
+        faker_name, faker_description = self._generate_account_name_and_description()
+        used_name = name if name is not None else faker_name
+        used_description = description if description is not None else faker_description
+        self.fill_account_name(used_name)
+        self.fill_account_description(used_description)
         before_count = self.get_account_row_count()
         self.click_save()
         self.wait.until(lambda d: len(d.find_elements(*self.ACCOUNT_ROW)) > before_count)
         return used_name
 
     def find_account_row_by_name(self, name):
-        for row in self.driver.find_elements(*self.ACCOUNT_ROW):
-            if row.find_element(*self.ACCOUNT_ROW_NAME).text == name:
-                return row
+        # Bir silme/oluşturma işleminin HEMEN ardından çağrıldığında,
+        # Angular listeyi yeniden render ederken (satır ekleniyor/
+        # kaldırılıyorken) find_elements ile toplanan satır referansları
+        # ARALARINDA stale kalabiliyor (canlı doğrulandı - ara sıra
+        # StaleElementReferenceException). Bu, "satır bulunamadı" (None)
+        # durumundan YAPISAL OLARAK FARKLI bir durum - bu yüzden sadece
+        # GEÇİCİ stale hatasında taramanın TAMAMI (sabit, küçük bir üst
+        # sınırla) yeniden deneniyor; "gerçekten bulunamadı" sonucu
+        # (None) beklenmeden hemen döndürülüyor (absence testleri için
+        # yanlışlıkla sonsuz beklemeye girmemek adına).
+        for _ in range(5):
+            try:
+                for row in self.driver.find_elements(*self.ACCOUNT_ROW):
+                    if row.find_element(*self.ACCOUNT_ROW_NAME).text == name:
+                        return row
+                return None
+            except StaleElementReferenceException:
+                continue
         return None
 
     def is_account_listed_with_generated_number_and_status(self, name):

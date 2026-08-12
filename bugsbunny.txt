@@ -1,0 +1,88 @@
+FAILED TEST LİSTESİ - Tam Suite Çalıştırması
+Tarih: 2026-08-12
+Sonuç: 152 passed, 14 failed, 166 toplam test, süre 46dk 38sn
+Allure raporu: reports/allure-report/index.html
+
+===========================================================
+KATEGORİ 1: BİLİNEN / KASITLI KIRMIZI (7 test)
+Bu testler önceden belgelenmiş gerçek uygulama bug'larını veya
+"manuel test case'in varsaydığı ama uygulamada var olmayan bir
+kısıtlamayı" kasıtlı olarak yakalıyor. Kod hatası DEĞİL.
+===========================================================
+
+1. steps/test_billing_account_update_steps.py
+   test_tceacrml01102__hesap_adı_ve_adres_güncellenip_kaydedildiğinde_listedeki_satırın_yeni_bilgilerle_yenilenmesi
+   Sebep: TC-011-02 - Hesap düzenleme formunda hizmet adresi değişikliği
+   kaydedilmiyor (Hesap Adı değişikliği kaydediliyor, adres değişikliği
+   sessizce kayboluyor). Gerçek, canlı doğrulanmış bug.
+
+2. steps/test_billing_account_update_steps.py
+   test_tceacrml01104__hesabın_bağlı_olduğu_hizmet_adresinin_güncelleme_formunda_değiştirilebilmesi
+   Sebep: TC-011-04 - Aynı kök nedenin (adres kalıcılık bug'ı) ikinci
+   tezahürü.
+
+3. steps/test_billing_account_delete_steps.py
+   test_tceacrml01203__aktif_ürün/aboneliği_bulunan_bir_fatura_hesabının_silinmeye_çalışılması_durumunda_sistemin_uyarı_vermesi
+   Sebep: TC-012-03 - Ortam/zaman kaynaklı tutarsızlık: aktif ürünü olan
+   hesabın silinmeyi engellemesi gereken davranış, bu demo ortamında
+   zaman içinde tutarsız hale geldi (daha önce 2 ayrı ham script ile
+   çalıştığı kanıtlanmıştı).
+
+4. steps/test_offer_selection_steps.py
+   test_tceacrml01413__sepette_zaten_bulunan_bir_ürünün_tekrar_eklenmeye_çalışılmasının_engellenmesi
+   Sebep: TC-014-13 - Sepete mükerrer ekleme ŞU AN engellenmiyor (aynı
+   ürün 2. kez eklenince ayrı satır oluşuyor, toplam 2 katına çıkıyor).
+   Kasıtlı kırmızı test - gerçek/canlı doğrulanmış bug.
+
+5. steps/test_login_steps.py
+   test_tanımsız_kullanıcı_için_5_başarısız_denemeden_sonra_hesap_kilitlendi_mesajı_gösterilmemelidir[admin-123]
+   Sebep: 2026-08-03 tarihinde belgelenmiş bug - tanımsız/var olmayan bir
+   kullanıcı adıyla 5 hatalı denemeden sonra sistem yanlışlıkla "hesabınız
+   15 dakika kilitlendi" mesajı gösteriyor (olmayan bir hesap kilitlenemez).
+
+6. steps/test_address_update_steps.py
+   test_tceacrml00605b__adres_açıklaması_alanının_tanımlı_bir_üst_karakter_sınırını_aşan_girişi_reddetmesi
+   Sebep: Manuel test case adres açıklaması alanı için bir üst karakter
+   sınırı olduğunu varsayıyor - gerçek uygulamada HİÇBİR karakter sınırı
+   yok (3000+ karakter sorunsuz kabul ediliyor). Kasıtlı kırmızı.
+
+7. steps/test_billing_account_create_steps.py
+   test_tceacrml01009b__hesap_adı_alanının_tanımlı_bir_üst_karakter_sınırını_aşan_girişi_reddetmesi
+   Sebep: Aynı desen - Hesap Adı alanı için de gerçekte bir üst karakter
+   sınırı yok (2000 karakter sorunsuz kabul ediliyor). Kasıtlı kırmızı.
+
+===========================================================
+KATEGORİ 2: YENİ / TRİAJ GEREKİYOR (7 test)
+Bu testler daha önce (bu proje içinde ayrı ayrı doğrulandığında) PASS
+veriyordu. Bu tam suite koşusunda FAILED çıktı - henüz izole olarak
+yeniden doğrulanmadı. Gerçek regresyon mu, yoksa 166 testlik uzun koşu
+sırasında oluşan veri/ortam kaynaklı flake mi olduğu NETLEŞTİRİLMELİ.
+===========================================================
+
+8. steps/test_address_add_steps.py
+   test_tceacrml00705__adres_ekleme_formu_iptal_edilirse_hiçbir_adresin_kaydedilmemesi
+
+9. steps/test_address_update_steps.py
+   test_tceacrml00604__güncelleme_formunda_iptal_edilince_adres_kartının_değişmeden_kalması
+
+10. steps/test_search_customers_steps.py
+    test_last_name_alanında_baş/son_boşlukların_otomatik_temizlenmesi_autotrim
+
+11. steps/test_search_customers_steps.py
+    test_last_name_aramasının_büyük/küçük_harf_duyarsız_olması[YILMAZ]
+
+12. steps/test_search_customers_steps.py
+    test_last_name_aramasının_büyük/küçük_harf_duyarsız_olması[yılmaz]
+
+13. steps/test_search_customers_steps.py
+    test_last_name_aramasının_büyük/küçük_harf_duyarsız_olması[YİLMAZ]
+
+14. steps/test_search_customers_steps.py
+    test_first_name_ve_last_name_birlikte_girildiğinde_and_mantığıyla_değerlendirilmesi
+
+Not (search_customers kümesi, 10-13-14): Bu 4 test daha önce gerçek
+uygulamada doğrulanmış ve sabit sonuç sayıları (ör. "Yılmaz" araması ->
+2 sonuç) bekliyor. 166 testlik koşu boyunca Faker (tr_TR) ile çok sayıda
+yeni müşteri oluşturulduğundan, "Yılmaz" gibi yaygın bir soyadın tekrar
+üretilip beklenen sabit sonuç sayısını bozmuş olması makul bir hipotez -
+ama izole tekrar çalıştırma ile doğrulanmadan kesinleştirilmedi.

@@ -64,6 +64,12 @@ class CreateCustomerPage:
     # --- Oluşturma sonrası: Customer Info ekranı ---
     CUSTOMER_DETAIL_HEADER = (By.CSS_SELECTOR, "[data-testid='customer-detail-header']")
     CUSTOMER_INFO_GENDER = (By.CSS_SELECTOR, "[data-testid='customer-info-value-gender']")
+    CUSTOMER_INFO_SECOND_NAME = (By.CSS_SELECTOR, "[data-testid='customer-info-value-second-name']")
+    CUSTOMER_INFO_FATHER_NAME = (By.CSS_SELECTOR, "[data-testid='customer-info-value-father-name']")
+    CUSTOMER_INFO_MOTHER_NAME = (By.CSS_SELECTOR, "[data-testid='customer-info-value-mother-name']")
+    CONTACT_INFO_HOME_PHONE = (By.CSS_SELECTOR, "[data-testid='customer-contact-value-home-phone']")
+    CONTACT_INFO_FAX = (By.CSS_SELECTOR, "[data-testid='customer-contact-value-fax']")
+    TAB_CONTACT = (By.CSS_SELECTOR, "[data-testid='tab-contact']")
 
     # Gender ve Adres Şehir alanları uygulama tarafında native <select>'ten
     # role="combobox" olan <button> + açılır <ul role="listbox"> ikilisine
@@ -214,6 +220,42 @@ class CreateCustomerPage:
         identity_number = fake.numerify("###########")
         self.fill_demographic_step(first_name, last_name, birth_date, gender, identity_number)
         return first_name, last_name, birth_date, identity_number
+
+    def fill_demographic_step_with_all_fields_via_faker(self, gender):
+        # fill_demographic_step_with_faker()'dan farklı olarak, OPSİYONEL
+        # alanları (Second Name, Father Name, Mother Name) da dolduruyor -
+        # "tüm alanlar (opsiyonel dahil) doldurulduğunda müşterinin
+        # eksiksiz oluşturulması" senaryosu için. Diğer tüm senaryoların
+        # kullandığı minimal disposable-customer akışı (fill_demographic_
+        # step_with_faker) BİLEREK değiştirilmedi - bu ayrı bir metot,
+        # sadece bu senaryoya özel.
+        first_name = fake.first_name_female() if gender == "Kadın" else fake.first_name_male()
+        second_name = fake.first_name()
+        last_name = fake.last_name()
+        birth_date = fake.date_of_birth(minimum_age=18, maximum_age=90).strftime("%d/%m/%Y")
+        father_name = fake.first_name_male()
+        mother_name = fake.first_name_female()
+        identity_number = fake.numerify("###########")
+
+        self.enter_first_name(first_name)
+        self.enter_second_name(second_name)
+        self.enter_last_name(last_name)
+        self.enter_birth_date(birth_date)
+        self.select_gender(gender)
+        self.enter_father_name(father_name)
+        self.enter_mother_name(mother_name)
+        self.enter_identity_number(identity_number)
+
+        return {
+            "first_name": first_name,
+            "second_name": second_name,
+            "last_name": last_name,
+            "birth_date": birth_date,
+            "gender": gender,
+            "father_name": father_name,
+            "mother_name": mother_name,
+            "identity_number": identity_number,
+        }
 
     def fill_demographic_step_without_last_name(self):
         # Last Name (Soyad) BİLEREK boş bırakılıyor - "Next butonu pasif
@@ -571,6 +613,28 @@ class CreateCustomerPage:
         self._last_mobile_phone = mobile_phone
         return email, mobile_phone
 
+    def fill_contact_step_with_all_fields_via_faker(self):
+        # fill_contact_step_with_faker()'dan farklı olarak, OPSİYONEL
+        # alanları (Home Phone, Fax) da dolduruyor - "tüm alanlar
+        # (opsiyonel dahil) doldurulduğunda müşterinin eksiksiz
+        # oluşturulması" senaryosuna özel.
+        email = f"{fake.user_name()}.{fake.random_number(digits=6, fix_len=True)}@example.com"
+        mobile_phone = fake.numerify("5#########")
+        home_phone = fake.numerify("2#########")
+        fax = fake.numerify("2#########")
+        self.enter_email(email)
+        self.enter_mobile_phone(mobile_phone)
+        self.enter_home_phone(home_phone)
+        self.enter_fax(fax)
+        self._last_email = email
+        self._last_mobile_phone = mobile_phone
+        return {
+            "email": email,
+            "mobile_phone": mobile_phone,
+            "home_phone": home_phone,
+            "fax": fax,
+        }
+
     def click_contact_back(self):
         self.wait.until(EC.element_to_be_clickable(self.CONTACT_BACK)).click()
 
@@ -589,3 +653,38 @@ class CreateCustomerPage:
 
     def get_customer_info_gender_value(self):
         return self.driver.find_element(*self.CUSTOMER_INFO_GENDER).text.strip()
+
+    def get_customer_info_second_name_value(self):
+        return self.driver.find_element(*self.CUSTOMER_INFO_SECOND_NAME).text.strip()
+
+    def get_customer_info_father_name_value(self):
+        return self.driver.find_element(*self.CUSTOMER_INFO_FATHER_NAME).text.strip()
+
+    def get_customer_info_mother_name_value(self):
+        return self.driver.find_element(*self.CUSTOMER_INFO_MOTHER_NAME).text.strip()
+
+    def get_contact_home_phone_value(self):
+        return self.driver.find_element(*self.CONTACT_INFO_HOME_PHONE).text.strip()
+
+    def get_contact_fax_value(self):
+        return self.driver.find_element(*self.CONTACT_INFO_FAX).text.strip()
+
+    def are_optional_fields_displayed_correctly(self, demographic_data, contact_data):
+        # Telefon değerleri görüntüleme modunda sabit "+90" öneki ile
+        # gösterildiğinden (canlı doğrulandı) tam eşitlik yerine substring
+        # kontrolü yapılıyor - address_update/contact_update'teki AYNI
+        # desen. Home Phone/Fax "İletişim Kanalı" sekmesinde olduğundan
+        # (varsayılan/iniş sekmesi "Müşteri Bilgisi") önce o sekmeye
+        # geçiliyor.
+        demographic_ok = (
+            self.get_customer_info_second_name_value() == demographic_data["second_name"]
+            and self.get_customer_info_father_name_value() == demographic_data["father_name"]
+            and self.get_customer_info_mother_name_value() == demographic_data["mother_name"]
+        )
+        self.wait.until(EC.element_to_be_clickable(self.TAB_CONTACT)).click()
+        self.wait.until(EC.visibility_of_element_located(self.CONTACT_INFO_HOME_PHONE))
+        contact_ok = (
+            contact_data["home_phone"] in self.get_contact_home_phone_value()
+            and contact_data["fax"] in self.get_contact_fax_value()
+        )
+        return demographic_ok and contact_ok

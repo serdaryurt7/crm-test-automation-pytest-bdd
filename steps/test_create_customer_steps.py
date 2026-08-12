@@ -1,3 +1,4 @@
+from faker import Faker
 from pytest_bdd import given, parsers, scenarios, then, when
 from selenium.webdriver.support.ui import WebDriverWait
 
@@ -6,6 +7,8 @@ from pages.login_page import LoginPage
 from pages.search_customers_page import CustomersPage as SearchCustomersPage
 
 scenarios("create_customer.feature")
+
+fake = Faker("tr_TR")
 
 
 @given("kullanıcı müşteri oluşturma sayfasındadır", target_fixture="create_customer_page")
@@ -376,3 +379,25 @@ def invalid_mobile_warning_displayed(create_customer_page):
 @when('kullanıcı "Mobile Phone" alanını geçerli formatta bir değerle günceller')
 def fix_mobile(create_customer_page):
     create_customer_page.fill_mobile_phone_with_faker()
+
+
+@when(
+    "kullanıcı Demografik Bilgi adımındaki zorunlu ve opsiyonel tüm alanları rastgele Faker değerleriyle doldurur",
+    target_fixture="demographic_data",
+)
+def fill_demographic_step_with_all_fields(create_customer_page):
+    gender = "Kadın" if fake.boolean() else "Erkek"
+    return create_customer_page.fill_demographic_step_with_all_fields_via_faker(gender=gender)
+
+
+@when(
+    "kullanıcı İletişim Kanalı adımındaki zorunlu ve opsiyonel tüm alanları rastgele Faker değerleriyle doldurur",
+    target_fixture="contact_data",
+)
+def fill_contact_step_with_all_fields(create_customer_page):
+    return create_customer_page.fill_contact_step_with_all_fields_via_faker()
+
+
+@then("opsiyonel alanlar dahil girilen tüm bilgiler eksiksiz ve doğru şekilde görüntülenir")
+def all_fields_including_optional_displayed_correctly(create_customer_page, demographic_data, contact_data):
+    assert create_customer_page.are_optional_fields_displayed_correctly(demographic_data, contact_data)

@@ -114,4 +114,15 @@ Feature: Müşteri Oluşturma
     And Create butonu pasif durumdadır
     When kullanıcı "Mobile Phone" alanını geçerli formatta bir değerle günceller
     Then Create butonu aktif hale gelir
+
+  Scenario: Zorunlu ve Opsiyonel Tüm Alanlar Doldurulduğunda Müşterinin Eksiksiz Oluşturulması
+    When kullanıcı Demografik Bilgi adımındaki zorunlu ve opsiyonel tüm alanları rastgele Faker değerleriyle doldurur
+    And kullanıcı Demografik Bilgi adımında İleri butonuna tıklar
+    And kullanıcı Adres alanlarını rastgele Faker değerlerle doldurup Save butonuna tıklar
+    And kullanıcı Adres adımında İleri butonuna tıklar
+    And kullanıcı İletişim Kanalı adımındaki zorunlu ve opsiyonel tüm alanları rastgele Faker değerleriyle doldurur
+    Then Create butonu aktif hale gelir
+    When kullanıcı Create butonuna tıklar
+    Then sistem müşteri kaydını oluşturur ve "Customer Info" ekranını açar
+    And opsiyonel alanlar dahil girilen tüm bilgiler eksiksiz ve doğru şekilde görüntülenir
   

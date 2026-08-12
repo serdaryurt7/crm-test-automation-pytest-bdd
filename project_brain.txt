@@ -4049,3 +4049,405 @@ Her yeni değişiklikte bu dosyanın sonuna yeni bir madde eklenir.
   steps/test_login_steps.py: login_button_disabled (senkron, kalıcı
   durum) ve login_button_disabled_during_submit (MutationObserver
   sonucu, geçici durum) olarak iki ayrı fonksiyona bölündü.
+
+[2026-08-09] Yeni özellik: Fatura Hesabı Güncelleme (UC-EACRML 011) - billing_account_update.feature/page/steps
+- Kullanıcı UC-EACRML 011 için 6 manuel test case'lik (TC-EACRML-011-01..06)
+  Gherkin spesifikasyonu verdi. Kod yazmadan ÖNCE Edit formu canlı
+  incelendi ve 2 açık nokta (011-03 buton davranışı, 011-05 toggle'ın
+  var olup olmadığı) netleştirildi.
+- CANLI KEŞİF: "Fatura Hesabını Düzenle" formu, "Fatura Hesabı Oluştur"
+  formuyla BİREBİR AYNI bileşeni kullanıyor (aynı account-name/
+  -description/address-card* locator'ları, tek fark Kaydet buton metni ve
+  alanların önceden dolu gelmesi) - gerçek bir "is-a" ilişkisi olduğundan
+  pages/billing_account_update_page.py -> BillingAccountUpdatePage
+  (BillingAccountCreatePage) olarak türetildi (AddressUpdatePage/
+  AddressAddPage zincirindeki AYNI mantık, inheritance bu projede
+  dördüncü kez aynı gerekçeyle kullanıldı).
+- TC-EACRML-011-03 BULGUSU: Edit formunda Hesap Adı boşaltılınca Kaydet
+  DOĞRU şekilde disabled kalıyor (UC-010'daki AYNI "buton pasif kalır"
+  sonucu, "buton aktif kalıp post-click hata" alternatifi DEĞİL) - UC-004/
+  UC-010/UC-011'de tekrarlayan "sistemik belirsizlik" artık bu üçüncü
+  ekranda da AYNI yönde (disabled) çözüldü. Ayrıca Adres alanı (Şehir
+  combobox/adres-radio gibi) yapısal olarak "boşaltılamıyor" (her zaman
+  bir seçim zorunlu) - bu yüzden TC-011-03 SADECE Hesap Adı boşluğunu
+  test edecek şekilde daraltıldı (010-03/006-03'teki AYNI adaptasyon
+  deseni).
+- TC-EACRML-011-05 BULGUSU (kullanıcıya soruldu, "Skip et, kasıtlı
+  belgele" seçildi): account-row-toggle butonunun outerHTML'i incelendi -
+  aria-label="Hesap ürünlerini gizle: ..." ve aria-controls="account-
+  products-..." çıktı. Bu buton Aktif/Pasif DURUM DEĞİŞTİRME kontrolü
+  DEĞİL, satırın "Hesap Ürünleri" alt-tablosunu aç/kapat eden bir
+  expand/collapse chevron'u - "Aktif" metni ayrı, komşu bir rozet
+  elementinden geliyordu, ilk bakışta (UC-010 keşfinde) yanlışlıkla
+  toggle'ın kendi metni sanılmıştı. Dokümanın kendi şüphesi ("böyle
+  bağımsız bir toggle kontrolü hiç geçmiyor... teyit edilmeli") TAM
+  OLARAK doğrulandı - bağımsız bir durum-değiştirme UI kontrolü
+  UYGULAMADA YOK. TC-011-05 feature dosyasına HİÇ EKLENMEDİ (TC-EACRML-
+  008-05'in ilk turdaki skip deseniyle aynı).
+- ÖNEMLİ, ÖNCELİKLİ BULGU (TC-011-02 ve TC-011-04'ü etkiliyor): Hesap
+  düzenleme formunda HİZMET ADRESİ değişikliği (Hesap Adı'nın aksine)
+  HİÇ KALICI OLMUYOR - bu iki AYRI yöntemle kanıtlandı: (1) formu
+  kaydettikten hemen sonra TEKRAR açınca eski adres hâlâ seçili
+  görünüyor, (2) sayfa TAMAMEN yenilendikten (hard reload) SONRA da
+  AYNI sonuç - yani istemci-tarafı cache/state sorunu değil, backend
+  GERÇEKTEN adres değişikliğini kaydetmiyor. EN ÖNEMLİSİ: Kaydet butonu
+  bu sırada normal şekilde enabled kalıyor, tıklandığında form HATASIZ
+  kapanıyor - kullanıcıya HİÇBİR hata/uyarı gösterilmeden SESSİZCE veri
+  kaybı yaşanıyor (Hesap Adı değişikliği ise doğru kaydediliyor - yani
+  kısmi/tutarsız bir kaydetme davranışı). Kullanıcıya AskUserQuestion ile
+  soruldu, "Kasıtlı kırmızı bırak, bulguyu belgele" seçildi (öncelikli
+  olarak dev ekibine/PO'ya iletilmesi önerilen bir sessiz-veri-kaybı
+  bug'ı olarak not edildi). TC-EACRML-011-04 (tamamen adres
+  odaklı) VE TC-EACRML-011-02'nin (Hesap Adı VE Adres birlikte)
+  assertion'ları GERÇEK/beklenen davranışı (adres değişikliği kalıcı
+  olmalı) iddia etmeye devam ediyor, bug düzelene kadar KASITLI olarak
+  FAILED kalacak - testler YANLIŞ yazılmadı, tam tersine gerçek bug'ı
+  doğru şekilde yakalıyor.
+- TASARIM NOTU (küçük bir teknik düzeltme, implementasyon sırasında
+  kendi kendine yakalandı): BillingAccountUpdatePage'in ilk taslağında
+  "beklenen yeni adres" ve "formu tekrar açınca okunan adres" AYNI
+  değişkende (_new_selected_address_title) tutulmuştu -
+  verify_new_address_persisted() reopen için click_edit_on_row()'u
+  TEKRAR çağırdığında bu değişken KENDİ KENDİNE ezilip karşılaştırma
+  anlamsız hale geliyordu (her zaman True dönerdi - sahte-PASS riski).
+  DÜZELTME: "beklenen" değer ayrı bir isimde (_expected_service_
+  address_title) saklanacak şekilde ayrıştırıldı, click_edit_on_row()
+  bu değişkene hiç dokunmuyor - karşılaştırma artık GERÇEKTEN anlamlı
+  (bu sayede yukarıdaki gerçek bug da doğru şekilde YAKALANABİLDİ, aksi
+  halde bu tasarım hatası bug'ı MASKELEYİP testi yanlışlıkla PASS
+  ettirebilirdi).
+  Yeni bir 2. adres, address_add.feature'daki (KALICILIĞI KANITLANMIŞ)
+  Adres sekmesi akışıyla eklendi - hesap formunun KENDİ "Yeni Adres
+  Ekle" alt-formu DEĞİL (UC-008-05 kurulumunda daha önce keşfedilen
+  "hesap formunun eklediği adres kalıcı değil" bulgusuyla tutarlı bir
+  önlem).
+- TAM SUITE SONUCU (python -m pytest steps/test_billing_account_update_
+  steps.py -v, 5 test - 011-05 hariç tutulduğu için 6 değil 5): 3 passed
+  (011-01, 011-03, 011-06), 2 failed (011-02, 011-04 - yukarıda açıklanan
+  GERÇEK/kanıtlanmış adres-kalıcılık bug'ı, kasıtlı). Her senaryo ÖNCE
+  izole, sonra TAM SUITE'te doğrulandı - regresyon yok, sonuçlar
+  tutarlı.
+
+[2026-08-09] Yeni özellik: Fatura Hesabını Silme (UC-EACRML 012) - billing_account_delete.feature/page/steps + sales_setup_page.py (minimal, test edilmeyen kurulum yardımcısı)
+- Kullanıcı UC-EACRML 012 için 6 manuel test case'lik (TC-EACRML-012-01..06)
+  Gherkin spesifikasyonu verdi. TC-012-03'ün önkoşulu ("hesaba bağlı en
+  az bir aktif ürün") UC-012'nin kapsamı dışında, kendi başına büyük bir
+  özellik alanı olan "Yeni Satış" akışını (Katalog -> Teklif Seçimi ->
+  Ürün Konfigürasyonu -> Sipariş Gönder) gerektirdiğinden, kullanıcıya
+  soruldu - "Satış akışını minimal olarak kur, sadece setup için" seçildi.
+- pages/sales_setup_page.py oluşturuldu: BİLEREK TEST EDİLMEYEN, sadece
+  TC-012-03'ün önkoşulunu karşılamak için minimal bir satın alma akışı
+  (purchase_simple_offer). "Mobil 20GB Paket" bilerek seçildi - donanım
+  gerektiren tekliflerin (ör. Fiber Modem zorunlu kılan "Ev İnterneti
+  Fiber 100") aksine ek karmaşıklık gerektirmiyor. Akış canlı olarak
+  UÇTAN UCA doğrulandı (offer seç->sepete ekle->İleri->config alanlarını
+  doldur->İleri->Gönder->"Sipariş oluşturuldu!").
+- CANLI KEŞİF BULGULARI:
+  - Hesap silme, adres silmenin AKSİNE, GERÇEK bir onay penceresi
+    kullanıyor (confirm-dialog, Adres/Müşteri silmedeki AYNI testid
+    deseni) - "Bu fatura hesabını silmek istediğinize emin misiniz?"
+  - "Aktif hesaplar" için ayrı bir filtre/"Tüm Hesaplar" görünümü YOK
+    (TC-012-04'ün notunda sorulan soru netleşti) - tek bir liste var,
+    silinen (Passive) hesaplar bu listeden TAMAMEN kayboluyor, geri
+    görüntülemenin hiçbir yolu UI'da mevcut değil.
+  - "Status alanı 'Passive' olarak güncellenir" iddiası UI'dan DOĞRUDAN
+    doğrulanamıyor - Passive hesapları gösterecek bir görünüm hiç
+    olmadığından, "soft delete" ile "gerçek/fiziksel silme" UI
+    seviyesinde AYIRT EDİLEMİYOR (ikisi de "satır kayboluyor, reload
+    sonrası da geri gelmiyor" şeklinde gözlemleniyor) - UC-007/008/010'da
+    kurulan "gözlemlenebilir sonucu doğrula" prensibiyle tutarlı olarak
+    Then adımı "aktif hesap listesinden kalıcı olarak kaldırılır" şeklinde
+    yazıldı, iç mekanizma iddiası (Passive vs fiziksel silme) İDDİA
+    EDİLMEDİ.
+  - Müşterinin TEK hesabı silinebiliyor (UC-008'deki "son adres
+    silinemez" kısıtlamasının AKSİNE) - TC-012-05'in "DOĞRULANMALI"
+    notu netleşti, gerçek davranış manuel case'in varsayımıyla BİREBİR
+    örtüştü, boş durum ("Bu müşteriye ait hesap bulunmuyor.") doğru
+    dönüyor.
+  - Silme başarı mesajı ("Hesap silindi.") bir toast olarak gösteriliyor
+    AMA kendi bir data-testid'i YOK - bu yüzden TC-012-01'in "başarı
+    mesajı gösterilir" alt-iddiası güvenilir/dilden-bağımsız bir locator
+    ile doğrulanamadığından ayrı bir hard assertion olarak YAZILMADI
+    (dev ekibine: toast'a data-testid eklenmesi önerilir).
+  - Duplicate/stale-referansla tekrar silme denemesi StaleElement
+    ReferenceException ile güvenli reddediliyor - address_delete'teki
+    TC-008-06 ile AYNI teknik, aynı sonuç.
+- TASARIM: pages/billing_account_delete_page.py -> BillingAccountDeletePage
+  (BillingAccountCreatePage) - inheritance zinciri BEŞİNCİ kez aynı
+  gerekçeyle (gerçek "is-a", aynı hesap satırı/liste bileşeni) kullanıldı.
+  sales_setup_page.py ise BİLEREK standalone (Sales/Offer tamamen farklı
+  bir alan, "is-a" ilişkisi yok).
+- BULUNAN VE DÜZELTİLEN 4 GERÇEK TEKNİK HATA (implementasyon sırasında
+  canlı çalıştırmalarla yakalandı, hepsi izole/tam suite'te doğrulandı):
+  1) billing_account_create_page.py -> create_account_and_wait(name,
+     description): ESKİ "or" mantığı ("ikisinden biri eksikse İKİSİNİ DE
+     Faker'a ez") YANLIŞTI - sadece name verilip description verilmediğinde
+     name'in KENDİSİ de sessizce rastgele bir değerle değiştiriliyordu.
+     DÜZELTME: name/description artık BAĞIMSIZ olarak varsayılana düşüyor
+     (ortak bir _generate_account_name_and_description() yardımcı metoduyla,
+     DRY). Bu, TC-012-04'ün "Kalıcı Hesap"/"Silinen Hesap" isimli 2 hesap
+     kurulumunu kırıyordu.
+  2) billing_account_create_page.py -> find_account_row_by_name(): bir
+     silme/oluşturma işleminin HEMEN ardından çağrıldığında, Angular'ın
+     listeyi yeniden render etmesiyle find_elements ile toplanan satır
+     referansları ARADA stale kalabiliyordu (ara sıra
+     StaleElementReferenceException). DÜZELTME: sadece GEÇİCİ stale
+     hatasında (gerçek "bulunamadı" sonucundan YAPISAL OLARAK ayrı
+     tutularak) taramanın tamamı küçük, sabit bir üst sınırla (5 deneme)
+     yeniden deneniyor.
+  3) billing_account_create_page.py -> is_empty_state_displayed(): AYNI
+     kategori stale/race sorunu - dinamik bir WebDriverWait predicate'ine
+     çevrildi (StaleElementReferenceException'ı kendi içinde tolere edip
+     yeniden deneyen).
+  4) billing_account_delete_page.py -> click_new_sale_on_row(): "Yeni
+     Satış Başlat" butonu account-row <tr>'ının İÇİNDE DEĞİL, ayrı bir
+     genişletilmiş panel satırında (aria-controls="account-products-...")
+     render ediliyor - satıra scope'lanmış find_element bu yüzden HİÇBİR
+     ZAMAN bulamıyordu (canlı DOM incelemesiyle kanıtlandı). Global bir
+     sorguya çevrildi, kullanılmayan `name` parametresi YAGNI gereği
+     kaldırıldı.
+  Ayrıca steps dosyasında: "Yeni Satış" akışı tamamlandığında OTOMATİK
+  olarak Müşteri Hesabı sekmesine DÖNÜLMEDİĞİ (kullanıcı "Sipariş
+  oluşturuldu!" başarı ekranında kalıyor) keşfedildi - müşteri detay
+  URL'ine AÇIKÇA geri navigasyon + customer-detail-header için dinamik
+  bekleme eklendi.
+- ÖNEMLİ, EN DİKKAT ÇEKİCİ BULGU (TC-012-03, ORTAM/ZAMAN KAYNAKLI):
+  "Aktif ürünü olan hesap silinemez" davranışı bu oturumda İKİ AYRI ham
+  (page object'siz) script'te KESİN olarak kanıtlanmıştı - tam hata
+  mesajıyla ("The billing account cannot be deleted because it has
+  active products.", body text diff'iyle doğrulandı, kelimesi kelimesine
+  yakalandı). Page object implementasyonu TAMAMLANDIKTAN SONRA aynı
+  senaryo tutarlı şekilde FAILED verdi (hesap engellenmeden siliniyordu).
+  KAPSAMLI KÖK NEDEN ARAŞTIRMASI yapıldı: implementasyon hatası
+  ihtimalini elemek için, DAHA ÖNCE BAŞARIYLA ÇALIŞMIŞ AYNI ham script
+  (explore_sales_flow12.py) TEKRAR çalıştırıldı - VE O DA ART IK
+  ENGELLEMİYOR (aynı "Hesap Ürünleri" panelinin "Bu hesapta ürün
+  bulunmuyor." durumunda kaldığı, sipariş "başarıyla" tamamlanmış olsa
+  bile doğrulandı). Bu, SORUNUN test implementasyonunda DEĞİL, canlı
+  demo backend'inin bu oturum içinde zaman içinde DAVRANIŞ/DURUM
+  DEĞİŞTİRDİĞİNDE (muhtemelen bir restart, quota tükenmesi, ya da mock
+  satış/ürün servisinin kendi tutarsızlığı) olduğunu KANITLIYOR -
+  [[flaky-test-diagnosis-methodology]] hafıza kuralındaki "ölçülen
+  kanıt test tekniğinin değil UYGULAMANIN kendisinin tutarsız olduğunu
+  gösteriyorsa, yeni bir teknik denemeyi BIRAK, bulguyu bildir" ilkesinin
+  BİREBİR bir uygulaması. Kullanıcıya AskUserQuestion ile soruldu,
+  "Testi olduğu gibi bırak, bulguyu belgele" seçildi - test DAHA ÖNCE
+  kanıtlanmış/doğru davranışı iddia etmeye devam ediyor, şu an ortamda
+  geçici olarak FAILED verebilir ama bu bir test hatası DEĞİL, dev
+  ekibine/PO'ya AYRICA ve ÖNCELİKLE iletilmesi gereken olası bir backend
+  regresyonu/durum sorunu bulgusu.
+- TAM SUITE SONUCU (python -m pytest steps/test_billing_account_delete_
+  steps.py -v, 6 test): 5 passed (012-01, 012-02, 012-04, 012-05, 012-06),
+  1 failed (012-03 - yukarıda açıklanan ortam/zaman kaynaklı tutarsızlık,
+  kod hatası DEĞİL). Her senaryo ÖNCE izole (bulunan 4 gerçek hata bu
+  süreçte yakalanıp düzeltildi), sonra TAM SUITE'te doğrulandı.
+
+[2026-08-09] Yeni senaryo: create_customer.feature'a "Zorunlu ve Opsiyonel Tüm Alanlar Doldurulduğunda Müşterinin Eksiksiz Oluşturulması"
+- Kullanıcı fark etti: disposable müşteri oluşturma akışı (bu projedeki
+  DÜZİNELERCE senaryonun Background/setup'ı) SADECE zorunlu alanları
+  dolduruyor - bu yüzden opsiyonel alanlar (Second Name, Father Name,
+  Mother Name, Home Phone, Fax) hiçbir testte KAPSANMIYORDU. Bu daha
+  önce (aynı gün) "YAGNI - kaldırılsın mı?" diye sorulan enter_second_
+  name/enter_father_name/enter_mother_name/enter_home_phone/enter_fax
+  metotlarıyla (ve locator'larıyla) DOĞRUDAN ilgili - kullanıcı önce
+  "Grup 1: Evet, kaldır" demiş ama edit kesintiye uğrayıp hiç
+  uygulanmamıştı. Şimdi kullanıcı TERSİNE bir karar verdi: bu metotları
+  SİLMEK yerine, onlar için GERÇEK bir kullanım alanı (bu yeni senaryo)
+  oluşturmak - YAGNI kararı iptal edildi, ölü kod artık ölü değil.
+- ÖNCE canlı keşif yapıldı: tüm alanlar (zorunlu+opsiyonel) doldurulup
+  müşteri oluşturulunca opsiyonel değerlerin GERÇEKTEN doğru kaydedilip
+  görüntülendiği doğrulandı - Second/Father/Mother Name "Müşteri
+  Bilgisi" sekmesinde (customer-info-value-second-name/-father-name/
+  -mother-name), Home Phone/Fax "İletişim Kanalı" sekmesinde (customer-
+  contact-value-home-phone/-fax, +90 öneki ile) doğru şekilde
+  görüntüleniyor.
+- TASARIM KARARI: mevcut minimal disposable-customer setup metotları
+  (fill_demographic_step_with_faker, fill_contact_step_with_faker - bu
+  IKISI de DÜZİNELERCE feature dosyasının Background'unda kullanılıyor)
+  BİLEREK DEĞİŞTİRİLMEDİ - onun yerine PARALEL, bu senaryoya ÖZEL yeni
+  metotlar eklendi: fill_demographic_step_with_all_fields_via_faker(gender)
+  ve fill_contact_step_with_all_fields_via_faker() (ikisi de dict
+  döndürüyor, Then adımında karşılaştırma için). Bu, "her yerde kullanılan
+  paylaşılan bir setup fonksiyonunu TEK bir senaryonun ihtiyacı için
+  şişirme" hatasından kaçınıyor (SRP/KISS) - projedeki "minimal setup,
+  ayrı/dedicated test için ayrı metot" prensibiyle tutarlı.
+- pages/create_customer_page.py: CUSTOMER_INFO_SECOND_NAME/-FATHER_NAME/
+  -MOTHER_NAME, CONTACT_INFO_HOME_PHONE/-FAX, TAB_CONTACT locator'ları +
+  ilgili get_*_value() getter'ları + are_optional_fields_displayed_
+  correctly(demographic_data, contact_data) (İletişim Kanalı sekmesine
+  GEÇİP kontrol ediyor, Home Phone/Fax +90 önekli görüntülendiğinden
+  substring karşılaştırması kullanıyor - address_update/contact_
+  update'teki AYNI desen) eklendi.
+- features/create_customer.feature + steps/test_create_customer_steps.py:
+  yeni senaryo, MÜMKÜN OLAN HER YERDE mevcut step'leri (İleri/Save/Create
+  butonlarına tıklama, "Customer Info" ekranına yönlenme kontrolü) tekrar
+  kullanacak şekilde yazıldı - sadece 3 YENİ step gerekti (2 doldurma +
+  1 doğrulama).
+- DOĞRULAMA: yeni senaryo izole PASSED, ardından create_customer.feature'ın
+  TAMAMI (15 test) çalıştırıldı - 14 passed, 1 failed (ÖNCEDEN VAR OLAN
+  "Adres Kartı Edit/Delete Aksiyonları" senaryosu, YENİ senaryoyla
+  İLGİSİZ). İZOLE tekrar çalıştırıldığında PASSED - bu oturumda daha önce
+  defalarca belgelenen "uzun tam-suite koşumlarında kaynak yükünden
+  kaynaklanan rastgele 1-2 test flakiness" deseniyle tutarlı, regresyon
+  DEĞİL.
+
+
+[2026-08-12] UC-EACRML 013: Fatura Hesabına Bağlı Ürün Detayları
+- Kullanıcı 10 senaryolu bir Gherkin spesifikasyonu verdi; spesifikasyonun
+  kendisi zaten 4 senaryoyu (013-02, 013-04, 013-05) ⚠️ işaretleriyle
+  "teyit edilmeli"/"çelişkili"/"askıda" olarak flaglemişti. Standart iş
+  akışına (önce canlı keşif, sonra implementasyon) göre ilerlendi.
+- ÖNEMLİ YANLIŞ VARSAYIM DÜZELTİLDİ: "Hesap Ürünleri" panelinin
+  account-row-toggle'a TIKLANARAK açıldığı varsayılmıştı (UC-012'den
+  kalan izlenim). Canlı DOM incelemesi kanıtladı: panel hesap
+  oluşturulduğunda VARSAYILAN OLARAK ZATEN AÇIK (aria-expanded="true",
+  aria-label="Hesap ürünlerini GİZLE") - toggle'a tıklamak paneli
+  KAPATIYOR, açmıyor. table_before/table_after HTML diff'iyle (5718 ->
+  3810 karakter, panel <tr>'ının komple kaldırıldığı) doğrulandı.
+- BÜYÜK KEŞİF - satış akışının ürün/hesap yansıması TUTARSIZ: Bir "Yeni
+  Satış Başlat" akışı "Sipariş oluşturuldu!" ile BAŞARIYLA tamamlansa
+  bile, hesabın ürün paneli SIK SIK hâlâ "Bu hesapta ürün bulunmuyor."
+  gösteriyor - birden fazla taze müşteri/hesapla TEKRAR TEKRAR
+  doğrulandı (bazen 1. denemede, bazen 2-4. denemede yansıyor). Bu,
+  TC-012-03'te belgelenen "ortam/zaman kaynaklı" backend
+  tutarsızlığının AYNISI, UC-013 keşfinde DAHA da belirgin. Bu yüzden
+  test implementasyonuna (steps dosyasında
+  `_purchase_offers_and_wait_for_products`) sadece "satır var mı" değil,
+  "satır sayısı beklenen değere GERÇEKTEN arttı mı" dinamik olarak
+  doğrulayan, bulunamazsa satın almayı tekrarlayan (üst sınır 4 deneme)
+  bir retry mekanizması gömüldü - [[flaky-test-diagnosis-methodology]]
+  hafıza kuralının bir uygulaması: teknik seviyesinde önce sağlamlaştır,
+  uygulamanın DAVRANIŞ olarak tutarsız olduğu zaten kanıtlanmış olsa
+  bile testin kendisi gereksiz yere flaky olmasın.
+- ⚠️ İŞARETLİ 4 SENARYO NASIL NETLEŞTİRİLDİ (canlı kanıtla, AskUserQuestion
+  sonrası "tekrar dene" seçildi ve tekrar denemede gerçekten netleşti):
+  1) TC-013-01 ("View" vs "Preview" buton adı çelişkisi): AYNI buton -
+     gerçek testid'i `product-row-preview`, ikon-only (metinsiz). Modal
+     testid'i `product-preview`role="dialog" aria-modal="true"). Alanlar:
+     product-preview-offer-id/-offer-name/-spec-id/-characteristics,
+     hepsi salt-okunur <dd>/<p> (input/textarea YOK). Ayrıca modalde
+     data-testid'siz ama GERÇEK bir adres bloğu da var (Gherkin'in Then
+     metni Address istemediğinden test buna bakmıyor - YAGNI).
+  2) TC-013-02 (kampanya adı/ID) vs TC-013-03 (kampanyasız "—"): Kampanya
+     alanları (`product-row-campaign-name`/`-campaign-id`) GERÇEK ve
+     satır seviyesinde (modalde DEĞİL) render ediliyor, kampanyasız bir
+     üründe em-dash ("—") gösteriyor - TC-013-03 CANLI DOĞRULANDI VE
+     OTOMASYONA ALINDI. TC-013-02 ise KAPSAM DIŞI BIRAKILDI: satış
+     kataloğundaki 11 teklifin (Ev İnterneti Fiber 100/1000, Mobil
+     20GB/50GB, Superbox 50GB/Limitsiz, TV Başlangıç/Premium, Sabit Hat
+     Sınırsız, Ev İnterneti Fiber 100 Standart, Fiber Modem) HİÇBİRİ bir
+     kampanyaya bağlı değil - UI üzerinden kampanyalı bir ürün
+     OLUŞTURMANIN bir yolu yok. Alan gerçek/doğru ama veri kurulum yolu
+     eksik - BA/dev'e iletilmesi gereken ayrı bir madde (mock veride
+     kampanyalı teklif olmalı).
+  3) TC-013-04 (Delete ikonu - "işlevsiz mi" "ürünü kaldırıyor mu"
+     çelişkisi): KESİN OLARAK netleşti - Delete ikonuna tıklamak
+     TAMAMEN İŞLEVSİZ: onay penceresi (confirm-dialog) ÇIKMIYOR, satır
+     sayısı/isimleri DEĞİŞMİYOR, tam sayfa reload sonrası da AYNI kalıyor
+     (kalıcılık kontrolüyle doğrulandı). "Rewritten" (işlevsiz) versiyon
+     DOĞRU, orijinal "ürün hesaptan kaldırılır" versiyonu YANLIŞ -
+     otomasyona işlevsiz-davranış hâliyle alındı.
+  4) TC-013-05 (kampanyalı ürünün tekil silinmeye çalışılması): TC-013-04
+     ile MOOT hale geldi - önkoşulu ("silmenin mümkün olduğu") artık
+     KANITLANMIŞ ŞEKİLDE YANLIŞ (hiçbir ürün UI'dan silinemiyor,
+     kampanyalı olsun olmasın). TC-011-05'te (durum toggle'ı aslında
+     expand/collapse çıktı) yapılan AYNI karar tekrar uygulandı: canlı
+     kanıtla çelişen/anlamsızlaşan senaryo suite'e ALINMADI, feature
+     dosyasında gerekçesiyle NOT olarak belgelendi.
+- YENİ DOSYALAR: pages/billing_account_products_page.py
+  (BillingAccountProductsPage(BillingAccountDeletePage) - AYNI "is-a"
+  inheritance mantığı, projede 6. kullanımı), features/
+  billing_account_products.feature (8 senaryo: 013-01,03,04,06,07,08,
+  09,10 + 013-02/013-05'in NEDEN kapsam dışı bırakıldığına dair detaylı
+  Gherkin-üstü yorum), steps/test_billing_account_products_steps.py
+  (ortak `_setup_account_with_products`/`_purchase_offers_and_wait_for_
+  products` helper'larıyla DRY - 8 Given/When/Then zinciri).
+- TAM SUITE SONUCU (python -m pytest steps/test_billing_account_products_
+  steps.py -v, 8 test, izole --alluredir ile): 8 passed, 326.97s
+  (retry mekanizması sayesinde ortam tutarsızlığına RAĞMEN tek denemede
+  hepsi geçti - süre uzunluğu büyük ölçüde satış akışının kendisinin
+  yavaş olmasından, retry'ların tetiklenmesinden değil).
+
+
+[2026-08-12] UC-EACRML 014: Teklif Seçimi
+- Kullanıcı 14 senaryolu bir Gherkin spesifikasyonu verdi; 2 senaryo
+  (014-06, 014-07) zaten [ASKIDA] işaretliydi (dokümanda hiç
+  bahsedilmiyor, PM/BA onayı bekleniyor) - standart pratiğe göre suite'e
+  ALINMADI. 1 senaryo (014-08) kullanıcı tarafından [DEFEKT ADAYI] olarak
+  zaten işaretlenmişti (sipariş özetinde teklifin 3 kez tekrarlanıp
+  899.70 TL çıktığı iddiası).
+- MİMARİ KARAR - YENİ pages/offer_selection_page.py + SalesSetupPage
+  REFACTOR: UC-012 için SADECE bir setup-helper'ı olan SalesSetupPage'in
+  içindeki teklif seçimi/sepet locator'ları (OFFER_ROW, ADD_TO_CART,
+  OFFER_NEXT) artık UC-014 kapsamında AYRICA ve DERİNLEMESİNE test
+  edildiğinden, DRY ihlaline yol açmamak için pages/offer_selection_page.py
+  adında yeni, standalone bir sayfa (SalesSetupPage'de daha önce alınan
+  AYNI "has-a, is-a değil" tasarım kararıyla - hesap sayfalarından
+  inherit ETMİYOR) oluşturuldu ve SalesSetupPage.purchase_simple_offer()
+  bu yeni sayfayla COMPOSE edecek şekilde refactor edildi (SalesSetupPage
+  artık sadece Konfigürasyon/Gönder adımlarına odaklanıyor - SRP).
+  REFACTOR SONRASI REGRESYON KONTROLÜ: test_billing_account_delete_
+  steps.py + test_billing_account_products_steps.py (14 test, ikisi de
+  SalesSetupPage kullanıyor) çalıştırıldı - 13 passed, 1 failed
+  (TC-012-04 - SalesSetupPage/OfferSelectionPage'le HİÇ ilgisi olmayan
+  bir given step'te, izole tekrar çalıştırmada PASSED - önceden
+  belgelenen "uzun suite altında ara sıra ilgisiz flake" deseniyle
+  tutarlı, REGRESYON DEĞİL).
+- CANLI KEŞİFLE NETLEŞEN 3 ÖNEMLİ BULGU (AskUserQuestion ile karar
+  alındı):
+  1) TC-014-08: Kullanıcının "DEFEKT ADAYI" iddiası (3x tekrar/899.70 TL)
+     3 AYRI canlı denemede DE yeniden ÜRETİLEMEDİ - "Ev İnterneti Fiber
+     100" tam 1 kez eklenip Sipariş Özeti'ne kadar ilerlendiğinde her
+     seferinde DOĞRU şekilde tek satır/299.90 TL (sales-summary-line
+     testid'i) görüntülendi. KARAR: Spesifikasyon DOĞRU/beklenen
+     davranışı assert edecek şekilde implemente edildi - şu an PASS
+     veriyor, ortam davranışı bu oturumda defalarca görülen şekilde
+     değişirse (TC-012-03/UC-013 satış ak��şı örnekleri gibi) otomatik
+     olarak kırmızıya dönüp regresyonu yakalayacak bir test olarak
+     bırakıldı.
+  2) TC-014-13 (sepete mükerrer ekleme ENGELLENMELİ): Canlı KESİN olarak
+     doğrulandı - mükerrer ekleme HİÇ ENGELLENMİYOR, 2. ekleme sepette
+     AYRI bir satır oluşturuyor, toplam 2 katına çıkıyor. KARAR: KASITLI
+     KIRMIZI olarak implemente edildi (TC-011-02/04, TC-012-03 ile aynı
+     desen) - test suite çalıştırıldığında GERÇEKTEN FAILED verdi
+     (beklenen/istenen sonuç - bug'ı sürekli işaretliyor). Bu, TC-014-08
+     ile AYNI "veri bütünlüğü" bug sınıfının farklı bir tezahürü olabilir
+     - sepet seviyesinde tekrarlanan satır sorunu doğrulanmış durumda,
+     sipariş özeti seviyesinde şu an doğrulanamadı.
+  3) TC-014-12 ("Teklif ID filtresi yalnızca sayısal değer kabul eder"):
+     Input alanı type="text", harf yazılabiliyor (DOM'a giriyor) -
+     literal input-restriction iddiası YANLIŞ. Ama harfli bir ID ile
+     arandığında hiçbir teklif eşleşmediğinden her zaman "Sonuç
+     bulunamadı" state'i (dilden bağımsız: 0 satır) dönüyor. KARAR:
+     İşlevsel/yapısal olarak uyarlandı - "harfli ID ile arama sonuç
+     bulunamaz" test edildi, input-seviyesinde kısıtlama İDDİA
+     EDİLMEDİ.
+- CANLI KEŞİFLE ÇÖZÜLEN, DAHA ÖNCE KULLANICI TARAFINDAN İŞARETLENMİŞ
+  BELİRSİZLİKLER: Katalog dropdown (sales-catalog-select, role=listbox/
+  option deseni - create_customer_page.py'deki Gender combobox'la AYNI
+  desen) "Mobil" filtresiyle canlı doğrulandı (11 tekliften 2'sine
+  daralıyor). Kampanya sekmesinde (sales-tab-campaign) 3 GERÇEK çoklu-
+  ürün kampanya paketi keşfedildi (ör. Kampanya 1: Ev İnterneti Fiber
+  100 + TV Başlangıç Paketi, liste fiyatı 449.80 TL -> kampanya fiyatı
+  399.90 TL). Kampanya sepete eklendiğinde ürün başına AYRI satırlar
+  DEĞİL, kampanyayı temsil eden TEK bir sepet satırı (indirimli fiyatla)
+  oluşuyor - TC-014-14 buna göre implemente edildi.
+- ÖNEMLİ TAKİP NOTU (UC-013'ü GERİYE DÖNÜK ETKİLEYEBİLİR): UC-013
+  keşfinde (bkz. yukarıdaki [2026-08-12] UC-013 girdisi) "kataloğun
+  hiçbir teklifi kampanyaya bağlı değil, TC-013-02 UI'dan test
+  edilemez" sonucuna varılmıştı - ANCAK bu sonuç SADECE "Katalog"
+  sekmesi taranarak çıkarılmıştı. UC-014 keşfinde "Kampanya" sekmesinin
+  AYRI, GERÇEK kampanya paketleri sunduğu görüldü. Bu, TC-013-02'nin
+  aslında bir kampanya SEKMESİNDEN satın alma ile OTOMASYONA
+  ALINABİLECEĞİ ihtimalini gündeme getiriyor - kullanıcıya ayrıca
+  bildirilmesi gereken bir bulgu, ancak UC-013'e dokunmak için AYRICA
+  onay gerekiyor (kapsam dışına kendiliğinden genişleme YAPILMADI).
+- YENİ/DEĞİŞEN DOSYALAR: pages/offer_selection_page.py (yeni),
+  pages/sales_setup_page.py (refactor - OfferSelectionPage'i compose
+  ediyor, kendi OFFER_ROW/ADD_TO_CART/OFFER_NEXT locator'ları
+  kaldırıldı), features/offer_selection.feature (12 senaryo + hariç
+  tutulan/uyarlanan senaryoların gerekçesini anlatan üst yorum bloğu),
+  steps/test_offer_selection_steps.py.
+- TAM SUITE SONUCU (python -m pytest steps/test_offer_selection_steps.py
+  -v, 12 test, izole --alluredir ile): 11 passed, 1 failed (TC-014-13 -
+  KASITLI KIRMIZI, beklenen/istenen sonuç), 401.64s.
