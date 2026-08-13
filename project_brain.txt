@@ -4451,3 +4451,179 @@ Her yeni değişiklikte bu dosyanın sonuna yeni bir madde eklenir.
 - TAM SUITE SONUCU (python -m pytest steps/test_offer_selection_steps.py
   -v, 12 test, izole --alluredir ile): 11 passed, 1 failed (TC-014-13 -
   KASITLI KIRMIZI, beklenen/istenen sonuç), 401.64s.
+
+
+[2026-08-12] UC-EACRML 015: Ürün Konfigürasyonu
+- Kullanıcı 9 senaryolu bir Gherkin spesifikasyonu verdi; 3 senaryo zaten
+  belirsiz/şablon olarak işaretlenmişti (015-06 "ŞABLON - GENİŞLETİLMELİ"
+  + 🔴 "EN BÜYÜK KAPSAM BOŞLUĞU", 015-07 CT-06'nın varlığı teyit
+  edilmemiş, 015-08'e bir not düşülmüştü). Standart iş akışına göre önce
+  kapsamlı canlı keşif yapıldı, sonra AskUserQuestion ile 3 bulgu
+  netleştirildi.
+- CANLI KEŞİF: TEK bir müşteri/hesap üzerinden "Yeni Satış Başlat"
+  TEKRAR TEKRAR tıklanarak (ve müşteri detayına dönülüp tekrar
+  başlatılarak) 11 katalog teklifinin VE 3 kampanyanın TÜMÜNÜN Config
+  ekranı taratıldı. ÖNEMLİ YAN BULGU: sepet, "Müşteri Hesabı" ekranına
+  dönüp "Yeni Satış Başlat"ı TEKRAR tıklasanız bile KORUNUYOR (temizlenmiyor)
+  - bu da aslında TC-015-01'in önkoşulunu (sepette birden fazla teklif)
+  doğal olarak kanıtlıyor.
+- 6 GERÇEK config template'i tespit edildi (dile bağımsız, data-testid
+  ile): Fiber (offer 1,2,10 - "Fiber No"/"ONT Seri No", offer 2'de EK bir
+  <app-select> bant genişliği alanı da var), Mobil (offer 3,4 -
+  "MSISDN"/"SIM No"), Superbox (offer 5,6 - "Cihaz Seri No"/"SIM No"), TV
+  (offer 7,8 - "STB Seri No"/"Akıllı Kart No"), Sabit Hat (offer 9 - "Hat
+  No"/"Port No", 2. alan type="number"), Fiber Modem (offer 11 - SADECE
+  "ONT Seri No", tek alan). Kampanyalar (Ev+TV gibi) altındaki her ürün
+  KENDİ config kartını + "Kampanya Adı" etiketini ayrıca gösteriyor.
+- AskUserQuestion İLE NETLEŞEN 3 BULGU (üçü de "Kapsam dışı bırak,
+  bulguyu belgele" seçildi):
+  1) TC-015-06: 6 template'in HİÇBİRİNDE gerçek format/regex validasyonu
+     yok - MSISDN alanına "abcXYZ!!!" yazılıp diğer alanlar doldurulunca
+     sistem hiçbir uyarı vermeden kabul etti, İleri aktif oldu (sadece
+     "boş olmama" kontrol ediliyor, TC-015-02 zaten bunu kapsıyor).
+     Dokümanın kendisi zaten bunun bir placeholder olduğunu ve gerçek
+     validasyon tablosuna erişimin olmadığını belirtiyordu.
+  2) TC-015-07 (CT-06): 11 katalog teklifi + 3 kampanyanın TAMAMI
+     tarandı, sıfır konfigürasyon alanlı TEK bir ürün/kampanya yok -
+     TC-013-02'deki (kampanyasız ürün eksikliği) AYNI kapsam boşluğu.
+  3) TC-015-08: Müşterinin kayıtlı adresi HER ZAMAN en az 1 tane var
+     (framework kuralı) VE Config ekranına girildiğinde adres HER ZAMAN
+     otomatik ön-seçili geliyor (ilk adres varsayılan radio seçili) -
+     "adres seçilmemiş" durumu normal kullanıcı akışıyla HİÇ
+     oluşturulamıyor (TC-011-05/TC-013-05'teki gibi önkoşulu kurulamayan
+     senaryo deseni).
+- POZİTİF EK BULGULAR (015-05 notundaki belirsizlik çözüldü): "Geri"
+  butonu Teklif Seçimi'ne dönüyor VE sepeti koruyor (canlı doğrulandı).
+  Tekrar "İleri"ye basıldığında Config ekranına dönüldüğünde daha önce
+  GİRİLMİŞ TEKNİK KONFİGÜRASYON DEĞERLERİ DE korunuyor (sıfırlanmıyor) -
+  spesifikasyonun kendi notunda sorduğu soru pozitif yanıtlandı, 015-05'e
+  ek bir Then adımı olarak eklendi. "Yeni Adres Ekle" bu ekranda da
+  (billing_account_create_page.py ile AYNI paylaşılan bileşen/testid'ler)
+  yeni adresi listenin sonuna ekleyip otomatik seçili hale getiriyor.
+- YENİ DOSYALAR: pages/product_configuration_page.py
+  (ProductConfigurationPage - OfferSelectionPage/SalesSetupPage'deki AYNI
+  "has-a, is-a değil" standalone tasarım kararı, yeni adres formu
+  locator'ları billing_account_create_page.py ile AYNI - kasıtlı küçük
+  tekrar), features/product_configuration.feature (6 senaryo + 3 hariç
+  tutulan senaryonun gerekçesini anlatan üst yorum bloğu),
+  steps/test_product_configuration_steps.py (`_open_config_screen_with_
+  offers` ortak helper'ıyla DRY - yalnızca <input> alanlı, dropdown'suz
+  basit şablonlu teklifler - "Mobil 20GB Paket"/"Superbox 50GB" -
+  kasıtlı seçildi, YAGNI: <app-select> bant genişliği alanının ayrıca ele
+  alınması bu senaryoların kapsamı dışında).
+- TAM SUITE SONUCU (python -m pytest steps/test_product_configuration_
+  steps.py -v, 6 test, izole --alluredir ile): 6 passed, 238.85s.
+  bugsbunny.txt'ye eklenecek bir FAILED yok.
+
+
+[2026-08-12] UC-EACRML 016: Siparişin Tamamlanması
+- Kullanıcı 8 senaryolu bir Gherkin spesifikasyonu verdi (016-02 "DEFEKT
+  ADAYI", 016-05 ⚠️ dokümanın kendisi bile teyit edemiyor, 016-06 "not:
+  doküman bu senaryoyu kaynakta tanımlamıyor", 016-07 [ASKIDA]).
+- CANLI KEŞİF - "Sipariş Gönder" ekranı testid'leri: sales-step-title,
+  sales-summary-line(+-name/-id/-total), sales-summary-address-title/
+  -detail, sales-summary-total, sales-submit-back, sales-submit,
+  sales-submit-error (YENİ keşfedildi - hata mesajı için), başarı
+  ekranında sales-success-title, sales-order-number ("Sipariş ID: NNNNNNNN"
+  formatında, 8 haneli rastgele sayı), sales-back-to-search.
+- TC-EACRML-016-02 ("DEFEKT ADAYI", UC-014-08 ile aynı kök neden iddiası):
+  Bu senaryonun test ettiği ekran ("Sipariş Gönder") ile TC-014-08'in test
+  ettiği ekran AYNI - canlı olarak TOPLAM 5 ayrı denemede (3'ü UC-014
+  keşfinde, 2'si bu UC'de) hiç yeniden üretilemedi, teklif her seferinde
+  TAM 1 kez doğru toplamla görüntülendi. TC-014-08'deki AYNI kararla
+  (spesifikasyonun doğru davranışını assert et, şu an PASS veren bir
+  regresyon-net'i olarak bırak) burada da uygulandı. UC-014-08 ile
+  YAPISAL OLARAK aynı kontrolü tekrar etmesi BİLİNÇLİ bir tercih - her
+  UC'nin kendi feature dosyasında bağımsız/eksiksiz kanıt sunabilmesi
+  (INVEST - Independent) için.
+- TC-EACRML-016-05 (dokümanın kendisi "Adım 8'den sonra ne olduğu
+  belirtilmemiş" dediği için ⚠️ işaretliydi): Canlı keşifle KESİN olarak
+  netleşti - sipariş gönderildiğinde kullanıcı Müşteri Hesabı'na OTOMATİK
+  yönlendirilmiyor, "Sipariş oluşturuldu!" başlıklı AYRI bir başarı
+  ekranında kalıyor (Sipariş ID + "Müşteri Aramaya Dön" linkiyle). Artık
+  belirsizlik kalmadığı için TAM olarak otomasyona alındı (kullanıcıya
+  AYRICA sorulmadı - doküman zaten "gerçek uygulamada netleştirilsin"
+  diyordu, bu netleştirme canlı kanıtla tamamlandı).
+- TC-EACRML-016-06 (dokümanın kendi notunda "kaynakta hiç tanımlı değil,
+  eklenmesi iyi bir yakalama" dediği senaryo): YENİ BİR TEKNİK - Chrome
+  DevTools Protocol (`driver.execute_cdp_cmd`) ile
+  `Network.emulateNetworkConditions(offline=True)` kullanılarak "Gönder"
+  tıklamasının GERÇEK bir ağ/sunucu hatası gibi başarısız olması
+  sağlandı. Canlı doğrulandı: uygulama bunu düzgün ele alıyor -
+  "Sipariş gönderilemedi. Lütfen tekrar deneyin." mesajını
+  (sales-submit-error testid'i) gösteriyor, başarı ekranına YANLIŞLIKLA
+  geçmiyor. Gerçek bir 500 yanıtını taklit etmek (CDP Fetch domain ile
+  request interception) yerine bu daha basit teknik tercih edildi
+  (YAGNI/KISS) - sonuç kullanıcı deneyimi açısından eşdeğer.
+- TC-EACRML-016-07 [ASKIDA]: UC-014-06/07'deki AYNI "tamamlayıcı ürün"
+  kavramına bağımlı olduğundan (zaten PM/BA onayı bekliyor) suite'e
+  alınmadı - tutarlı karar.
+- TC-EACRML-016-08 (benzersiz Order ID): Canlı doğrulandı - art arda 3
+  sipariş oluşturulduğunda 3 FARKLI Sipariş ID'si (8 haneli rastgele
+  sayı) üretiliyor.
+- YENİ DOSYALAR: pages/order_submission_page.py (OrderSubmissionPage -
+  standalone, "has-a, is-a değil" tasarım kararı), features/
+  order_submission.feature (7 senaryo + 016-07'nin neden hariç
+  tutulduğuna ve 016-02/016-05'in nasıl netleştirildiğine dair üst yorum
+  bloğu), steps/test_order_submission_steps.py (`_reach_config_screen` /
+  `_reach_submission_screen` / `_place_order_from_account_page` ortak
+  helper'larıyla DRY).
+- TAM SUITE SONUCU (python -m pytest steps/test_order_submission_steps.py
+  -v, 7 test, izole --alluredir ile): 7 passed, 205.02s. bugsbunny.txt'ye
+  eklenecek bir FAILED yok.
+
+
+[2026-08-12] UC-EACRML 017: Dil Desteği
+- Kullanıcı 8 senaryolu bir Gherkin spesifikasyonu verdi (017-04 [YENİ],
+  kendi notunda BA/UX teyidi istiyordu; diğerleri işaretsizdi ama bu UC
+  kendine özgü bir zorluk taşıyor: proje boyunca "dilden bağımsız" test
+  yazma ilkesi uygulanırken, bu UC'nin KONUSU zaten dil değişikliğinin
+  kendisi - yani literal metin karşılaştırması BURADA kaçınılmaz, ama
+  YİNE DE hiçbir literal TR/EN string HARDCODE edilmeden, KARŞILAŞTIRMALI
+  (before/after farklı mı) bir yaklaşımla çözüldü).
+- CANLI KEŞİF - testid'ler: language-switcher-toggle (buton, aktif dil
+  kodu "TR"/"EN" metniyle), language-switcher-panel (role=listbox),
+  language-option-tr/-en (role=option, HER İKİSİ de <li role="option"
+  aria-selected="true|false"> ile SARILI - aktif dil vurgusu (017-07)
+  BURADAN, li'nin aria-selected'ından okunuyor, buton'un kendisinde
+  DEĞİL). Panelde SADECE 2 seçenek var (TR, EN) - 017-08 canlı doğrulandı.
+- i18n GERÇEK ve ÇALIŞIYOR: EN seçildiğinde page-title/nav-* gibi TÜM
+  arayüz metinleri gerçekten İngilizce'ye çevriliyor (localStorage
+  `etiya.language` anahtarında saklanıyor - "tr"/"en"). Doğrulama
+  mesajları da çevriliyor (örnek canlı doğrulandı: identityNumber-error
+  TR'de "Kimlik numarası 11 haneli olmalı..." / EN'de "The identity
+  number must be exactly 11 digits." - 017-06 için KARŞILAŞTIRMALI
+  yaklaşım kullanıldı: TR mesajı ÖNCE yakalanıp, sonra EN'e geçilip AYNI
+  hata tekrar tetiklenerek iki mesajın FARKLI olduğu assert edildi -
+  literal hiçbir dile bağımlı kalınmadan).
+- localStorage tabanlı kalıcılık sayesinde 017-02 (ekranlar arası) ve
+  017-03 (sayfa yenileme) canlı doğrulandı - sorunsuz.
+- TC-EACRML-017-04 ÜZERİNE BULGU (AskUserQuestion ile karar alındı):
+  Spesifikasyon, çıkış yapıp tekrar girişte dilin varsayılan TR'ye
+  DÖNMESİNİ bekliyordu (dokümanın kendi notu: "oturuma bağlı olmalı"
+  varsayımına dayanıyordu, BA/UX teyidi isteniyordu). Canlı KESİN olarak
+  netleşti: dil tercihi localStorage'da (sessionStorage DEĞİL) saklandığı
+  için TAM bir çıkış/giriş döngüsünden bağımsız olarak kalıcı - EN
+  seçilip çıkış yapılıp tekrar girildiğinde arayüz EN kalmaya devam
+  ediyor, TR'ye DÖNMÜYOR. Kullanıcı kararıyla "gerçek davranışa uyarla"
+  seçildi - senaryo artık "dil tercihi çıkış/girişten SONRA DA korunur"
+  şeklinde gerçek/çalışan davranışı doğruluyor.
+- TEKNİK BULGU/DÜZELTME - TC-017-05 (data-testid'lerin dilden bağımsız
+  sabit kalması): İlk izole çalıştırmada StaleElementReferenceException
+  ile FAILED verdi - kök neden dil değişikliği DEĞİL, login sonrası
+  Angular'ın SAYFA HENÜZ TAM OTURMAMIŞKEN find_elements ile toplanan
+  data-testid listesinin set comprehension SIRASINDA stale kalması
+  (billing_account_create_page.py'deki find_account_row_by_name() ile
+  AYNI kategori bir race). AYNI çözüm deseni uygulandı: yeni bir
+  `_get_testid_set()` helper'ı, SADECE geçici stale hatasında (üst sınır
+  5 deneme) tüm taramayı yeniden dener. Düzeltme sonrası izole PASSED,
+  tam suite'te de PASSED.
+- YENİ DOSYALAR: pages/language_switcher_page.py (LanguageSwitcherPage -
+  standalone, HER authenticated ekranda ortak bir topbar bileşeni),
+  features/language_support.feature (8 senaryo + 017-04'ün nasıl
+  netleştirildiğine dair üst yorum bloğu), steps/test_language_support_
+  steps.py.
+- TAM SUITE SONUCU (python -m pytest steps/test_language_support_steps.py
+  -v, 8 test, izole --alluredir ile, düzeltme SONRASI): 8 passed, 98.48s.
+  bugsbunny.txt'ye eklenecek bir FAILED yok (ilk turdaki 017-05 hatası
+  düzeltilip yeşile çevrildi, kalıcı bir bug değildi).

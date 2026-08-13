@@ -86,3 +86,33 @@ uygulamada doğrulanmış ve sabit sonuç sayıları (ör. "Yılmaz" araması ->
 yeni müşteri oluşturulduğundan, "Yılmaz" gibi yaygın bir soyadın tekrar
 üretilip beklenen sabit sonuç sayısını bozmuş olması makul bir hipotez -
 ama izole tekrar çalıştırma ile doğrulanmadan kesinleştirilmedi.
+
+GÜNCELLEME [2026-08-12, 2. tam suite çalıştırması - 187 test, 1sa 13dk 55sn,
+python -m pytest -v, tek seferde]: Sonuç 173 passed, 14 failed.
+- Madde 8 (test_tceacrml00705, adres ekleme iptali) ve Madde 9
+  (test_tceacrml00604, adres güncelleme iptali) bu çalıştırmada PASSED
+  verdi - "uzun suite altında ara sıra ilgisiz flake" hipotezini
+  DESTEKLİYOR, kalıcı bir regresyon değil gibi görünüyor. Madde 8/9
+  listede TUTULUYOR (henüz kesin kapatılmadı, ama artık flake ihtimali
+  daha güçlü).
+- Madde 1-7 ve 10-14 AYNI şekilde FAILED vermeye devam etti (tutarlı,
+  bilinen durum - değişiklik yok, tekrar eklenmedi).
+- Allure raporu güncellendi: reports/allure-report/index.html
+
+===========================================================
+KATEGORİ 3: YENİ TESPİT EDİLEN (2. tam suite çalıştırmasında ilk kez
+görülen, önceki çalıştırmada YOKTU) - 2 test
+===========================================================
+
+15. steps/test_address_add_steps.py
+    test_tceacrml00708__yeni_eklenen_adresin_listede_şehir_sokak_adı_no_formatında_okunabilir_şekilde_yer_alması
+    Hata: assert address_page.is_new_card_last_and_well_formed() -> False
+    Henüz izole olarak yeniden doğrulanmadı - triaj gerekiyor (gerçek
+    regresyon mu, yoksa madde 8-9 ile aynı kategori bir flake mi
+    netleştirilmeli).
+
+16. steps/test_address_delete_steps.py
+    test_tceacrml00802__silinen_adres_kartının_ekrandaki_listeden_onay_penceresi_olmadan_anında_kaldırılması
+    Hata: assert get_card_count() == count_before_delete - 1 -> 1 == 0
+    başarısız (silme sonrası kart sayısı azalmadı). Henüz izole olarak
+    yeniden doğrulanmadı - triaj gerekiyor.
