@@ -132,20 +132,43 @@ kritik/sistemik bulgu (henüz otomasyona alınmadı, bkz. test-design/
 final-test-set/delete_customer.md)
 ===========================================================
 
-17. (henüz implemente edilmedi - bkz. test-design/final-test-set/delete_customer.md,
-    TC-EACRML-005-03) - Aktif ürünü/aboneliği olan bir MÜŞTERİ, hiçbir
-    engelleme olmadan silinebiliyor.
-    Sebep: Fresh bir disposable müşteriye (customer 854) fatura hesabı
-    açılıp "Yeni Satış Başlat" akışıyla ("Mobil 20GB Paket") gerçek bir
-    aktif ürün kazandırıldıktan SONRA Delete + "Evet" ile silme denendi.
-    Sistem silmeyi ENGELLEMEDİ - müşteri Müşteri Arama ekranına
-    yönlendirildi, eski detay URL'i (/customers/854) artık açılmıyor
-    (empty-state/bulunamadı). Durum silme öncesi "Aktif" olarak doğrulanmıştı.
+17. steps/test_delete_customer_steps.py
+    test_tceacrml00503__aktif_ürünü_olan_müşterinin_silinememesi
+    Durum: KASITLI KIRMIZI - İMPLEMENTE EDİLDİ [2026-08-14, 4. oturum].
+    Aktif ürünü/aboneliği olan bir MÜŞTERİ, hiçbir engelleme olmadan
+    silinebiliyor.
+    Sebep: Fresh bir disposable müşteriye fatura hesabı açılıp "Yeni Satış
+    Başlat" akışıyla ("Mobil 20GB Paket") gerçek bir aktif ürün
+    kazandırıldıktan SONRA Delete + "Evet" ile silme denendi. Sistem
+    silmeyi ENGELLEMEDİ - müşteri Müşteri Arama ekranına yönlendirildi.
+    Durum silme öncesi "Aktif" olarak doğrulanmıştı. Bu bulgu, ilk canlı
+    keşiften (customer 854, elle script) SONRA otomasyona ALINDI ve
+    izole pytest koşumuyla YENİDEN doğrulandı - AssertionError ile
+    tutarlı şekilde FAILED veriyor (bilinçli/istenen sonuç).
+    TEKNİK NOT (izleme değeri var): İlk implementasyon denemesinde metod
+    ("URL hâlâ detay sayfasında mı" şeklinde doğrudan bir wait.until)
+    ERKEN/YARIŞ DURUMUNA açıktı - silme isteği asenkron işlenirken
+    yönlendirme henüz BAŞLAMADAN önceki İLK polling anında "URL
+    değişmedi" YANLIŞLIKLA true dönüp SAHTE-PASS üretti (ilk izole
+    çalıştırmada test PASSED verdi - yanlış/aldatıcı bir sonuçtu). Kök
+    neden fark edilip zaten kanıtlanmış wait_for_redirect_to_search()
+    (tam 10sn standart timeout) metoduna devredilerek düzeltildi;
+    yönlendirme GERÇEKTEN olursa (mevcut bug) TimeoutException bilinçli
+    bir AssertionError'a çevriliyor. Düzeltme sonrası doğru/beklenen
+    FAILED sonucu elde edildi.
     İLİŞKİLİ BULGU: madde 3 (TC-012-03, aynı kural ama Fatura Hesabı
     seviyesinde) ile AYNI kök nedene işaret ediyor olabilir - iki seviyede
     de (müşteri VE fatura hesabı) "aktif ürünü olan varlık silinemez" iş
     kuralı tutarlı biçimde uygulanmıyor. Tek seferlik bir flake değil,
     sistemik bir eksiklik olarak BA/dev'e birlikte raporlanması önerilir.
+    GÜNCELLEME [aynı gün, 5. oturum]: Senaryo TEK test olarak kalacak
+    şekilde ama TR/EN'i AYNI ANDA destekleyecek şekilde güçlendirildi -
+    akış artık BİLEREK arayüz dili İngilizce'ye çevrilip öyle devam
+    ediyor (durum karşılaştırması da hardcoded "Aktif" yerine silme
+    denemesinden hemen önce alınan bir anlık görüntüyle yapılıyor).
+    Yeniden doğrulama: İngilizce arayüzde de AYNI AssertionError ile
+    FAILED - defektin TR'ye özgü olmadığını, dilden bağımsız var
+    olduğunu ek olarak kanıtlıyor.
 
 ===========================================================
 [2026-08-14] search_customers.feature'a 2 yeni senaryo (Toplam Kayıt

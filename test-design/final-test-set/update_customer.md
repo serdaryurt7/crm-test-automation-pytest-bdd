@@ -5,7 +5,8 @@
 ## Durum Özeti
 
 - Kaynak: `features/update_customer.feature`'daki 8 canlı doğrulanmış senaryo.
-- **Bu turda YENİ eklenen (canlı doğrulandı — "demografik bilgi için sınır değer kontrolleri"):** Mevcut TC-004-07 yalnızca ÜST sınırın AŞILMASINI (51 karakter → 50'de kesilir) test ediyordu; TAM sınır değerin (50 karakter) sorunsuz kabul edildiğini doğrulayan eşleşen senaryo eksikti (TC-004-09). Ayrıca Nationality ID/Kimlik No alanı için hiç sınır-değer testi yoktu — `identityNumber` input'unun `maxlength=11` olduğu VE gerçek bir "tam 11 hane olmalı" doğrulama mesajının var olduğu (TC-017-06 keşfinde bulunmuştu) canlı olarak teyit edildi; şimdi tam bir sınır-değer üçlüsü (10 hane geçersiz / 11 hane geçerli / 12. hane input-seviyesinde engellenir) TC-004-10/11/12 ile ekleniyor.
+- **[İMPLEMENTE EDİLDİ] "Demografik bilgi için sınır değer kontrolleri":** Mevcut TC-004-07 yalnızca ÜST sınırın AŞILMASINI (51 karakter → 50'de kesilir) test ediyordu; TAM sınır değerin (50 karakter) sorunsuz kabul edildiğini doğrulayan eşleşen senaryo eksikti (TC-004-09) - eklendi. Ayrıca Nationality ID/Kimlik No alanı için hiç sınır-değer testi yoktu — `identityNumber` input'unun `maxlength=11` olduğu VE gerçek bir "tam 11 hane olmalı" doğrulama mesajının var olduğu (TR: "Kimlik numarası 11 haneli olmalı...", EN: "The identity number must be exactly 11 digits." - TC-017-06 keşfinde bulunmuştu) canlı olarak teyit edildi; tam bir sınır-değer üçlüsü (10 hane geçersiz / 11 hane geçerli / 12. hane input-seviyesinde engellenir) TC-004-10/11/12 ile eklendi. **Dilden bağımsız implementasyon:** hata mesajı, TR/EN'de ORTAK olan "11" rakamı doğrulanarak kontrol ediliyor, literal metin karşılaştırılmıyor (`search_customers.feature`'daki AYNI desen).
+- **Doğrulama:** `pytest steps/test_update_customer_steps.py -v` ile izole çalıştırıldı — **5/5 PASSED** (Outline'ın 2 örneği + Nationality ID üçlüsü).
 
 ## Gherkin — Final Senaryo Seti
 
@@ -68,7 +69,7 @@ Feature: Müşteri Bilgilerini Güncelleme
       | Ad    |
       | Soyad |
 
-  Scenario Outline: TC-EACRML-004-09 [YENİ - Sınır Değer] - Ad/Soyad Alanlarının Tam 50 Karakterlik Değeri Sorunsuz Kabul Etmesi
+  Scenario Outline: TC-EACRML-004-09 - Ad/Soyad Alanlarının Tam 50 Karakterlik Değeri Sorunsuz Kabul Etmesi
     Given kullanıcı düzenleme formundadır
     When "<alan>" alanına tam 50 karakterlik bir değer girilir
     Then alan girilen 50 karakterin tamamını kabul eder
@@ -84,18 +85,23 @@ Feature: Müşteri Bilgilerini Güncelleme
     Then sistem yalnızca izin verilen karakterleri kabul eder, zararlı karakterler alana hiç yazılamaz
     And herhangi bir script çalıştırılmaz
 
-  Scenario: TC-EACRML-004-10 [YENİ - Sınır Değer] - Nationality ID Alanına 10 Haneli (Bir Eksik) Değer Girildiğinde Doğrulama Hatasının Gösterilmesi
+  # NOT (canlı doğrulandı, TC-017-06 keşfinden): identityNumber-error
+  # mesajı dile göre TR'de "Kimlik numarası 11 haneli olmalı..." / EN'de
+  # "The identity number must be exactly 11 digits." oluyor - literal metin
+  # yerine ikisinde de ORTAK olan "11" rakamı doğrulanarak dilden bağımsız
+  # hale getirildi.
+  Scenario: TC-EACRML-004-10 - Nationality ID Alanına 10 Haneli (Bir Eksik) Değer Girildiğinde Doğrulama Hatasının Gösterilmesi
     Given kullanıcı düzenleme formundadır
     When Nationality ID alanı 10 haneli bir değerle değiştirilir
-    Then alanda "tam 11 hane olmalı" doğrulama hatası görüntülenir
+    Then alanda 11 hane şartına dair bir doğrulama hatası görüntülenir
     And Kaydet butonu pasif kalır
 
-  Scenario: TC-EACRML-004-11 [YENİ - Sınır Değer] - Nationality ID Alanına Tam 11 Haneli Geçerli Bir Değer Girildiğinde Doğrulamanın Başarıyla Geçmesi
+  Scenario: TC-EACRML-004-11 - Nationality ID Alanına Tam 11 Haneli Geçerli Bir Değer Girildiğinde Doğrulamanın Başarıyla Geçmesi
     Given kullanıcı düzenleme formundadır
     When Nationality ID alanı, başka hiçbir müşteriye ait olmayan tam 11 haneli geçerli bir değerle değiştirilir
     Then herhangi bir doğrulama hatası gösterilmez, Kaydet butonu aktif hale gelir
 
-  Scenario: TC-EACRML-004-12 [YENİ - Sınır Değer] - Nationality ID Alanına 11 Haneden Fazla Rakam Girilmeye Çalışıldığında Fazla Hanelerin Kabul Edilmemesi
+  Scenario: TC-EACRML-004-12 - Nationality ID Alanına 11 Haneden Fazla Rakam Girilmeye Çalışıldığında Fazla Hanelerin Kabul Edilmemesi
     Given kullanıcı düzenleme formundadır
     When Nationality ID alanına 12 haneli bir değer girilmeye çalışılır
     Then alan yalnızca ilk 11 haneyi kabul eder, 12. hane yazılamaz

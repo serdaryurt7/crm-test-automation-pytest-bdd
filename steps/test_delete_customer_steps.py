@@ -1,11 +1,16 @@
 from urllib.parse import urlparse
 
 from pytest_bdd import given, scenarios, then, when
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from pages.billing_account_delete_page import BillingAccountDeletePage
 from pages.create_customer_page import CreateCustomerPage
 from pages.delete_customer_page import DeleteCustomerPage
+from pages.language_switcher_page import LanguageSwitcherPage
 from pages.login_page import LoginPage
+from pages.sales_setup_page import SalesSetupPage
 from pages.search_customers_page import CustomersPage
 
 scenarios("delete_customer.feature")
@@ -104,3 +109,62 @@ def deleted_customer_direct_url_shows_error(delete_customer_page):
     delete_customer_page.wait_for_redirect_to_search()
     delete_customer_page.reload_detail_url()
     assert delete_customer_page.is_empty_state_message_displayed()
+
+
+@given(
+    "görüntülenen müşteriye ait, bir fatura hesabına bağlı en az bir aktif ürün kaydı vardır",
+    target_fixture="delete_customer_page",
+)
+def customer_has_active_product(delete_customer_page, driver):
+    # Background zaten boş/disposable bir müşteri oluşturup Müşteri Bilgisi
+    # ekranına yerleştirdi (delete_customer_page fixture'ı) - bu adım ONUN
+    # ÜZERİNE, billing_account_delete_page.py'deki TC-012-03 önkoşuluyla
+    # (account_has_active_product) AYNI minimal satın alma deseniyle bir
+    # fatura hesabı + gerçek aktif ürün ekliyor. Orchestration (birden
+    # fazla page object'in birlikte kullanımı) bilinçli olarak burada,
+    # step katmanında tutuluyor.
+    customer_url = delete_customer_page._detail_url
+
+    billing_page = BillingAccountDeletePage(driver)
+    billing_page.create_account_and_wait()
+    billing_page.click_new_sale_on_row()
+    sales_page = SalesSetupPage(driver)
+    sales_page.purchase_simple_offer()
+
+    # Sipariş tamamlandığında OTOMATİK olarak Müşteri Bilgisi ekranına
+    # dönülmüyor (başarı ekranında kalınıyor, bkz. order_submission.md
+    # TC-016-05) - müşteri detay URL'ine açıkça geri dönülüyor.
+    driver.get(customer_url)
+    WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located((By.CSS_SELECTOR, "[data-testid='customer-detail-header']"))
+    )
+    return DeleteCustomerPage(driver)
+
+
+@given("kullanıcı arayüz dilini İngilizce olarak ayarlamıştır")
+def user_switches_language_to_english(delete_customer_page, driver):
+    # TEK senaryo, TR/EN'i AYNI ANDA destekler: aşağıdaki Then adımları
+    # literal Türkçe (veya İngilizce) metinle KARŞILAŞTIRMIYOR, yalnızca
+    # yapısal durumu (URL, "değişmedi mi") doğruluyor - bu yüzden akışın
+    # BİLEREK İngilizce arayüzde çalıştırılması, kontrolün gizliden
+    # Türkçe metne bağımlı OLMADIĞININ pratik kanıtı (bağımlı olsaydı bu
+    # çalıştırma kırılırdı). Aynı mekanizma varsayılan (TR) arayüzde de
+    # değişmeden geçerlidir.
+    language_page = LanguageSwitcherPage(driver)
+    language_page.open_panel()
+    language_page.select_language("en")
+    # Silme denemesinden HEMEN ÖNCEKİ durumun (artık İngilizce arayüzde
+    # okunan) anlık görüntüsü alınıyor - "değişmedi mi" karşılaştırması bu
+    # referansa göre yapılacak (bkz. capture_status_snapshot dilden
+    # bağımsızlık gerekçesi, delete_customer_page.py).
+    delete_customer_page.capture_status_snapshot()
+
+
+@then("sistem müşteriyi silmeyi reddeder")
+def system_rejects_deletion(delete_customer_page):
+    delete_customer_page.wait_for_delete_rejected()
+
+
+@then("kullanıcı Müşteri Bilgisi ekranında kalır, müşteri durumu değişmeden kalır")
+def customer_status_unchanged_on_info_screen(delete_customer_page):
+    assert delete_customer_page.is_still_on_customer_info_with_status_unchanged()

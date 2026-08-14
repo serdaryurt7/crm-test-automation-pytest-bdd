@@ -61,3 +61,34 @@ Feature: Müşteri Bilgilerini Güncelleme
     When Ad alanına "<script>alert(1)</script>" girilmeye çalışılıp kaydedilir
     Then sistem yalnızca izin verilen karakterleri kabul eder, zararlı karakterler alana hiç yazılamaz
     And herhangi bir script çalıştırılmaz
+
+  Scenario Outline: TC-EACRML-004-09 - Ad/Soyad Alanlarının Tam 50 Karakterlik Değeri Sorunsuz Kabul Etmesi
+    Given kullanıcı düzenleme formundadır
+    When "<alan>" alanına tam 50 karakterlik bir değer girilir
+    Then alan girilen 50 karakterin tamamını kabul eder
+
+    Examples:
+      | alan  |
+      | Ad    |
+      | Soyad |
+
+  # NOT (canlı doğrulandı, TC-017-06 keşfinden): identityNumber-error
+  # mesajı dile göre TR'de "Kimlik numarası 11 haneli olmalı..." / EN'de
+  # "The identity number must be exactly 11 digits." oluyor - literal metin
+  # yerine ikisinde de ORTAK olan "11" rakamı doğrulanarak dilden bağımsız
+  # hale getirildi (search_customers.feature'daki AYNI desen).
+  Scenario: TC-EACRML-004-10 - Nationality ID Alanına 10 Haneli (Bir Eksik) Değer Girildiğinde Doğrulama Hatasının Gösterilmesi
+    Given kullanıcı düzenleme formundadır
+    When Nationality ID alanı 10 haneli bir değerle değiştirilir
+    Then alanda 11 hane şartına dair bir doğrulama hatası görüntülenir
+    And Kaydet butonu pasif kalır
+
+  Scenario: TC-EACRML-004-11 - Nationality ID Alanına Tam 11 Haneli Geçerli Bir Değer Girildiğinde Doğrulamanın Başarıyla Geçmesi
+    Given kullanıcı düzenleme formundadır
+    When Nationality ID alanı, başka hiçbir müşteriye ait olmayan tam 11 haneli geçerli bir değerle değiştirilir
+    Then herhangi bir doğrulama hatası gösterilmez, Kaydet butonu aktif hale gelir
+
+  Scenario: TC-EACRML-004-12 - Nationality ID Alanına 11 Haneden Fazla Rakam Girilmeye Çalışıldığında Fazla Hanelerin Kabul Edilmemesi
+    Given kullanıcı düzenleme formundadır
+    When Nationality ID alanına 12 haneli bir değer girilmeye çalışılır
+    Then alan yalnızca ilk 11 haneyi kabul eder, 12. hane yazılamaz

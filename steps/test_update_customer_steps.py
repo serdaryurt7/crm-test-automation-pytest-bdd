@@ -187,3 +187,43 @@ def only_safe_characters_accepted(typed_field_value):
 @then("herhangi bir script çalıştırılmaz")
 def no_script_executed(update_customer_page):
     assert not update_customer_page.has_unexpected_alert()
+
+
+@when(parsers.parse('"{alan}" alanına tam 50 karakterlik bir değer girilir'), target_fixture="typed_field_value")
+def user_types_exactly_50_characters(update_customer_page, alan):
+    return update_customer_page.attempt_to_type_long_value(alan, 50)
+
+
+@then("alan girilen 50 karakterin tamamını kabul eder")
+def field_accepts_full_50_characters(typed_field_value):
+    assert len(typed_field_value) == 50
+
+
+@when("Nationality ID alanı 10 haneli bir değerle değiştirilir")
+def user_sets_10_digit_identity_number(update_customer_page):
+    update_customer_page.update_identity_number("1000000014")
+
+
+@then("alanda 11 hane şartına dair bir doğrulama hatası görüntülenir")
+def identity_number_length_error_displayed(update_customer_page):
+    update_customer_page.wait_for_identity_number_length_error()
+
+
+@when("Nationality ID alanı, başka hiçbir müşteriye ait olmayan tam 11 haneli geçerli bir değerle değiştirilir")
+def user_sets_unique_11_digit_identity_number(update_customer_page):
+    update_customer_page.update_identity_number_with_random_unique_value()
+
+
+@then("herhangi bir doğrulama hatası gösterilmez, Kaydet butonu aktif hale gelir")
+def no_identity_number_error_and_save_enabled(update_customer_page):
+    update_customer_page.wait_for_save_enabled_with_no_identity_number_error()
+
+
+@when("Nationality ID alanına 12 haneli bir değer girilmeye çalışılır", target_fixture="typed_field_value")
+def user_types_12_digit_identity_number(update_customer_page):
+    return update_customer_page.attempt_to_type_long_identity_number(12)
+
+
+@then("alan yalnızca ilk 11 haneyi kabul eder, 12. hane yazılamaz")
+def identity_number_capped_at_11_digits(typed_field_value):
+    assert len(typed_field_value) == 11, f"Beklenen 11 hane, gelen: {typed_field_value!r} ({len(typed_field_value)} hane)"

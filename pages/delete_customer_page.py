@@ -1,4 +1,4 @@
-from selenium.common.exceptions import ElementClickInterceptedException
+from selenium.common.exceptions import ElementClickInterceptedException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -87,3 +87,52 @@ class DeleteCustomerPage:
         # durumu içermesi) kontrol ediliyor.
         message_el = self.wait.until(EC.visibility_of_element_located(self.EMPTY_STATE_MESSAGE))
         return bool(message_el.text.strip())
+
+    def wait_for_delete_rejected(self):
+        # KASITLI KIRMIZI (canlı doğrulandı, bkz. bugsbunny.txt madde 17 -
+        # customer 854 ile uçtan uca test edildi): sistem şu an "aktif
+        # ürünü olan müşteri silinemez" kuralını UYGULAMIYOR - silme
+        # engellenmeden gerçekleşiyor, kullanıcı Müşteri Arama ekranına
+        # yönlendiriliyor. Bilinen defekt düzelene kadar bu metodun
+        # AssertionError ile FAILED vermesi beklenen/istenen sonuçtur.
+        #
+        # ÖNEMLİ (canlı olarak yakalanan bir tasarım hatası düzeltildi):
+        # "current_url hâlâ detay sayfasında mı" şeklinde DOĞRUDAN bir
+        # wait.until kontrolü ERKEN/YARIŞ DURUMUNA açıktı - silme isteği
+        # asenkron işlenirken, yönlendirme henüz BAŞLAMADAN önceki İLK
+        # polling anında "URL değişmedi" durumu YANLIŞLIKLA true dönüp
+        # sahte-PASS üretebiliyordu (negatif bir durumu erken kanıtlamaya
+        # çalışmanın TC-004-11'de bilinçli olarak kaçınılan AYNI tuzağı).
+        # Düzeltme: zaten var olan, kanıtlanmış wait_for_redirect_to_search()
+        # metodu (TAM 10 saniyelik standart timeout ile) yönlendirmenin
+        # GERÇEKTEN olup olmadığını sonuna kadar bekleyip doğruluyor -
+        # yönlendirme olursa (mevcut/bilinen bug) TimeoutException YERİNE
+        # bilinçli bir AssertionError'a çevriliyor; yönlendirme GERÇEKTEN
+        # hiç olmazsa (düzeltilmiş/beklenen davranış) TimeoutException
+        # yutuluyor ve metod sessizce başarıyla dönüyor.
+        try:
+            self.wait_for_redirect_to_search()
+        except TimeoutException:
+            return
+        raise AssertionError(
+            "Beklenen: aktif ürünü olan müşterinin silinmesi reddedilmeli. "
+            "Gerçek: sistem müşteriyi sildi ve Müşteri Arama ekranına yönlendirdi "
+            "(bilinen defekt, bkz. bugsbunny.txt madde 17)."
+        )
+
+    def capture_status_snapshot(self):
+        # Dilden bağımsız "değişmedi mi" karşılaştırması için - "Aktif"
+        # (TR) / "Active" (EN) gibi literal bir değerle KARŞILAŞTIRMIYORUZ
+        # (bu, arayüz dili İngilizce'yken kırılırdı). Bunun yerine, silme
+        # denemesinden HEMEN ÖNCEKİ (o an aktif olan dilde okunan) durum
+        # metninin birebir AYNISI, denemeden SONRA da hâlâ görüntülenip
+        # görüntülenmediği doğrulanıyor - hangi dilde çalıştırılırsa
+        # çalıştırılsın aynı mantık geçerli.
+        self._status_before_delete_attempt = self.get_status()
+
+    def is_still_on_customer_info_with_status_unchanged(self):
+        return (
+            bool(self.driver.find_elements(*self.DETAIL_HEADER))
+            and self.driver.find_element(*self.DETAIL_HEADER).is_displayed()
+            and self.get_status() == self._status_before_delete_attempt
+        )

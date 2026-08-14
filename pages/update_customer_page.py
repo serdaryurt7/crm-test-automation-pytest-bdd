@@ -140,7 +140,59 @@ class UpdateCustomerPage:
         # ediliyor, literal metin karsilastirilmiyor.
         self.wait.until(EC.visibility_of_element_located(self.IDENTITY_NUMBER_ERROR))
         return self.driver.find_element(*self.IDENTITY_NUMBER_ERROR).is_displayed()
-        field.send_keys(Keys.TAB)
+
+    def get_identity_number_input_value(self):
+        return self.driver.find_element(*self.IDENTITY_NUMBER_INPUT).get_attribute("value")
+
+    def wait_for_identity_number_length_error(self):
+        # Dilden bağımsız: TR ("...11 haneli olmalı...") ve EN ("...exactly
+        # 11 digits...") mesajları farklı kelimelerle yazılsa da İKİSİNDE DE
+        # ORTAK olan tek değişmez unsur "11" rakamının kendisi (bu iki dil
+        # metni UC-017/TC-017-06 keşfinde canlı doğrulanmıştı - bkz.
+        # search_customers_page.py'deki wait_for_identity_number_length_
+        # validation_error() ile AYNI desen). is_identity_number_error_
+        # displayed()'ten farkı: yalnızca "bir hata var mı" değil,
+        # SPESİFİK OLARAK 11-hane uzunluk hatası mı olduğunu doğruluyor -
+        # aynı hata elementi TC-004-03'teki benzersizlik hatası için de
+        # kullanılıyor, "boş değil" kontrolü tek başına ayırt edici olmazdı.
+        self.wait.until(lambda d: "11" in d.find_element(*self.IDENTITY_NUMBER_ERROR).text)
+
+    def wait_for_save_enabled_with_no_identity_number_error(self):
+        # "herhangi bir doğrulama hatası gösterilmez" negatif bir durumu
+        # doğrudan kanıtlamaya çalışmak (erken/yarış durumuna açık) yerine -
+        # TC-004-03b'deki AYNI desen: önce POZİTİF/nihai durumu (Kaydet
+        # butonunun GERÇEKTEN enabled olması, ki bu zaten Angular'ın form
+        # geçerlilik hesaplamasının hata bulmadığını kanıtlar) bekliyoruz,
+        # sonra o ANDAKİ hata elementinin durumunu ek bir doğrulama olarak
+        # okuyoruz.
+        self.wait.until(lambda d: not self.is_save_button_disabled())
+        errors = self.driver.find_elements(*self.IDENTITY_NUMBER_ERROR)
+        assert not errors or not errors[0].is_displayed(), (
+            "Kaydet butonu aktif olmasına rağmen Nationality ID hata mesajı hâlâ görünür"
+        )
+
+    def update_identity_number_with_random_unique_value(self):
+        # Faker ile rastgele 11 haneli bir TC no üretiliyor - collision
+        # riski ihmal edilebilir (create_customer_page.py'deki fill_
+        # demographic_step_with_faker() ile AYNI yöntem, projenin genelinde
+        # "pratikte eşsiz" Faker değerlerine güvenme konvansiyonuyla
+        # tutarlı - ör. contact_update'teki email benzersizliği testleri).
+        new_value = fake.numerify("###########")
+        self.update_identity_number(new_value)
+        return new_value
+
+    def attempt_to_type_long_identity_number(self, length):
+        # maxlength=11 gerçek bir HTML özniteliği (Birth Date maskesinin
+        # aksine JS ile gün/ay geçerliliği filtrelemiyor - canlı doğrulandı,
+        # bkz. create_customer.md notları) - bu yüzden hangi rakamla
+        # doldurulursa doldurulsun tarayıcı tarafından güvenilir şekilde
+        # ilk 11 karaktere kesilmesi beklenir.
+        field = self.driver.find_element(*self.IDENTITY_NUMBER_INPUT)
+        field.click()
+        field.send_keys(Keys.CONTROL + "a")
+        field.send_keys(Keys.BACK_SPACE)
+        field.send_keys("1" * length)
+        return field.get_attribute("value")
 
     def get_save_error_text(self):
         return self.wait.until(EC.visibility_of_element_located(self.SAVE_ERROR)).text
