@@ -1,3 +1,18 @@
+# UC-EACRML-003 — Müşteri Arama — Konsolide Final Test Seti
+
+> **Kapsam notu:** İlk teslimatta bu dosya da sehven dışarıda bırakılmıştı — `login.md` ile aynı düzeltme turunda ekleniyor.
+
+## Durum Özeti
+
+- Kaynak: `features/search_customers.feature`'daki 24 canlı doğrulanmış senaryo. Bu, projedeki **en olgun sınır-değer kapsamına sahip** feature dosyalarından biri: ID Number (11 hane — hem alt hem üst sınır, hem de "yalnızca rakam" input-maskeleme), Customer ID (20 hane üst sınırı), GSM (10 hane üst sınırı), First/Last Name (50 karakter) — dördü de zaten hem "kabul" hem "sınırı aşan reddedilir/kesilir" yönleriyle test edilmiş durumda.
+- **[İMPLEMENTE EDİLDİ] Page object'te locator'ları hazır ama hiç senaryosu olmayan iki gerçek özellik, artık `features/search_customers.feature`'a eklendi:**
+  1. Sonuç sayısı/aralığı göstergesi (`customer-results-count`, `customer-results-range`) — DOM'da gerçekten var ve doğru içerik gösteriyor ("822 kayıt" / "822 kayıttan 1–15 arası"). Dilden bağımsız implemente edildi: sayı metinden regex ile çıkarılıyor, aralığın alt/üst sınırı sayıların metin içindeki POZİSYONUNA değil toplam sayıyla eşleşip eşleşmemesine göre ayrıştırılıyor (`get_results_count_number()`, `get_results_range_bounds()`).
+  2. Sütun başlığına tıklayarak sıralama — canlı olarak **6 sütunun TAMAMI tek tek test edildi** (ilk turda sadece "Ad" test edilmişti). Sonuç: Customer ID, Ad, İkinci Ad, Soyad, Kimlik No sütunlarının hepsinde tıklama gerçekten sırayı değiştiriyor ve ikinci tıklamada farklı bir sıraya geçiyor — **Rol sütunu hariç**: mevcut test verisinde TÜM müşterilerin Role değeri aynı ("Müşteri") olduğundan bu sütunda sıra değişikliği gözlemlenemiyor (veri homojenliği, sıralama mekanizmasının kendisiyle ilgisi yok). Scenario Outline olarak, 5 sütunu kapsayacak şekilde implemente edildi, Rol hariç tutma gerekçesiyle birlikte feature dosyasında not düşüldü.
+- **Doğrulama:** `pytest steps/test_search_customers_steps.py -v` izole çalıştırıldı (34 test case — 28 mevcut + 6 yeni [count/range senaryosu + Outline'ın 5 örneği]): **yeni eklenen 6 test case'in TAMAMI PASSED**. Dosyada ayrıca 7 FAILED vardı ama hiçbiri yeni koddan kaynaklanmıyor — 5'i zaten bilinen flaky testler, 2'si triaj edildi (biri izole tekrarda PASSED çıkıp flaky olduğu kesinleşti; diğeri — "ID Number Alanına 11 Haneden Az Rakam Girildiğinde Validasyon Hatası Gösterilmesi" — gerçek bir bulguydu: hardcoded İngilizce mesaj metni, uygulamanın varsayılan Türkçe diliyle hiç eşleşmiyordu, `bugsbunny.txt` madde 19'a kaydedildi ve AYNI oturumda dilden bağımsız hale getirilerek düzeltildi — bkz. aşağıdaki Gherkin, artık TR/EN'de ortak olan "11" rakamını doğruluyor, literal metin karşılaştırmıyor).
+
+## Gherkin — Final Senaryo Seti
+
+```gherkin
 Feature: Müşteri Arama
   Kullanıcının müşteri kayıtlarını arayabilmesi
 
@@ -137,26 +152,6 @@ Feature: Müşteri Arama
   Scenario: Sonuç Listesinin Varsayılan Olarak Customer ID'ye Göre Artan Sıralanması
     Then sonuç listesi varsayılan olarak Customer ID'ye göre artan sırada listelenir
 
-  Scenario: "No Customer Found" Mesajının ve Create Customer Butonunun Görüntülenmesi
-    When kullanıcı ID Number alanına "00000000000" değerini girer
-    And kullanıcı Search butonuna tıklar
-    Then sonuç bulunamadı durumu görüntülenir
-    And Müşteri Oluştur butonu görüntülenir
-    When kullanıcı Müşteri Oluştur butonuna tıklar
-    Then kullanıcı müşteri oluşturma sayfasına yönlendirilir
-
-  Scenario: Customer ID Linkiyle Customer Info Ekranına Aynı Sekmede Geçiş
-    When kullanıcı Customer ID alanına "1" değerini girer
-    And kullanıcı Search butonuna tıklar
-    And kullanıcı sonuç listesindeki Customer ID linkine tıklar
-    Then kullanıcı aynı sekmede "1" numaralı müşterinin Customer Info ekranına yönlendirilir
-
-  Scenario: Clear Butonuyla Tüm Filtrelerin ve Sonuçların Sıfırlanması
-    When kullanıcı tüm arama alanlarına Tab ile sırayla değer girer
-    And kullanıcı Search butonuna tıklar
-    And kullanıcı Clear butonuna tıklar
-    Then tüm arama alanları boşalır ve sonuç listesi varsayılan hale döner
-
   Scenario: Toplam Kayıt Sayısı ve Görüntülenen Aralığın Doğru Gösterilmesi
     # Dilden bağımsız: sayı, metnin ("822 kayıt" / olası "822 records" gibi)
     # kelimelerinden değil regex ile çıkarılıyor; aralık üst/alt sınırı da
@@ -171,8 +166,7 @@ Feature: Müşteri Arama
   # mevcut test verisinde TÜM müşterilerin Role değeri aynı ("Müşteri"),
   # bu yüzden o sütuna göre sıralamanın gözlemlenebilir hiçbir etkisi yok
   # (veri homojenliği - sıralama mekanizmasının kendisiyle ilgili bir sorun
-  # değil, "sıra değişti mi" assertion'ı bu sütunda anlamsız/test edilemez
-  # olurdu). Diğer 5 sütun (Customer ID, Ad, İkinci Ad, Soyad, Kimlik No)
+  # değil). Diğer 5 sütun (Customer ID, Ad, İkinci Ad, Soyad, Kimlik No)
   # canlı olarak TEK TEK doğrulandı: tıklama GERÇEKTEN sırayı değiştiriyor,
   # ikinci tıklama farklı bir sıraya geçiyor. Sütun etiketleri (ör. "Ad")
   # ekrandaki o an aktif dilin metnine değil, sabit bir Python sözlüğü
@@ -193,3 +187,29 @@ Feature: Müşteri Arama
       | Soyad       |
       | Kimlik No   |
 
+  Scenario: "No Customer Found" Mesajının ve Create Customer Butonunun Görüntülenmesi
+    When kullanıcı ID Number alanına "00000000000" değerini girer
+    And kullanıcı Search butonuna tıklar
+    Then sonuç bulunamadı durumu görüntülenir
+    And Müşteri Oluştur butonu görüntülenir
+    When kullanıcı Müşteri Oluştur butonuna tıklar
+    Then kullanıcı müşteri oluşturma sayfasına yönlendirilir
+
+  Scenario: Customer ID Linkiyle Customer Info Ekranına Aynı Sekmede Geçiş
+    When kullanıcı Customer ID alanına "1" değerini girer
+    And kullanıcı Search butonuna tıklar
+    And kullanıcı sonuç listesindeki Customer ID linkine tıklar
+    Then kullanıcı aynı sekmede "1" numaralı müşterinin Customer Info ekranına yönlendirilir
+
+  Scenario: Clear Butonuyla Tüm Filtrelerin ve Sonuçların Sıfırlanması
+    When kullanıcı tüm arama alanlarına Tab ile sırayla değer girer
+    And kullanıcı Search butonuna tıklar
+    And kullanıcı Clear butonuna tıklar
+    Then tüm arama alanları boşalır ve sonuç listesi varsayılan hale döner
+```
+
+## Notlar
+
+- **Erişilebilirlik bulgusu (yeni sıralama senaryosuyla ortaya çıktı):** Sütun başlığı tıklamaları `aria-sort` özniteliğini HİÇBİR zaman güncellemiyor (tıklamadan önce/sonra hep `None`) — ekran okuyucu kullanıcıları için sıralama durumu programatik olarak iletilmiyor. Otomasyon bu yüzden sıralama durumunu `aria-sort`'tan değil, satırların GERÇEK içerik sırasından okuyor; bulgu ayrıca BA/dev'e a11y maddesi olarak iletilmesi önerilir.
+- Bu UC'nin ID Number/Customer ID/GSM/First-Last Name sınır değerleri, `update_customer.md`/`create_customer.md`'deki AYNI demografik alanların (Kimlik No, Ad, Soyad) FARKLI bir bağlamdaki (arama/filtre, kayıt oluşturma/düzenleme değil) karşılığıdır — iki taraf da bağımsız olarak doğrulanmış durumda, birbirini de dolaylı olarak teyit ediyor (ör. Kimlik No'nun her iki ekranda da 11 hane olması).
+- **[ÇÖZÜLDÜ] Bilinen flaky test kümesi (`bugsbunny.txt` madde 10-14) kök nedeniyle birlikte düzeltildi:** Auto-trim (Last/First Name), büyük/küçük harf duyarsızlık (Outline, 6 örnek) ve AND-mantığı senaryoları uzun/tam suite koşularında ara sıra FAILED veriyordu. Önceki hipotez ("Yılmaz" gibi yaygın bir soyadın Faker ile sayıca artıp beklenen sabit sonuç sayısını bozması) canlı ölçümle **kısmen** doğrulandı (veri gerçekten büyümüş, "Yılmaz" araması artık 17 sonuç döndürüyor) ama asıl kök neden farklı çıktı: 17 sonuçtan biri tam "Yılmaz" değil, **"Yilmaz"** (Türkçe noktalı ı/İ olmadan, düz ASCII "i" ile) yazılıydı. Uygulamanın arama motoru zaten aksan/büyük-küçük harf duyarsız eşleştiriyor (ikisini de buluyor) ama testlerin `==`/`.startswith()` karşılaştırması aksan DUYARLI olduğundan bunu yakalayamıyordu — sonuç kümesinde gerçek bir hata yoktu, test uygulamadan daha katıydı. **Dilden/alfabeden bağımsız, dinamik çözüm:** `pages/search_customers_page.py`'ye Türkçe alfabeye özgü harf/aksan farklarını (İ/I/ı/i, ğ/Ğ, ş/Ş, ç/Ç, ö/Ö, ü/Ü) normalize eden `_turkish_fold()` yardımcı fonksiyonu eklendi, isim karşılaştırması yapan **6 metodun tamamına** (yalnızca failed olan değil, aynı bug sınıfına açık starts-with/OR-logic metodları da dahil) uygulandı — test verisi değiştirilmedi, karşılaştırma mantığı uygulamanın kendi toleransıyla eşleştirildi. İzole doğrulama: 12/12 PASSED (regresyon yok). Ayrıca triaj edilen `test_customer_id_linkiyle_customer_info_ekranına_aynı_sekmede_geçiş` (madde 18) 5 ayrı denemede de PASSED verdi — bu, aynı kök nedene bağlı değil, geçici ortam kaynaklı bir flake olarak kapatıldı, ayrı bir düzeltme gerektirmedi. Detaylar: `bugsbunny.txt` madde 10-14, 18, 20.

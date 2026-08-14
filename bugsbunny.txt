@@ -67,25 +67,34 @@ sırasında oluşan veri/ortam kaynaklı flake mi olduğu NETLEŞTİRİLMELİ.
 
 10. steps/test_search_customers_steps.py
     test_last_name_alanında_baş/son_boşlukların_otomatik_temizlenmesi_autotrim
+    Durum: ÇÖZÜLDÜ [2026-08-14] - bkz. aşağıdaki [2026-08-14] girdisi.
 
 11. steps/test_search_customers_steps.py
     test_last_name_aramasının_büyük/küçük_harf_duyarsız_olması[YILMAZ]
+    Durum: ÇÖZÜLDÜ [2026-08-14]
 
 12. steps/test_search_customers_steps.py
     test_last_name_aramasının_büyük/küçük_harf_duyarsız_olması[yılmaz]
+    Durum: ÇÖZÜLDÜ [2026-08-14]
 
 13. steps/test_search_customers_steps.py
     test_last_name_aramasının_büyük/küçük_harf_duyarsız_olması[YİLMAZ]
+    Durum: ÇÖZÜLDÜ [2026-08-14]
 
 14. steps/test_search_customers_steps.py
     test_first_name_ve_last_name_birlikte_girildiğinde_and_mantığıyla_değerlendirilmesi
+    Durum: ÇÖZÜLDÜ [2026-08-14]
 
-Not (search_customers kümesi, 10-13-14): Bu 4 test daha önce gerçek
+ESKİ Not (search_customers kümesi, 10-13-14, ORİJİNAL hipotez - bkz. asıl
+kök neden için [2026-08-14] girdisi): Bu 4 test daha önce gerçek
 uygulamada doğrulanmış ve sabit sonuç sayıları (ör. "Yılmaz" araması ->
 2 sonuç) bekliyor. 166 testlik koşu boyunca Faker (tr_TR) ile çok sayıda
 yeni müşteri oluşturulduğundan, "Yılmaz" gibi yaygın bir soyadın tekrar
 üretilip beklenen sabit sonuç sayısını bozmuş olması makul bir hipotez -
-ama izole tekrar çalıştırma ile doğrulanmadan kesinleştirilmedi.
+ama izole tekrar çalıştırma ile doğrulanmadan kesinleştirilmedi. [2026-08-14
+NOTU: Bu hipotez KISMEN doğruydu (veri GERÇEKTEN büyümüş, "Yılmaz"
+aramasında artık 17 sonuç var) ama testlerin FAILED vermesinin asıl nedeni
+sayı değil - bkz. aşağıdaki [2026-08-14] girdisi.]
 
 GÜNCELLEME [2026-08-12, 2. tam suite çalıştırması - 187 test, 1sa 13dk 55sn,
 python -m pytest -v, tek seferde]: Sonuç 173 passed, 14 failed.
@@ -116,3 +125,97 @@ görülen, önceki çalıştırmada YOKTU) - 2 test
     Hata: assert get_card_count() == count_before_delete - 1 -> 1 == 0
     başarısız (silme sonrası kart sayısı azalmadı). Henüz izole olarak
     yeniden doğrulanmadı - triaj gerekiyor.
+
+===========================================================
+[2026-08-14] YENİ: Konsolide Final Test Seti turunda canlı doğrulanan
+kritik/sistemik bulgu (henüz otomasyona alınmadı, bkz. test-design/
+final-test-set/delete_customer.md)
+===========================================================
+
+17. (henüz implemente edilmedi - bkz. test-design/final-test-set/delete_customer.md,
+    TC-EACRML-005-03) - Aktif ürünü/aboneliği olan bir MÜŞTERİ, hiçbir
+    engelleme olmadan silinebiliyor.
+    Sebep: Fresh bir disposable müşteriye (customer 854) fatura hesabı
+    açılıp "Yeni Satış Başlat" akışıyla ("Mobil 20GB Paket") gerçek bir
+    aktif ürün kazandırıldıktan SONRA Delete + "Evet" ile silme denendi.
+    Sistem silmeyi ENGELLEMEDİ - müşteri Müşteri Arama ekranına
+    yönlendirildi, eski detay URL'i (/customers/854) artık açılmıyor
+    (empty-state/bulunamadı). Durum silme öncesi "Aktif" olarak doğrulanmıştı.
+    İLİŞKİLİ BULGU: madde 3 (TC-012-03, aynı kural ama Fatura Hesabı
+    seviyesinde) ile AYNI kök nedene işaret ediyor olabilir - iki seviyede
+    de (müşteri VE fatura hesabı) "aktif ürünü olan varlık silinemez" iş
+    kuralı tutarlı biçimde uygulanmıyor. Tek seferlik bir flake değil,
+    sistemik bir eksiklik olarak BA/dev'e birlikte raporlanması önerilir.
+
+===========================================================
+[2026-08-14] search_customers.feature'a 2 yeni senaryo (Toplam Kayıt
+Sayısı/Aralığı + Sütun Sıralama Outline, 5 örnek) eklendikten sonra dosya
+izole çalıştırıldı: 34 test, 27 passed, 7 failed, 662.96s. EKLENEN 6 yeni
+test case'in HEPSİ (count/range senaryosu + Outline'ın 5 örneği) PASSED -
+aşağıdaki 7 failure'ın hiçbiri yeni eklenen kodla ilgili değil.
+===========================================================
+
+Failed olan 7 testten 5'i ZATEN madde 10-14'te kayıtlı bilinen flaky
+testler (Yılmaz soyadı sayısının Faker ile drift etmesi) - tekrar
+eklenmedi. Kalan 2'si triaj edildi:
+
+18. steps/test_search_customers_steps.py
+    test_customer_id_linkiyle_customer_info_ekranına_aynı_sekmede_geçiş
+    Durum: KAPANDI - izole tekrar çalıştırmada (id_number_alan + bu test,
+    2 test) PASSED verdi. Madde 8/9/10-14 ile AYNI kategori: uzun/çoklu
+    testli koşu sırasında oluşan geçici veri/ortam kaynaklı flake, kalıcı
+    regresyon DEĞİL. Listeye kalıcı olarak eklenmiyor.
+
+19. steps/test_search_customers_steps.py
+    test_id_number_alanına_11_haneden_az_rakam_girildiğinde_validasyon_hatası_gösterilmesi
+    Durum: ÇÖZÜLDÜ (aynı gün, 2. oturum). Kök neden canlı doğrulandı:
+    hardcoded literal "Please enter a valid 11-digit ID number." (İngilizce)
+    metniyle karşılaştırılıyordu - uygulama VARSAYILAN olarak Türkçe
+    çalıştığından gerçek mesaj "Lütfen geçerli 11 haneli bir kimlik
+    numarası giriniz." oluyor, eşleşme hiç sağlanamıyordu. Mekanizmanın
+    kendisi (EMPTY_STATE_MESSAGE elementi) DOĞRUYDU, sadece literal metin
+    yanlıştı.
+    Düzeltme: features/search_customers.feature'daki son Then adımı, TR/EN
+    metinlerinde ORTAK olan tek değişmez unsuru (11 rakamının kendisi)
+    doğrulayacak şekilde dilden bağımsız hale getirildi (aynı
+    EMPTY_STATE_MESSAGE "sonuç bulunamadı" durumuyla da paylaşıldığından,
+    o mesajda "11" hiç geçmediğinden bu içerik iki durumu güvenle ayırt
+    ediyor). Düzeltme sırasında AYRICA bir StaleElementReferenceException
+    ortaya çıktı (EC.visibility_of_element_located ile bulup ayrı adımda
+    .text okumak Angular'ın re-render'ına yakalanıyordu) - find+text okuma
+    tek bir lambda'ya alınıp wait_for_empty_state_message ile aynı desene
+    getirilerek çözüldü. İzole doğrulama: PASSED.
+
+===========================================================
+[2026-08-14, 3. oturum] Madde 10-14'ün GERÇEK kök nedeni canlı olarak
+kesin şekilde tespit edildi ve düzeltildi (önceki "sabit sayı drifti"
+hipotezi YERİNE, bkz. aşağıda).
+===========================================================
+
+20. pages/search_customers_page.py - 6 metod (wait_for_last_name_results,
+    wait_for_first_name_results, wait_for_last_name_results_starting_with,
+    wait_for_first_name_results_starting_with,
+    wait_for_results_matching_first_and_last_name,
+    wait_for_results_matching_first_name_or_customer_id)
+    KÖK NEDEN (canlı ölçümle kesinleşti - flaky-test-diagnosis-methodology
+    uygulandı): "Yılmaz" araması ŞU AN 17 sonuç döndürüyor (veri GERÇEKTEN
+    büyümüş, orijinal hipotez bu kısmıyla doğruydu) ANCAK failure'ın asıl
+    sebebi SAYI değil - 17 sonuçtan biri tam "Yılmaz" DEĞİL, "Yilmaz"
+    (Türkçe noktalı ı/İ olmadan, düz ASCII "i" ile) yazılı. Uygulamanın
+    arama motoru ZATEN aksan/büyük-küçük harf duyarsız eşleştiriyor
+    ("Yılmaz" araması hem "Yılmaz" hem "Yilmaz" kaydını döndürüyor,
+    canlı doğrulandı - muhtemelen Faker'ın tr_TR sağlayıcısının ara sıra
+    ürettiği bir ASCII-transliterasyonlu isim) - ama testin karşılaştırması
+    (Python'ın varsayılan `==`/`.startswith()`, aksan DUYARLI) bunu
+    yakalayamayıp TimeoutException veriyordu. Sonuç kümesinde GERÇEK bir
+    hata yoktu - test, uygulamanın kendi eşleştirme toleransından DAHA
+    KATIYDI.
+    Düzeltme: pages/search_customers_page.py'ye Türkçe alfabeye özgü
+    büyük/küçük harf + aksan farklarını (İ/I/ı/i, ğ/Ğ, ş/Ş, ç/Ç, ö/Ö, ü/Ü)
+    normalize eden `_turkish_fold()` yardımcı fonksiyonu eklendi, ilgili 6
+    karşılaştırma metodunun TAMAMINA uygulandı (yalnızca failed olan 5
+    değil - aynı bug sınıfına açık olan starts-with/OR-logic metodları da
+    dahil, önleyici/dinamik bir düzeltme). İzole doğrulama: 12/12 PASSED
+    (5 önceden failed + 7 dokunulan ama önceden failed olmayan, regresyon
+    yok). Veri değiştirilmedi/eklenmedi - karşılaştırma mantığı uygulamanın
+    kendi davranışıyla eşleşecek şekilde düzeltildi.

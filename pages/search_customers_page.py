@@ -1,10 +1,39 @@
 import random
+import re
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+
+# Türkçe alfabeye özgü büyük/küçük harf ve aksan farklarını (İ/I/ı/i,
+# ğ/Ğ, ş/Ş, ç/Ç, ö/Ö, ü/Ü) normalize eden dönüşüm tablosu. Canlı olarak
+# doğrulandı: uygulamanın kendi arama motoru ZATEN bu şekilde aksan/harf
+# duyarsız eşleştiriyor (ör. "Yılmaz" araması hem "Yılmaz" hem "Yilmaz"
+# yazılışını döndürüyor - gerçek veride, muhtemelen Faker'ın tr_TR
+# sağlayıcısının ara sıra üreteceği ASCII-transliterasyonlu bir kayıttan
+# ötürü) - testin karşılaştırması bunu YAKALAYAMADIĞINDA (Python'ın
+# varsayılan str eşitliği/`.startswith()` aksan DUYARLI) sonuç kümesi
+# içeriğinde hiçbir gerçek hata yokken TimeoutException ile FAILED
+# veriyordu (bkz. bugsbunny.txt madde 10-14). Kök neden veri SAYISI drifti
+# değil, karşılaştırmanın uygulamanın kendi eşleştirme toleransından DAHA
+# KATI olmasıydı - düzeltme test verisini değiştirmek değil, karşılaştırmayı
+# uygulamayla AYNI toleransa getirmek.
+_TURKISH_FOLD_MAP = str.maketrans(
+    {
+        "ı": "i", "İ": "i", "I": "i",
+        "ğ": "g", "Ğ": "g",
+        "ş": "s", "Ş": "s",
+        "ç": "c", "Ç": "c",
+        "ö": "o", "Ö": "o",
+        "ü": "u", "Ü": "u",
+    }
+)
+
+
+def _turkish_fold(text):
+    return text.translate(_TURKISH_FOLD_MAP).lower()
 
 
 class CustomersPage:
@@ -68,6 +97,29 @@ class CustomersPage:
     ROW_ROLE = (By.CSS_SELECTOR, "[data-testid='customer-row-role']")
     ROW_IDENTITY = (By.CSS_SELECTOR, "[data-testid='customer-row-identity']")
 
+    # Sıralanabilir sütun etiketi -> (sort header locator / satır değeri
+    # locator) eşlemesi. Etiketler ekrandaki o an aktif dilin metnine değil
+    # sabit bir Python sözlüğüne bağlı (create_customer_page.py'deki
+    # GENDER_VALUE_MAP ile aynı desen) - hangi UI dili aktifken koşulursa
+    # koşulsun aynı data-testid'ler tıklanır/okunur, dilden bağımsız.
+    # "Rol" kasıtlı olarak dahil edilmedi - bkz. search_customers.feature
+    # üst yorumu (mevcut veride tüm kayıtların Role'ü aynı, sıra değişikliği
+    # gözlemlenemez).
+    SORT_LOCATORS = {
+        "Customer ID": SORT_CUSTOMER_ID,
+        "Ad": SORT_FIRST_NAME,
+        "İkinci Ad": SORT_SECOND_NAME,
+        "Soyad": SORT_LAST_NAME,
+        "Kimlik No": SORT_NATIONALITY_ID,
+    }
+    SORT_ROW_VALUE_LOCATORS = {
+        "Customer ID": ROW_LINK,
+        "Ad": ROW_FIRST_NAME,
+        "İkinci Ad": ROW_SECOND_NAME,
+        "Soyad": ROW_LAST_NAME,
+        "Kimlik No": ROW_IDENTITY,
+    }
+
     # Müşteri Detayı (Customer Info) ekranı
     CUSTOMER_DETAIL_HEADER = (By.CSS_SELECTOR, "[data-testid='customer-detail-header']")
 
@@ -128,6 +180,25 @@ class CustomersPage:
     def wait_for_empty_state_message(self, expected_text):
         self.wait.until(lambda d: d.find_element(*self.EMPTY_STATE_MESSAGE).text == expected_text)
 
+    def wait_for_identity_number_length_validation_error(self):
+        # Dilden bağımsız: TR ("...11 haneli...") ve EN (muhtemelen
+        # "...11-digit...") mesaj metinleri farklı kelimelerle yazılsa da
+        # İKİSİNDE DE ORTAK olan tek değişmez unsur "11" rakamının kendisi -
+        # literal kelime karşılaştırması yerine bu doğrulanıyor. Aynı
+        # EMPTY_STATE_MESSAGE elementi "sonuç bulunamadı" durumuyla da
+        # paylaşıldığından ("Arama kriterlerine uygun müşteri bulunamadı."
+        # mesajında "11" GEÇMİYOR), yalnızca "boş değil" kontrolü yeterince
+        # ayırt edici olmazdı - "11" içeriği bu iki durumu güvenle ayırıyor.
+        # Not: EC.visibility_of_element_located() ile elementi BULUP sonra
+        # ayrı bir adımda .text okumak, Angular'ın ilk render'dan hemen
+        # sonra elementi yeniden oluşturması durumunda StaleElementReference
+        # Exception'a yakalanabiliyor (canlı olarak görüldü) - find_element +
+        # .text okumasının TAMAMI, self.wait'in zaten ignore ettiği
+        # StaleElementReferenceException'ı her pollingde TAZE bir sorguyla
+        # otomatik yeniden deneyecek şekilde TEK BİR lambda içine alındı
+        # (wait_for_empty_state_message ile aynı desen).
+        self.wait.until(lambda d: "11" in d.find_element(*self.EMPTY_STATE_MESSAGE).text)
+
     def wait_for_no_results_state(self):
         self.wait.until(EC.visibility_of_element_located(self.EMPTY_STATE))
         assert self.get_row_count() == 0, "Sonuç bulunamadı durumu beklenirken hâlâ satırlar görüntüleniyor"
@@ -171,9 +242,10 @@ class CustomersPage:
         field.send_keys(value)
 
     def wait_for_last_name_results(self, expected_last_name):
+        expected = _turkish_fold(expected_last_name)
         self.wait.until(
             lambda d: bool(d.find_elements(*self.ROW_LAST_NAME))
-            and all(e.text.strip() == expected_last_name for e in d.find_elements(*self.ROW_LAST_NAME))
+            and all(_turkish_fold(e.text.strip()) == expected for e in d.find_elements(*self.ROW_LAST_NAME))
         )
 
     def enter_first_name(self, value):
@@ -182,44 +254,51 @@ class CustomersPage:
         field.send_keys(value)
 
     def wait_for_first_name_results(self, expected_first_name):
+        expected = _turkish_fold(expected_first_name)
         self.wait.until(
             lambda d: bool(d.find_elements(*self.ROW_FIRST_NAME))
-            and all(e.text.strip() == expected_first_name for e in d.find_elements(*self.ROW_FIRST_NAME))
+            and all(_turkish_fold(e.text.strip()) == expected for e in d.find_elements(*self.ROW_FIRST_NAME))
         )
 
     def wait_for_last_name_results_starting_with(self, prefix):
+        folded_prefix = _turkish_fold(prefix)
         self.wait.until(
             lambda d: bool(d.find_elements(*self.ROW_LAST_NAME))
-            and all(e.text.strip().startswith(prefix) for e in d.find_elements(*self.ROW_LAST_NAME))
+            and all(_turkish_fold(e.text.strip()).startswith(folded_prefix) for e in d.find_elements(*self.ROW_LAST_NAME))
         )
 
     def wait_for_first_name_results_starting_with(self, prefix):
+        folded_prefix = _turkish_fold(prefix)
         self.wait.until(
             lambda d: bool(d.find_elements(*self.ROW_FIRST_NAME))
-            and all(e.text.strip().startswith(prefix) for e in d.find_elements(*self.ROW_FIRST_NAME))
+            and all(_turkish_fold(e.text.strip()).startswith(folded_prefix) for e in d.find_elements(*self.ROW_FIRST_NAME))
         )
 
     def wait_for_results_matching_first_and_last_name(self, first_name_prefix, last_name_prefix):
+        folded_first = _turkish_fold(first_name_prefix)
+        folded_last = _turkish_fold(last_name_prefix)
         self.wait.until(
             lambda d: bool(d.find_elements(*self.ROW_LINK))
-            and all(e.text.strip().startswith(first_name_prefix) for e in d.find_elements(*self.ROW_FIRST_NAME))
-            and all(e.text.strip().startswith(last_name_prefix) for e in d.find_elements(*self.ROW_LAST_NAME))
+            and all(_turkish_fold(e.text.strip()).startswith(folded_first) for e in d.find_elements(*self.ROW_FIRST_NAME))
+            and all(_turkish_fold(e.text.strip()).startswith(folded_last) for e in d.find_elements(*self.ROW_LAST_NAME))
         )
 
     def wait_for_results_matching_first_name_or_customer_id(self, first_name_prefix, customer_id):
+        folded_prefix = _turkish_fold(first_name_prefix)
+
         def check(d):
             links = d.find_elements(*self.ROW_LINK)
             firsts = d.find_elements(*self.ROW_FIRST_NAME)
             if not links:
                 return False
             matches = [
-                fn.text.strip().startswith(first_name_prefix) or link.text.strip() == customer_id
+                _turkish_fold(fn.text.strip()).startswith(folded_prefix) or link.text.strip() == customer_id
                 for link, fn in zip(links, firsts)
             ]
             return (
                 all(matches)
                 and any(link.text.strip() == customer_id for link in links)
-                and any(fn.text.strip().startswith(first_name_prefix) for fn in firsts)
+                and any(_turkish_fold(fn.text.strip()).startswith(folded_prefix) for fn in firsts)
             )
 
         self.wait.until(check)
@@ -319,3 +398,44 @@ class CustomersPage:
 
     def verify_results_reset_to_default(self):
         self.wait.until(lambda d: len(d.find_elements(*self.ROW)) == 15)
+
+    def get_results_count_number(self):
+        # "822 kayıt" / olası "822 records" gibi dile göre değişen bir
+        # metinden SADECE sayıyı çıkarıyor - literal kelime karşılaştırması
+        # yok, dilden bağımsız.
+        el = self.wait.until(EC.visibility_of_element_located(self.RESULTS_COUNT))
+        match = re.search(r"\d+", el.text)
+        assert match, f"RESULTS_COUNT metninde sayı bulunamadı: {el.text!r}"
+        return int(match.group())
+
+    def get_results_range_bounds(self):
+        # "822 kayıttan 1–15 arası" / olası EN karşılığı "1-15 of 822
+        # records" gibi FARKLI kelime/sayı sırasına sahip olabilecek bir
+        # metinden, sayıların METİNDEKİ POZİSYONUNA güvenmeden (dilden
+        # bağımsız) alt/üst sınırı çıkarıyor: toplam sayı zaten
+        # get_results_count_number()'dan biliniyor, metindeki sayılardan ona
+        # eşit OLMAYAN ikisinin küçüğü=alt, büyüğü=üst sınırdır.
+        total = self.get_results_count_number()
+        range_el = self.wait.until(EC.visibility_of_element_located(self.RESULTS_RANGE))
+        numbers = [int(n) for n in re.findall(r"\d+", range_el.text)]
+        bounds = [n for n in numbers if n != total]
+        assert len(bounds) >= 2, (
+            f"RESULTS_RANGE metninde beklenen alt/üst sınır sayıları bulunamadı: {range_el.text!r}"
+        )
+        return min(bounds), max(bounds)
+
+    def is_results_range_consistent_with_row_count(self):
+        lower, upper = self.get_results_range_bounds()
+        return (upper - lower + 1) == self.get_row_count()
+
+    def capture_sort_column_values(self, column_label):
+        locator = self.SORT_ROW_VALUE_LOCATORS[column_label]
+        self.wait.until(lambda d: bool(d.find_elements(*locator)))
+        return [e.text.strip() for e in self.driver.find_elements(*locator)]
+
+    def click_sort_column(self, column_label):
+        locator = self.SORT_LOCATORS[column_label]
+        self.wait.until(EC.element_to_be_clickable(locator)).click()
+
+    def wait_for_sort_column_values_to_change(self, column_label, previous_values):
+        self.wait.until(lambda d: self.capture_sort_column_values(column_label) != previous_values)

@@ -89,6 +89,11 @@ def no_results_state_shown(customers_page):
     customers_page.wait_for_no_results_state()
 
 
+@then("ID Number'ın 11 haneli olması gerektiğine dair bir doğrulama hatası görüntülenir")
+def identity_number_length_validation_error_shown(customers_page):
+    customers_page.wait_for_identity_number_length_validation_error()
+
+
 @when(parsers.parse('kullanıcı Customer ID alanına "{value}" değerini girer'))
 def user_enters_customer_id(customers_page, value):
     customers_page.enter_customer_id(value)
@@ -250,3 +255,48 @@ def user_clicks_clear_button(customers_page):
 def all_fields_cleared_and_results_reset(customers_page):
     customers_page.verify_all_search_fields_empty()
     customers_page.verify_results_reset_to_default()
+
+
+@then("toplam kayıt sayısı bilgisi görüntülenir")
+def results_count_displayed(customers_page):
+    assert customers_page.get_results_count_number() > 0
+
+
+@then("görüntülenen aralık bilgisi görüntülenir")
+def results_range_displayed(customers_page):
+    lower, upper = customers_page.get_results_range_bounds()
+    assert lower >= 1 and upper >= lower, f"Aralık tutarsız: {lower}-{upper}"
+
+
+@then("aralık bilgisindeki üst değer o sayfadaki gerçek satır sayısıyla tutarlıdır")
+def results_range_matches_row_count(customers_page):
+    assert customers_page.is_results_range_consistent_with_row_count()
+
+
+@given("sonuç listesi varsayılan (Customer ID artan) sırada görüntülenmektedir")
+def default_sort_state_before_column_sort(customers_page):
+    assert customers_page.is_customer_id_column_sorted_ascending()
+
+
+@when(parsers.parse('kullanıcı "{column}" sütun başlığına tıklar'))
+def click_sort_column_first_time(customers_page, column):
+    customers_page._sort_column_label = column
+    customers_page._sort_values_before_click = customers_page.capture_sort_column_values(column)
+    customers_page.click_sort_column(column)
+
+
+@then(parsers.parse('sonuç listesi "{column}" sütununa göre yeniden sıralanır (varsayılan sıradan farklı)'))
+def verify_sort_changed_from_default(customers_page, column):
+    customers_page.wait_for_sort_column_values_to_change(column, customers_page._sort_values_before_click)
+    customers_page._sort_values_after_first_click = customers_page.capture_sort_column_values(column)
+
+
+@when(parsers.parse('kullanıcı "{column}" sütun başlığına tekrar tıklar'))
+def click_sort_column_second_time(customers_page, column):
+    customers_page.click_sort_column(column)
+
+
+@then("sıralama yönü değişir (ilk tıklamadaki sıradan farklı bir sıraya geçilir)")
+def verify_sort_order_changes_again(customers_page):
+    column = customers_page._sort_column_label
+    customers_page.wait_for_sort_column_values_to_change(column, customers_page._sort_values_after_first_click)
