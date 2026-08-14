@@ -125,4 +125,40 @@ Feature: Müşteri Oluşturma
     When kullanıcı Create butonuna tıklar
     Then sistem müşteri kaydını oluşturur ve "Customer Info" ekranını açar
     And opsiyonel alanlar dahil girilen tüm bilgiler eksiksiz ve doğru şekilde görüntülenir
-  
+
+  Scenario Outline: Second Name/Father Name/Mother Name Alanlarının 100 Karakter Sınırının Korunması
+    When "<alan>" alanına 101 karakterlik değer girilmeye çalışılır
+    Then alan en fazla 100 karakteri kabul eder
+
+    Examples:
+      | alan        |
+      | Second Name |
+      | Father Name |
+      | Mother Name |
+
+  Scenario Outline: Second Name/Father Name/Mother Name Alanlarının Tam 100 Karakterlik Değeri Kabul Etmesi
+    When "<alan>" alanına tam 100 karakterlik bir değer girilir
+    Then alan girilen 100 karakterin tamamını kabul eder
+
+    Examples:
+      | alan        |
+      | Second Name |
+      | Father Name |
+      | Mother Name |
+
+  # NOT (canlı doğrulandı): Birth Date maskesi basit "ilk N rakamı al"
+  # mekanizması DEĞİL - gün/ay geçerliliğini ANLIK doğrulayan daha karmaşık
+  # bir maske (ör. "123456789" yazılınca ay basamağı geçersiz kaldığından
+  # bazı rakamlar sessizce filtreleniyor, sonuç girilen rakamların birebir
+  # ilk 8'i OLMUYOR - "12/03/4567" gibi beklenmedik bir değer çıkıyor). Bu
+  # yüzden senaryo GERÇEKTEN geçerli, belirsizlik yaratmayan bir tarihle
+  # (15/06/1990) test ediliyor - kesin ara rakam dizisini değil, yalnızca
+  # 10 karakterlik (8 rakam + 2 ayraç) üst sınırın korunduğunu ve fazla
+  # rakamın hiçbir etkisi olmadığını doğruluyor. Dilden bağımsız: EN dilinde
+  # placeholder "gg/aa/yyyy" -> "dd/mm/yyyy" değişse de (canlı doğrulandı)
+  # maskenin kendisi ve 10 karakterlik sınır AYNI kalıyor.
+  Scenario: Birth Date Alanının Maskeli Giriş Kapasitesinin (8 Rakam / gg/aa/yyyy) Sınırını Koruması
+    When "Birth Date" alanına geçerli 8 rakamlık bir tarih yazılır
+    Then alan "gg/aa/yyyy" formatında, tam 10 karakter uzunluğunda bir değer gösterir
+    When aynı alana 9. bir rakam yazılmaya çalışılır
+    Then alanın değeri değişmeden kalır, fazla rakamın hiçbir etkisi olmaz

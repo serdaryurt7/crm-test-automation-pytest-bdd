@@ -5,7 +5,9 @@
 ## Durum Özeti
 
 - Kaynak: `features/create_customer.feature`'daki 18 canlı doğrulanmış senaryo (uçtan uca müşteri yaratma akışı: Demografik Bilgi → Adres → İletişim Kanalı → Create).
-- **Bu turda YENİ eklenen (canlı doğrulandı — "demografik bilgi için sınır değer kontrolleri"):** Second Name/Father Name/Mother Name alanlarının `maxlength=100` olduğu canlı olarak DOM incelemesiyle doğrulandı (daha önce hiç test edilmemişti — bu alanlar opsiyonel oldukları için mevcut suite'te yalnızca "doğru kaydediliyor mu" açısından, sınır değer açısından değil kapsanmıştı). Birth Date alanının maskeli giriş kapasitesi (8 rakam → gg/aa/yyyy, `maxlength=10`) de yeni bir sınır-değer senaryosuyla eklendi.
+- **[İMPLEMENTE EDİLDİ] "Demografik bilgi için sınır değer kontrolleri":** Second Name/Father Name/Mother Name alanlarının `maxlength=100` olduğu canlı DOM incelemesiyle doğrulandı (hem `<input maxlength>` özniteliği hem de fiili 101→100 karakter kesilmesi ile) ve TR/EN her iki dilde de AYNI kaldığı (dilden bağımsız) ayrıca teyit edildi.
+- **[BULGU] Birth Date maskesi, orijinal taslakta varsayılandan daha karmaşık çıktı:** "ilk 8 rakamı kabul eder" iddiası canlı testte TAM doğrulanamadı — maske basit bir "ilk N rakamı al" mekanizması değil, gün/ay geçerliliğini ANLIK doğrulayan bir yapı (ör. "123456789" yazılınca ay basamağı geçersiz kaldığından bazı rakamlar sessizce filtreleniyor, sonuç girilen rakamların birebir ilk 8'i olmuyor, "12/03/4567" gibi beklenmedik bir değer çıkıyor). Senaryo bu yüzden GERÇEKTEN geçerli bir tarihle (15/06/1990) ve yalnızca 10 karakterlik üst sınır + fazla rakamın etkisizliği iddiasıyla yeniden yazılıp implemente edildi — kesin ara rakam dizisi iddia edilmiyor. Dilden bağımsız: EN dilinde placeholder "gg/aa/yyyy" → "dd/mm/yyyy" değişse de maskenin kendisi ve 10 karakterlik sınır aynı kalıyor (canlı doğrulandı).
+- **Doğrulama:** `pytest steps/test_create_customer_steps.py -v -k "100_karakter or birth_date_alan"` izole çalıştırıldı — **7/7 PASSED** (Outline'ların 3'er örneği + Birth Date senaryosu).
 
 ## Gherkin — Final Senaryo Seti
 
@@ -138,32 +140,37 @@ Feature: Müşteri Oluşturma
     Then sistem müşteri kaydını oluşturur ve "Customer Info" ekranını açar
     And opsiyonel alanlar dahil girilen tüm bilgiler eksiksiz ve doğru şekilde görüntülenir
 
-  Scenario Outline: [YENİ - Sınır Değer] Second Name/Father Name/Mother Name Alanlarının 100 Karakter Sınırının Korunması
-    Given kullanıcı "Demografik Bilgi" ekranındadır
+  Scenario Outline: Second Name/Father Name/Mother Name Alanlarının 100 Karakter Sınırının Korunması
     When "<alan>" alanına 101 karakterlik değer girilmeye çalışılır
     Then alan en fazla 100 karakteri kabul eder
 
     Examples:
-      | alan         |
-      | Second Name  |
-      | Father Name  |
-      | Mother Name  |
+      | alan        |
+      | Second Name |
+      | Father Name |
+      | Mother Name |
 
-  Scenario Outline: [YENİ - Sınır Değer] Second Name/Father Name/Mother Name Alanlarının Tam 100 Karakterlik Değeri Kabul Etmesi
-    Given kullanıcı "Demografik Bilgi" ekranındadır
+  Scenario Outline: Second Name/Father Name/Mother Name Alanlarının Tam 100 Karakterlik Değeri Kabul Etmesi
     When "<alan>" alanına tam 100 karakterlik bir değer girilir
     Then alan girilen 100 karakterin tamamını kabul eder
 
     Examples:
-      | alan         |
-      | Second Name  |
-      | Father Name  |
-      | Mother Name  |
+      | alan        |
+      | Second Name |
+      | Father Name |
+      | Mother Name |
 
-  Scenario: [YENİ - Sınır Değer] Birth Date Alanının Maskeli Giriş Kapasitesinin (8 Rakam / gg-aa-yyyy) Sınırını Koruması
-    Given kullanıcı "Demografik Bilgi" ekranındadır
-    When "Birth Date" alanına art arda 9 rakam yazılmaya çalışılır
-    Then alan yalnızca ilk 8 rakamı (gg/aa/yyyy olarak biçimlendirilmiş, toplam 10 karakter) kabul eder, fazlası yazılamaz
+  # NOT (canlı doğrulandı): Birth Date maskesi basit "ilk N rakamı al"
+  # mekanizması DEĞİL - gün/ay geçerliliğini ANLIK doğrulayan daha karmaşık
+  # bir maske (bkz. Durum Özeti). Senaryo GERÇEKTEN geçerli bir tarihle
+  # (15/06/1990) test ediliyor - kesin ara rakam dizisini değil, yalnızca
+  # 10 karakterlik üst sınırın korunduğunu doğruluyor. Dilden bağımsız:
+  # EN dilinde placeholder değişse de maske/sınır aynı kalıyor.
+  Scenario: Birth Date Alanının Maskeli Giriş Kapasitesinin (8 Rakam / gg/aa/yyyy) Sınırını Koruması
+    When "Birth Date" alanına geçerli 8 rakamlık bir tarih yazılır
+    Then alan "gg/aa/yyyy" formatında, tam 10 karakter uzunluğunda bir değer gösterir
+    When aynı alana 9. bir rakam yazılmaya çalışılır
+    Then alanın değeri değişmeden kalır, fazla rakamın hiçbir etkisi olmaz
 ```
 
 ## Notlar

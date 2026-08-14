@@ -401,3 +401,53 @@ def fill_contact_step_with_all_fields(create_customer_page):
 @then("opsiyonel alanlar dahil girilen tüm bilgiler eksiksiz ve doğru şekilde görüntülenir")
 def all_fields_including_optional_displayed_correctly(create_customer_page, demographic_data, contact_data):
     assert create_customer_page.are_optional_fields_displayed_correctly(demographic_data, contact_data)
+
+
+@when(parsers.parse('"{alan}" alanına 101 karakterlik değer girilmeye çalışılır'))
+def attempt_101_chars_in_optional_name_field(create_customer_page, alan):
+    create_customer_page._last_optional_name_value = (
+        create_customer_page.attempt_to_type_long_value_in_optional_name_field(alan, 101)
+    )
+
+
+@then("alan en fazla 100 karakteri kabul eder")
+def optional_name_field_capped_at_100(create_customer_page):
+    assert len(create_customer_page._last_optional_name_value) == 100
+
+
+@when(parsers.parse('"{alan}" alanına tam 100 karakterlik bir değer girilir'))
+def enter_exactly_100_chars_in_optional_name_field(create_customer_page, alan):
+    create_customer_page._last_optional_name_value = (
+        create_customer_page.attempt_to_type_long_value_in_optional_name_field(alan, 100)
+    )
+
+
+@then("alan girilen 100 karakterin tamamını kabul eder")
+def optional_name_field_accepts_full_100(create_customer_page):
+    assert len(create_customer_page._last_optional_name_value) == 100
+
+
+@when('"Birth Date" alanına geçerli 8 rakamlık bir tarih yazılır')
+def type_valid_birth_date(create_customer_page):
+    create_customer_page._birth_date_after_8_digits = create_customer_page.type_valid_birth_date_digits()
+
+
+@then('alan "gg/aa/yyyy" formatında, tam 10 karakter uzunluğunda bir değer gösterir')
+def birth_date_shows_10_char_formatted_value(create_customer_page):
+    # Dilden bağımsız: format ayraçlarının POZİSYONUNU (2. ve 5. index'te
+    # "/") ve TOPLAM uzunluğu doğruluyor - placeholder metni (gg/aa/yyyy
+    # veya dd/mm/yyyy) hangi dilde olursa olsun aynı maske/uzunluk kuralı
+    # geçerli (canlı doğrulandı).
+    value = create_customer_page._birth_date_after_8_digits
+    assert len(value) == 10, f"Beklenen 10 karakter, gelen: {value!r} ({len(value)} karakter)"
+    assert value[2] == "/" and value[5] == "/", f"Beklenen gg/aa/yyyy formatı, gelen: {value!r}"
+
+
+@when("aynı alana 9. bir rakam yazılmaya çalışılır")
+def attempt_9th_digit_in_birth_date(create_customer_page):
+    create_customer_page._birth_date_after_9th_digit = create_customer_page.append_extra_digit_to_birth_date()
+
+
+@then("alanın değeri değişmeden kalır, fazla rakamın hiçbir etkisi olmaz")
+def birth_date_value_unchanged_after_overflow(create_customer_page):
+    assert create_customer_page._birth_date_after_9th_digit == create_customer_page._birth_date_after_8_digits

@@ -78,6 +78,16 @@ class CreateCustomerPage:
     # Türkçe metni listbox'taki data-value'ya çeviriyor.
     GENDER_VALUE_MAP = {"Erkek": "male", "Kadın": "female"}
 
+    # UpdateCustomerPage.REQUIRED_FIELD_LOCATORS ile AYNI desen - Gherkin
+    # Examples'taki okunabilir alan adını gerçek locator'a eşliyor, dinamik/
+    # tek bir Scenario Outline'ın 3 alanı da (Second/Father/Mother Name)
+    # kod tekrarı olmadan test edebilmesini sağlıyor.
+    OPTIONAL_NAME_FIELD_LOCATORS = {
+        "Second Name": SECOND_NAME,
+        "Father Name": FATHER_NAME,
+        "Mother Name": MOTHER_NAME,
+    }
+
     def __init__(self, driver):
         self.driver = driver
         self.wait = WebDriverWait(driver, 10, ignored_exceptions=(StaleElementReferenceException,))
@@ -174,6 +184,41 @@ class CreateCustomerPage:
         field = self.driver.find_element(*self.MOTHER_NAME)
         field.clear()
         field.send_keys(value)
+
+    def attempt_to_type_long_value_in_optional_name_field(self, field_label, length):
+        # UpdateCustomerPage.attempt_to_type_long_value() ile AYNI desen:
+        # .clear() Angular'ın reaktif form durumunu güvenilir tetiklemediği
+        # için CTRL+A + BACKSPACE ile gerçek kullanıcı tuş vuruşu simüle
+        # edilerek alan önce temizleniyor.
+        locator = self.OPTIONAL_NAME_FIELD_LOCATORS[field_label]
+        field = self.driver.find_element(*locator)
+        field.click()
+        field.send_keys(Keys.CONTROL + "a")
+        field.send_keys(Keys.BACK_SPACE)
+        field.send_keys("a" * length)
+        return field.get_attribute("value")
+
+    def type_valid_birth_date_digits(self, digits="15061990"):
+        # Canlı doğrulandı: Birth Date maskesi basit "ilk N rakamı al"
+        # mekanizması DEĞİL - gün/ay geçerliliğini ANLIK doğrulayan daha
+        # karmaşık bir maske (ör. "123456789" yazılınca ay basamağı
+        # geçersiz kaldığından bazı rakamlar sessizce filtreleniyor, sonuç
+        # girilen rakamların birebir ilk 8'i OLMUYOR). Bu yüzden GERÇEKTEN
+        # geçerli, belirsizlik yaratmayan bir tarih (15/06/1990) kasıtlı
+        # olarak sabit kullanılıyor - amaç maskenin gün/ay doğrulama
+        # detaylarını değil, yalnızca 10 karakterlik üst sınır kapasitesini
+        # test etmek.
+        field = self.driver.find_element(*self.BIRTH_DATE)
+        field.click()
+        field.send_keys(Keys.CONTROL + "a")
+        field.send_keys(Keys.BACK_SPACE)
+        field.send_keys(digits)
+        return field.get_attribute("value")
+
+    def append_extra_digit_to_birth_date(self):
+        field = self.driver.find_element(*self.BIRTH_DATE)
+        field.send_keys("9")
+        return field.get_attribute("value")
 
     def enter_identity_number(self, value):
         field = self.driver.find_element(*self.IDENTITY_NUMBER)
