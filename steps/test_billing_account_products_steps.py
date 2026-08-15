@@ -5,34 +5,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.billing_account_products_page import BillingAccountProductsPage
-from pages.create_customer_page import CreateCustomerPage
 from pages.sales_setup_page import SalesSetupPage
-from utils import config
 
 scenarios("billing_account_products.feature")
-
-
-def _create_fresh_customer(driver):
-    # Zaten authenticated bir session varsayar, login YAPMAZ - 2. bir
-    # disposable müşteri gerektiğinde auth guard /login'e yönlendirmesin
-    # diye (projedeki diğer *_delete/*_products steps ile tutarlı).
-    driver.get(config.url("/customers/new"))
-    create_page = CreateCustomerPage(driver)
-    create_page.fill_demographic_step_with_faker(gender="Erkek")
-    create_page.click_demographic_next()
-    create_page.wait_for_address_step()
-    create_page.add_address_with_faker()
-    create_page.wait_for_address_saved()
-    create_page.click_address_next()
-    create_page.wait_for_contact_step()
-    create_page.fill_contact_step_with_faker()
-    create_page.click_submit()
-    create_page.wait_for_navigated_to_customer_info()
-    return BillingAccountProductsPage(driver)
-
-
-def _create_fresh_customer_and_open_account_tab(driver):
-    return _create_fresh_customer(driver)
 
 
 def _purchase_offers_and_wait_for_products(driver, customer_url, account_page, offer_names):
@@ -74,15 +49,15 @@ def _purchase_offers_and_wait_for_products(driver, customer_url, account_page, o
 
 
 def _setup_account_with_products(driver, offer_names):
-    account_page = _create_fresh_customer_and_open_account_tab(driver)
+    account_page = BillingAccountProductsPage(driver)
     customer_url = driver.current_url
     account_page.create_account_and_wait()
     return _purchase_offers_and_wait_for_products(driver, customer_url, account_page, offer_names)
 
 
 @given("kullanıcı bir fatura hesabı altındaki ürün listesini görüntülemektedir", target_fixture="products_context")
-def user_viewing_product_list(authenticated_driver):
-    return _setup_account_with_products(authenticated_driver, ["Mobil 20GB Paket"])
+def user_viewing_product_list(disposable_customer):
+    return _setup_account_with_products(disposable_customer, ["Mobil 20GB Paket"])
 
 
 @when("kullanıcı bir ürünün View butonuna tıklar")
@@ -98,8 +73,8 @@ def preview_shows_readonly_offer_fields(products_context):
 
 
 @given("hesap altındaki bir ürün kampanyasız alınmıştır", target_fixture="products_context")
-def account_product_without_campaign(authenticated_driver):
-    return _setup_account_with_products(authenticated_driver, ["Mobil 20GB Paket"])
+def account_product_without_campaign(disposable_customer):
+    return _setup_account_with_products(disposable_customer, ["Mobil 20GB Paket"])
 
 
 @when("ürün listesi görüntülenir")
@@ -116,8 +91,8 @@ def campaign_fields_show_placeholder(products_context):
 
 
 @given("kullanıcı ürün detay tablosunu görüntülemektedir", target_fixture="products_context")
-def user_viewing_product_detail_table(authenticated_driver):
-    return _setup_account_with_products(authenticated_driver, ["Mobil 20GB Paket"])
+def user_viewing_product_detail_table(disposable_customer):
+    return _setup_account_with_products(disposable_customer, ["Mobil 20GB Paket"])
 
 
 @then("her kayıt için bir Delete ikonu görüntülenir")
@@ -144,8 +119,8 @@ def delete_click_has_no_effect(products_context):
 
 
 @given("ürün önizleme paneli açıktır", target_fixture="products_context")
-def preview_panel_open(authenticated_driver):
-    account_page, panel_id = _setup_account_with_products(authenticated_driver, ["Mobil 20GB Paket"])
+def preview_panel_open(disposable_customer):
+    account_page, panel_id = _setup_account_with_products(disposable_customer, ["Mobil 20GB Paket"])
     account_page.click_preview_on_row(panel_id)
     return account_page, panel_id
 
@@ -163,8 +138,8 @@ def preview_closes_and_list_returns(products_context):
 
 
 @given("bir hesap altında birden fazla ürün vardır", target_fixture="products_context")
-def account_has_multiple_products(authenticated_driver):
-    return _setup_account_with_products(authenticated_driver, ["Mobil 20GB Paket", "TV Başlangıç Paketi"])
+def account_has_multiple_products(disposable_customer):
+    return _setup_account_with_products(disposable_customer, ["Mobil 20GB Paket", "TV Başlangıç Paketi"])
 
 
 @then("tüm ürünler aynı tabloda ayrı satırlar olarak eksiksiz listelenir")
@@ -176,8 +151,8 @@ def all_products_listed_completely(products_context):
 
 
 @given("seçilen fatura hesabına bağlı hiç ürün kaydı yoktur", target_fixture="products_context")
-def account_without_products(authenticated_driver):
-    account_page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
+def account_without_products(disposable_customer):
+    account_page = BillingAccountProductsPage(disposable_customer)
     account_page.create_account_and_wait()
     panel_id = account_page.get_products_panel_id()
     return account_page, panel_id
@@ -198,8 +173,8 @@ def product_table_not_displayed(products_context):
 
 
 @given("fatura hesabı satırı ve ürün detay tablosu görünür durumdadır", target_fixture="products_context")
-def account_row_and_table_visible(authenticated_driver):
-    account_page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
+def account_row_and_table_visible(disposable_customer):
+    account_page = BillingAccountProductsPage(disposable_customer)
     account_page.create_account_and_wait()
     panel_id = account_page.get_products_panel_id()
     return account_page, panel_id
@@ -225,8 +200,8 @@ def user_can_expand_table_again(products_context):
 
 
 @given("fatura hesabı genişletilmiş ve bağlı ürünler listelenmiştir", target_fixture="products_context")
-def account_expanded_with_products(authenticated_driver):
-    return _setup_account_with_products(authenticated_driver, ["Mobil 20GB Paket", "TV Başlangıç Paketi"])
+def account_expanded_with_products(disposable_customer):
+    return _setup_account_with_products(disposable_customer, ["Mobil 20GB Paket", "TV Başlangıç Paketi"])
 
 
 @then("tablodaki her kayıt için bir View ikonu görüntülenir")

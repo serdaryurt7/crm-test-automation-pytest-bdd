@@ -3,50 +3,15 @@ from pytest_bdd import given, scenarios, then, when
 
 from pages.address_add_page import AddressAddPage
 from pages.billing_account_update_page import BillingAccountUpdatePage
-from pages.create_customer_page import CreateCustomerPage
-from utils import config
 
 scenarios("billing_account_update.feature")
 
 fake = Faker("tr_TR")
 
 
-def _create_fresh_customer(driver):
-    # Zaten authenticated bir session varsayar, login YAPMAZ.
-    driver.get(config.url("/customers/new"))
-    create_page = CreateCustomerPage(driver)
-    create_page.fill_demographic_step_with_faker(gender="Erkek")
-    create_page.click_demographic_next()
-    create_page.wait_for_address_step()
-    create_page.add_address_with_faker()
-    create_page.wait_for_address_saved()
-    create_page.click_address_next()
-    create_page.wait_for_contact_step()
-    create_page.fill_contact_step_with_faker()
-    create_page.click_submit()
-    create_page.wait_for_navigated_to_customer_info()
-    return BillingAccountUpdatePage(driver)
-
-
-def _create_fresh_customer_and_open_account_tab(driver):
-    return _create_fresh_customer(driver)
-
-
-def _create_fresh_customer_with_two_addresses(driver):
-    # ÖNEMLİ: 2. adres, hesap formunun KENDİ "Yeni Adres Ekle" alt-
-    # formuyla DEĞİL, Adres sekmesinin kendi (kalıcılığı kanıtlanmış)
-    # akışıyla ekleniyor - UC-EACRML-008-05 kurulumunda keşfedildi ki
-    # hesap formunun alt-formuyla eklenen adresler GERÇEK adres listesine
-    # kalıcı olarak yansımıyor.
-    page = _create_fresh_customer_and_open_account_tab(driver)
-    address_page = AddressAddPage(driver)
-    address_page.add_new_address_and_wait_for_card(fake.street_name(), fake.building_number(), fake.sentence(nb_words=3))
-    return BillingAccountUpdatePage(driver)
-
-
 @given("kullanıcı Müşteri Hesabı sekmesinde bir hesap satırı görüntülemektedir", target_fixture="account_page")
-def user_viewing_account_row(authenticated_driver):
-    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
+def user_viewing_account_row(disposable_customer):
+    page = BillingAccountUpdatePage(disposable_customer)
     page.create_account_and_wait()
     return page
 
@@ -62,8 +27,20 @@ def edit_form_prefilled(account_page):
 
 
 @given("kullanıcı hesap düzenleme formundadır", target_fixture="account_page")
-def user_on_edit_form(authenticated_driver):
-    page = _create_fresh_customer_with_two_addresses(authenticated_driver)
+def user_on_edit_form(disposable_customer):
+    # ÖNEMLİ: 2. adres, hesap formunun KENDİ "Yeni Adres Ekle" alt-
+    # formuyla DEĞİL, Adres sekmesinin kendi (kalıcılığı kanıtlanmış)
+    # akışıyla ekleniyor - UC-EACRML-008-05 kurulumunda keşfedildi ki
+    # hesap formunun alt-formuyla eklenen adresler GERÇEK adres listesine
+    # kalıcı olarak yansımıyor.
+    #
+    # new_customer(extra_addresses=1) de KULLANILMIYOR: o, adresi
+    # create_customer SİHİRBAZI içinde ekler; bu senaryonun doğruladığı
+    # yol ise müşteri oluşturulduktan SONRA Adres sekmesinden eklemektir.
+    AddressAddPage(disposable_customer).add_new_address_and_wait_for_card(
+        fake.street_name(), fake.building_number(), fake.sentence(nb_words=3)
+    )
+    page = BillingAccountUpdatePage(disposable_customer)
     page.create_account_and_wait()
     page.click_edit_on_row()
     return page
@@ -110,8 +87,8 @@ def account_associated_with_new_address(account_page):
 
 
 @given("kullanıcı formda değişiklik yapmıştır", target_fixture="account_page")
-def user_made_changes_in_form(authenticated_driver):
-    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
+def user_made_changes_in_form(disposable_customer):
+    page = BillingAccountUpdatePage(disposable_customer)
     page.create_account_and_wait()
     page.click_edit_on_row()
     page.fill_account_name(f"Kaydedilmeyecek {fake.random_number(digits=4, fix_len=True)}")

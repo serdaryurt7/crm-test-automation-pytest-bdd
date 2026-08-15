@@ -2,8 +2,6 @@ from faker import Faker
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from pages.address_update_page import AddressUpdatePage
-from pages.create_customer_page import CreateCustomerPage
-from utils import config
 
 scenarios("address_update.feature")
 
@@ -11,26 +9,12 @@ fake = Faker("tr_TR")
 
 
 @given("kullanıcı bir müşterinin Adres sekmesinde kayıtlı bir adres kartı görüntülemektedir", target_fixture="address_page")
-def user_on_customer_address_tab(authenticated_driver):
+def user_on_customer_address_tab(disposable_customer):
     # Adres güncelleme/silme geri dönüşü zor mutasyonlar barındırdığından
     # (Primary değişikliği, silme vb.) HER SENARYO için fresh, tek
-    # kullanımlık bir disposable müşteri create_customer akışıyla
-    # oluşturuluyor - update_customer.feature/delete_customer.feature'da
-    # kurulan desenle tutarlı, tam bağımsızlık ve tekrarlanabilirlik için.
-    authenticated_driver.get(config.url("/customers/new"))
-    create_page = CreateCustomerPage(authenticated_driver)
-    create_page.fill_demographic_step_with_faker(gender="Erkek")
-    create_page.click_demographic_next()
-    create_page.wait_for_address_step()
-    create_page.add_address_with_faker()
-    create_page.wait_for_address_saved()
-    create_page.click_address_next()
-    create_page.wait_for_contact_step()
-    create_page.fill_contact_step_with_faker()
-    create_page.click_submit()
-    create_page.wait_for_navigated_to_customer_info()
-
-    return AddressUpdatePage(authenticated_driver)
+    # kullanımlık bir disposable müşteri gerekiyor - bunu artık
+    # disposable_customer fixture'ı sağlıyor (bkz. steps/conftest.py).
+    return AddressUpdatePage(disposable_customer)
 
 
 @when('kullanıcı kart menüsünden "düzenle" seçeneğini seçer')

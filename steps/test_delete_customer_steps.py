@@ -4,39 +4,24 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.billing_account_delete_page import BillingAccountDeletePage
-from pages.create_customer_page import CreateCustomerPage
 from pages.delete_customer_page import DeleteCustomerPage
 from pages.language_switcher_page import LanguageSwitcherPage
 from pages.sales_setup_page import SalesSetupPage
 from pages.search_customers_page import CustomersPage
-from utils import config
 
 scenarios("delete_customer.feature")
 
 
 @given("kullanıcı silinecek müşterinin Müşteri Bilgisi ekranındadır", target_fixture="delete_customer_page")
-def user_on_customer_to_delete_info_screen(authenticated_driver):
+def user_on_customer_to_delete_info_screen(disposable_customer):
     # Silme (Evet ile onaylanan) GERİ DÖNÜŞÜ OLMAYAN bir mutasyon -
     # canlı doğrulandı: müşteri sonrasında hem arama sonuçlarından hem
     # de doğrudan URL erişiminden tamamen kayboluyor. Sabit bir müşteri
     # ID'si kullanmak, suite'in İKİNCİ çalıştırmasında "müşteri zaten
     # silinmiş, bulunamıyor" hatasıyla TÜM senaryoları bozardı - bu
-    # yüzden her senaryo için HER SEFERİNDE fresh, tek kullanımlık bir
-    # disposable müşteri create_customer akışıyla oluşturuluyor.
-    authenticated_driver.get(config.url("/customers/new"))
-    create_page = CreateCustomerPage(authenticated_driver)
-    create_page.fill_demographic_step_with_faker(gender="Erkek")
-    create_page.click_demographic_next()
-    create_page.wait_for_address_step()
-    create_page.add_address_with_faker()
-    create_page.wait_for_address_saved()
-    create_page.click_address_next()
-    create_page.wait_for_contact_step()
-    create_page.fill_contact_step_with_faker()
-    create_page.click_submit()
-    create_page.wait_for_navigated_to_customer_info()
-
-    return DeleteCustomerPage(authenticated_driver)
+    # yüzden disposable_customer fixture'ı her senaryo için HER SEFERİNDE
+    # fresh bir müşteri oluşturuyor (bkz. steps/conftest.py).
+    return DeleteCustomerPage(disposable_customer)
 
 
 @when("kullanıcı Delete ikonuna tıklar")

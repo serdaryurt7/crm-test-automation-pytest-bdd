@@ -2,58 +2,34 @@ from faker import Faker
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from pages.address_add_page import AddressAddPage
-from pages.create_customer_page import CreateCustomerPage
-from utils import config
 
 scenarios("address_add.feature")
 
 fake = Faker("tr_TR")
 
 
-def _create_fresh_customer_and_open_address_tab(driver):
-    # Adres ekleme mutasyonlar barındırdığından (yeni kart oluşturma)
-    # HER SENARYO için fresh, tek kullanımlık bir disposable müşteri
-    # create_customer akışıyla oluşturuluyor - address_update.feature'da
-    # kurulan desenle tutarlı, tam bağımsızlık ve tekrarlanabilirlik için.
-    # Giriş, authenticated_driver fixture'ı tarafından yapılmış olarak gelir.
-    driver.get(config.url("/customers/new"))
-    create_page = CreateCustomerPage(driver)
-    create_page.fill_demographic_step_with_faker(gender="Erkek")
-    create_page.click_demographic_next()
-    create_page.wait_for_address_step()
-    create_page.add_address_with_faker()
-    create_page.wait_for_address_saved()
-    create_page.click_address_next()
-    create_page.wait_for_contact_step()
-    create_page.fill_contact_step_with_faker()
-    create_page.click_submit()
-    create_page.wait_for_navigated_to_customer_info()
-
-    return AddressAddPage(driver)
-
-
 @given("kullanıcı bir müşterinin Adres sekmesindedir", target_fixture="address_page")
-def user_on_address_tab(authenticated_driver):
-    return _create_fresh_customer_and_open_address_tab(authenticated_driver)
+def user_on_address_tab(disposable_customer):
+    return AddressAddPage(disposable_customer)
 
 
 @given("müşterinin zaten kayıtlı bir adresi vardır", target_fixture="address_page")
-def customer_already_has_one_address(authenticated_driver):
+def customer_already_has_one_address(disposable_customer):
     # Fresh müşteri create_customer wizard'ı sırasında zaten TAM OLARAK
     # 1 adresle oluşturuluyor - ek bir adım gerekmiyor.
-    return _create_fresh_customer_and_open_address_tab(authenticated_driver)
+    return AddressAddPage(disposable_customer)
 
 
 @given("kullanıcı yeni adres formundadır", target_fixture="address_page")
-def user_on_new_address_form(authenticated_driver):
-    page = _create_fresh_customer_and_open_address_tab(authenticated_driver)
+def user_on_new_address_form(disposable_customer):
+    page = AddressAddPage(disposable_customer)
     page.click_add_address()
     return page
 
 
 @given("kullanıcı yeni adres formunu doldurmuştur", target_fixture="address_page")
-def user_filled_new_address_form(authenticated_driver):
-    page = _create_fresh_customer_and_open_address_tab(authenticated_driver)
+def user_filled_new_address_form(disposable_customer):
+    page = AddressAddPage(disposable_customer)
     page.snapshot_card_count()
     page.click_add_address()
     page.fill_new_address_form(fake.street_name(), fake.building_number(), fake.sentence(nb_words=4))
@@ -61,15 +37,15 @@ def user_filled_new_address_form(authenticated_driver):
 
 
 @given("müşterinin 2 kayıtlı adresi vardır", target_fixture="address_page")
-def customer_has_two_addresses(authenticated_driver):
-    page = _create_fresh_customer_and_open_address_tab(authenticated_driver)
+def customer_has_two_addresses(disposable_customer):
+    page = AddressAddPage(disposable_customer)
     page.add_new_address_and_wait_for_card(fake.street_name(), fake.building_number(), fake.sentence(nb_words=4))
     return page
 
 
 @given("kullanıcı yeni bir adres eklemiştir", target_fixture="address_page")
-def user_added_new_address(authenticated_driver):
-    page = _create_fresh_customer_and_open_address_tab(authenticated_driver)
+def user_added_new_address(disposable_customer):
+    page = AddressAddPage(disposable_customer)
     page.add_new_address_and_wait_for_card(fake.street_name(), fake.building_number(), fake.sentence(nb_words=4))
     return page
 

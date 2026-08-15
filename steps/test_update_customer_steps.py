@@ -1,34 +1,19 @@
 from pytest_bdd import given, parsers, scenarios, then, when
 
-from pages.create_customer_page import CreateCustomerPage
 from pages.update_customer_page import UpdateCustomerPage
-from utils import config
 
 scenarios("update_customer.feature")
 
 
 @given("kullanıcı bir müşterinin Müşteri Bilgisi ekranındadır", target_fixture="update_customer_page")
-def user_on_customer_info_screen(authenticated_driver):
+def user_on_customer_info_screen(disposable_customer):
     # Sabit bir müşteri ID'sine (paylaşılan, kalıcı bir disposable kayıt)
-    # bağımlı olmak yerine - delete_customer.feature'da uygulanan desenle
-    # tutarlı olarak - her senaryo için HER SEFERİNDE fresh bir disposable
-    # müşteri create_customer akışıyla oluşturuluyor. Bu, testleri
-    # birbirinden ve önceki çalıştırmalarda oluşabilecek herhangi bir
-    # yan etkiden tamamen bağımsız kılıyor.
-    authenticated_driver.get(config.url("/customers/new"))
-    create_page = CreateCustomerPage(authenticated_driver)
-    create_page.fill_demographic_step_with_faker(gender="Erkek")
-    create_page.click_demographic_next()
-    create_page.wait_for_address_step()
-    create_page.add_address_with_faker()
-    create_page.wait_for_address_saved()
-    create_page.click_address_next()
-    create_page.wait_for_contact_step()
-    create_page.fill_contact_step_with_faker()
-    create_page.click_submit()
-    create_page.wait_for_navigated_to_customer_info()
-
-    return UpdateCustomerPage(authenticated_driver)
+    # bağımlı olmak yerine, her senaryo için HER SEFERİNDE fresh bir
+    # disposable müşteri kullanılıyor (disposable_customer fixture'ı,
+    # bkz. steps/conftest.py). Bu, testleri birbirinden ve önceki
+    # çalıştırmalarda oluşabilecek herhangi bir yan etkiden tamamen
+    # bağımsız kılıyor.
+    return UpdateCustomerPage(disposable_customer)
 
 
 @when("kullanıcı Edit ikonuna tıklar")
@@ -69,7 +54,7 @@ def save_button_disabled(update_customer_page):
 
 
 @when("Nationality ID, başka bir müşteriye zaten kayıtlı bir değerle değiştirilir")
-def user_sets_conflicting_nationality_id(update_customer_page, driver):
+def user_sets_conflicting_nationality_id(update_customer_page, new_customer):
     # Seed veriye (paylaşılan müşteri 1'in TC no'su) bağımlı kalmak
     # yerine, testin KENDİSİ ikinci, bağımsız bir disposable müşteri (B)
     # oluşturup GERÇEK/GÜNCEL bir "zaten kayıtlı" TC numarası elde
@@ -80,18 +65,9 @@ def user_sets_conflicting_nationality_id(update_customer_page, driver):
     # birbirini çağırmaması için.
     original_url = update_customer_page.get_detail_url()
 
-    driver.get(config.url("/customers/new"))
-    create_page = CreateCustomerPage(driver)
-    _, _, _, other_identity_number = create_page.fill_demographic_step_with_faker(gender="Kadın")
-    create_page.click_demographic_next()
-    create_page.wait_for_address_step()
-    create_page.add_address_with_faker()
-    create_page.wait_for_address_saved()
-    create_page.click_address_next()
-    create_page.wait_for_contact_step()
-    create_page.fill_contact_step_with_faker()
-    create_page.click_submit()
-    create_page.wait_for_navigated_to_customer_info()
+    # gender="Kadın": ikinci müşterinin ilkinden ayırt edilebilir olması
+    # için (orijinal implementasyondaki tercih korunuyor).
+    _, _, _, other_identity_number = new_customer(gender="Kadın")
 
     update_customer_page.reopen_edit_form(original_url)
     update_customer_page.update_identity_number(other_identity_number)

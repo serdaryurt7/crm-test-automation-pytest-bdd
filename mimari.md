@@ -13,8 +13,8 @@
 
 ## 0. İlerleme Durumu
 
-**Genel olgunluk: 3.8 → 4.7 / 10**
-**Page Object Model: 6 → 9 / 10** ✅ &nbsp;·&nbsp; **Step katmanı: 3 → 5 / 10** ✅
+**Genel olgunluk: 3.8 → 4.85 / 10**
+**Page Object Model: 6 → 9 / 10** ✅ &nbsp;·&nbsp; **Step katmanı: 3 → 6.5 / 10** ✅
 
 | Faz | Kapsam | Durum |
 |---|---|---|
@@ -24,7 +24,7 @@
 | **Faz 3** | Page içindeki assert'lerin ayıklanması (11 → 6) | ✅ Tamam (`e7d260c`) |
 | Faz 4 | `create_customer_page.py` bölünmesi (735 satır) | ⏳ Ayrı karar |
 | **Faz A+B** | `utils/config.py` + `steps/conftest.py::authenticated_driver` | ✅ Tamam (`fc697f3`) |
-| Faz C | `new_customer` factory fixture (sihirbaz tekrarı, ~210 satır) | ⏳ Sırada |
+| **Faz C** | `new_customer` / `disposable_customer` factory fixture'ları | ✅ Tamam (`FAZ_C_COMMIT`) |
 | Faz D | `utils/test_data.py` (7 ayrı Faker örneği) | ⏳ Bekliyor |
 | Faz E | Step'lerdeki ham `By`/`WebDriverWait` (opsiyonel) | ⏳ Risk/getiri zayıf |
 
@@ -203,6 +203,71 @@ gerekçesiyle belgelendi.
   bunlar paylaşılan yapılandırma değil, **`demo` hesabı kilitlenmesin diye
   kasten seçilmiş ayrı bir hesabın** test verisi.
 
+### Faz C — Yapılanlar (step katmanı, 2. dalga)
+
+Skor gerekçesindeki üçüncü ve en ağır şikâyet — *ağır tekrar* — kapatıldı.
+
+**Eklenen fixture'lar** (`steps/conftest.py`)
+
+```python
+new_customer(gender="Erkek", extra_addresses=0)   # fabrika; demografik bilgileri döndürür
+disposable_customer                               # tek müşteri kısayolu
+```
+
+Fabrikanın (düz fixture değil) çağrılabilir olması zorunluydu: bazı
+senaryolar AYNI test içinde İKİNCİ bir müşteri istiyor (email /
+Nationality ID çakışması), bir fixture ise yalnızca bir kez değer üretir.
+
+Fabrikayı `authenticated_driver`'a bağlamanın önemli bir yan kazancı var:
+**"ikinci müşteride re-login yapma" kuralı artık elle korunmuyor.**
+Önceden bu, üç dosyada uzun yorumlarla savunulan kırılgan bir sözleşmeydi;
+şimdi `authenticated_driver` test başına bir kez çözüldüğü için pytest'in
+fixture önbelleğinden bedavaya geliyor.
+
+**Ölçülen sonuç**
+
+| Ölçüt | Faz A+B sonrası | Faz C sonrası |
+|---|---|---|
+| `steps/` satır sayısı | 3756 | **3461** (−295) |
+| 12 satırlık sihirbaz bloğu | 14 yer | **0** |
+| `_create_fresh_customer*` yardımcısı | 17 tanım | **0** |
+| `CreateCustomerPage` import eden step dosyası | 13 | **1** |
+| Paylaşılan fixture kullanan dosya | 16 | 16 (13'ü müşteri fixture'ı) |
+
+Başlangıçtan bu yana `steps/` **3879 → 3461** satır (−418, %11), buna
+karşılık 130 satır paylaşılan altyapı (`steps/conftest.py` +
+`utils/config.py`). Sihirbaz yalnızca `create_customer_steps.py`'de kaldı —
+orası zaten sihirbazın kendisini test ediyor.
+
+**Doğrulama:** `--collect-only` → 214 test. Tam suite → **204 passed /
+10 failed** (54dk 11sn), temel çizgi sayısına dönüş. 10 = 7 bilinen
+kasıtlı kırmızı + 2 bilinen flaky + 1 yeni flaky (`bugsbunny.txt` madde
+20; izole koşumda 3 denemede 1 FAILED / 2 PASSED).
+
+> **Kanaryanın yakaladığı gerçek regresyon.** İlk kanaryada
+> `order_submission` düştü. Dönüştürücümün imza kuralı "gövdesinde
+> `disposable_customer` geçen fonksiyonlar" idi; ara yardımcı çağıran
+> `@given`'ların gövdesinde bu isim hiç geçmiyordu, dolayısıyla **18
+> fonksiyonda müşteri hiç oluşturulmuyordu**.
+>
+> Bunun dersi kayda değer: **AST denetimi ve `--collect-only` bu hatayı
+> yakalayamazdı** — kod sözdizimsel olarak geçerli, tüm isimler tanımlı,
+> yalnızca yanlış fixture isteniyordu. Statik denetim Faz A+B'de iki
+> gerçek hata yakalamıştı ama bu sınıf hata için kördür; yalnızca canlı
+> kanarya gördü. Düzeltmede üç kategori ayrıldı: 18 fonksiyon
+> `disposable_customer`'a geçti; `language_support`'un 8'i +
+> `search_customers` + `create_customer` müşteriye ihtiyaç duymadığı için
+> `authenticated_driver`'da kaldı; `product_configuration`'ın biri
+> `new_customer(extra_addresses=1)`'i açıkça çağırıyor.
+
+**Bilinçli olarak fabrikaya DEVREDİLMEYEN bir durum:**
+`billing_account_update`'teki "iki adresli müşteri" kurulumu
+`new_customer(extra_addresses=1)` KULLANMIYOR. Sebebi: fabrika ikinci
+adresi create_customer **sihirbazının** adres adımında ekler; o senaryonun
+doğruladığı yol ise müşteri oluşturulduktan **sonra** Adres sekmesinden
+eklemektir (UC-EACRML-008-05'te keşfedildiği üzere hesap formunun kendi
+alt-formuyla eklenen adresler kalıcı olmuyor). Gerekçe koda yazıldı.
+
 ### Faz 1 — Bilinçli olarak YAPILMAYAN
 
 `BasePage`'in 20 yardımcı metodu (`find`, `click`, `type`, `text_of`,
@@ -250,7 +315,7 @@ tek sebebi bu.
 |---|---|---|---|
 | Senaryo kapsamı | 8 | 🟢 **8**/10 | 187 senaryo, iyi Gherkin disiplini, INVEST'e uyum |
 | Page Object Model | 6 | 🟢 **9**/10 | ✅ Faz 1: BasePage, 18/18 sınıf bağlı. ✅ Faz 3: assert 11 → 6 (kalanlar gerekçeli). Kalan tek eksik: 735 satırlık god class |
-| Step katmanı | 3 | 🟡 **5**/10 | ✅ Faz A+B: login tekrarı 16 → 0, sabit kimlik bilgisi 17 → 0, ilk paylaşılan fixture. Kalan: 14 dosyadaki sihirbaz tekrarı (Faz C), ham `By` kullanımı |
+| Step katmanı | 3 | 🟡 **6.5**/10 | ✅ Faz A+B: login tekrarı 16 → 0, sabit kimlik bilgisi 17 → 0. ✅ Faz C: sihirbaz tekrarı 14 → 0, `steps/` −418 satır. Kalan: 56 çıplak `WebDriverWait`, 24 ham `By` (Faz E) |
 | Ortak altyapı (`utils/`) | 1 | 🔴 **3**/10 | ✅ Faz 2: `waits.py`. ✅ Faz A: `config.py` (3 modül). Hedef 8; `text`, `test_data`, `logger`, `api_client` hâlâ yok |
 | Test verisi yönetimi | 1 | 🔴 **1**/10 | `test_data/` boş, veri koda gömülü |
 | Konfigürasyon | 5 | 🟡 **6**/10 | ✅ Faz A: tek kaynak `utils/config.py`, origin semantiği düzeltildi. Kalan: `requirements.txt`'te sürüm sabitleme yok (K3) |
@@ -259,16 +324,16 @@ tek sebebi bu.
 | CI/CD | 0 | 🔴 **0**/10 | Hiç yok |
 | Kararlılık (flaky yönetimi) | 5 | 🟡 **6**/10 | ✅ Faz 1: `ignored_exceptions` kapsamı 2/13 → 13/13. Hâlâ retry/paralel/izolasyon mekanizması yok |
 
-**Genel: 3.8 → 4.7 / 10**
+**Genel: 3.8 → 4.85 / 10**
 
 > **Neden genel skor yavaş artıyor?** Skor 10 boyutun ortalamasıdır; POM
-> 3, step katmanı 2 puan yükseldi ama bu ortalamaya yalnızca 0.5 olarak
-> yansıyor. Bu yanıltıcı değil, **gerçekçi**: framework'ün olgunluğu tek
+> 3, step katmanı 3.5 puan yükseldi ama bu ortalamaya yalnızca 0.65
+> olarak yansıyor. Bu yanıltıcı değil, **gerçekçi**: framework'ün olgunluğu tek
 > bir katmanın düzelmesiyle sıçramaz. Kalan üç sıfıra yakın boyut
 > (CI/CD 0, test verisi 1, repo hijyeni 2) tek başına ortalamayı 0.3
 > aşağı çekiyor — ve üçü de **düşük riskli**, çünkü hiçbiri mevcut test
-> mantığına dokunmuyor. Faz C+D step katmanını 7'ye, `utils/`'i 4'e
-> taşır (≈ **5.1**); asıl sıçrama CI + test verisi ile gelir.
+> mantığına dokunmuyor. Faz D `utils/`'i 4'e taşır (≈ **5.0**); asıl
+> sıçrama CI + test verisi yönetimi ile gelir.
 
 ---
 

@@ -5,43 +5,16 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.billing_account_delete_page import BillingAccountDeletePage
-from pages.create_customer_page import CreateCustomerPage
 from pages.sales_setup_page import SalesSetupPage
-from utils import config
 
 scenarios("billing_account_delete.feature")
 
 fake = Faker("tr_TR")
 
 
-def _create_fresh_customer(driver):
-    # Zaten authenticated bir session varsayar, login YAPMAZ.
-    driver.get(config.url("/customers/new"))
-    create_page = CreateCustomerPage(driver)
-    create_page.fill_demographic_step_with_faker(gender="Erkek")
-    create_page.click_demographic_next()
-    create_page.wait_for_address_step()
-    create_page.add_address_with_faker()
-    create_page.wait_for_address_saved()
-    create_page.click_address_next()
-    create_page.wait_for_contact_step()
-    create_page.fill_contact_step_with_faker()
-    create_page.click_submit()
-    create_page.wait_for_navigated_to_customer_info()
-    return BillingAccountDeletePage(driver)
-
-
-def _create_fresh_customer_and_open_account_tab(driver):
-    # Hesap silme GERİ DÖNÜŞÜ ZOR bir mutasyon olduğundan HER SENARYO
-    # için fresh, tek kullanımlık bir disposable müşteri create_customer
-    # akışıyla oluşturuluyor - projedeki diğer *_delete.feature'larla
-    # tutarlı, tam bağımsızlık için.
-    return _create_fresh_customer(driver)
-
-
 @given("kullanıcı, aktif ürünü olmayan bir hesap satırı görüntülemektedir", target_fixture="account_page")
-def user_viewing_account_without_active_product(authenticated_driver):
-    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
+def user_viewing_account_without_active_product(disposable_customer):
+    page = BillingAccountDeletePage(disposable_customer)
     page.create_account_and_wait()
     return page
 
@@ -58,8 +31,8 @@ def account_permanently_removed_from_active_list(account_page):
 
 
 @given("silme onay penceresi görüntülenmektedir", target_fixture="account_page")
-def delete_confirm_dialog_displayed(authenticated_driver):
-    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
+def delete_confirm_dialog_displayed(disposable_customer):
+    page = BillingAccountDeletePage(disposable_customer)
     page.create_account_and_wait()
     page.click_delete_on_row()
     return page
@@ -82,12 +55,12 @@ def user_stays_on_account_screen(account_page):
 
 
 @given("hesaba bağlı en az bir aktif ürün vardır", target_fixture="account_page")
-def account_has_active_product(authenticated_driver):
-    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
-    customer_url = authenticated_driver.current_url
+def account_has_active_product(disposable_customer):
+    page = BillingAccountDeletePage(disposable_customer)
+    customer_url = disposable_customer.current_url
     page.create_account_and_wait()
     page.click_new_sale_on_row()
-    sales_page = SalesSetupPage(authenticated_driver)
+    sales_page = SalesSetupPage(disposable_customer)
     sales_page.purchase_simple_offer()
     # Canlı doğrulandı: sipariş tamamlandığında OTOMATİK olarak Müşteri
     # Hesabı sekmesine DÖNÜLMÜYOR - kullanıcı "Sipariş oluşturuldu!"
@@ -97,11 +70,11 @@ def account_has_active_product(authenticated_driver):
     # çalıştığından, önce sayfanın (hard navigasyon sonrası) GERÇEKTEN
     # yüklendiği (customer-detail-header görünür) dinamik olarak
     # bekleniyor.
-    authenticated_driver.get(customer_url)
-    WebDriverWait(authenticated_driver, 10).until(
+    disposable_customer.get(customer_url)
+    WebDriverWait(disposable_customer, 10).until(
         EC.visibility_of_element_located((By.CSS_SELECTOR, "[data-testid='customer-detail-header']"))
     )
-    return BillingAccountDeletePage(authenticated_driver)
+    return BillingAccountDeletePage(disposable_customer)
 
 
 @when("kullanıcı hesabı silmeyi dener")
@@ -128,8 +101,8 @@ def system_shows_warning_instead_of_deleting(account_page):
 
 
 @given("bir fatura hesabı silinmiştir", target_fixture="account_page")
-def a_billing_account_has_been_deleted(authenticated_driver):
-    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
+def a_billing_account_has_been_deleted(disposable_customer):
+    page = BillingAccountDeletePage(disposable_customer)
     page.create_account_and_wait("Kalıcı Hesap")
     page.create_account_and_wait("Silinen Hesap")
     page.click_delete_on_row("Silinen Hesap")
@@ -151,8 +124,8 @@ def deleted_account_not_in_list(account_page):
 
 
 @given("müşterinin yalnızca 1 hesabı vardır", target_fixture="account_page")
-def customer_has_exactly_one_account(authenticated_driver):
-    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
+def customer_has_exactly_one_account(disposable_customer):
+    page = BillingAccountDeletePage(disposable_customer)
     page.create_account_and_wait()
     return page
 
@@ -169,8 +142,8 @@ def empty_state_returns(account_page):
 
 
 @given("bir hesap silinmiştir", target_fixture="stale_delete_context")
-def an_account_has_been_deleted(authenticated_driver):
-    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
+def an_account_has_been_deleted(disposable_customer):
+    page = BillingAccountDeletePage(disposable_customer)
     page.create_account_and_wait()
     page.click_delete_on_row()
     stale_confirm_button = page.click_confirm_yes_and_wait_for_removal()

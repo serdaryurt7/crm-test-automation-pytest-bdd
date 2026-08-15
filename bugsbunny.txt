@@ -282,3 +282,44 @@ Aşağıdaki 2 test hiçbir önceki kayıtta yoktu, bu koşumda ilk kez görüld
     altında gerçekleşti.
     İZLENMELİ: bu hata tekrarlarsa DEFAULT_TIMEOUT'un yükseltilmesi
     (tek ortam değişkeni, Faz 1 sayesinde) ilk müdahale olmalı.
+
+===========================================================
+[2026-08-16] FAZ C (sihirbaz tekrarinin fixture'a tasinmasi) TAM SUITE
+204 passed / 10 failed (54dk 11sn) - temel cizgi sayisina donus
+===========================================================
+
+Dağılım: 7 bilinen kasıtlı kırmızı + 2 bilinen flaky + 1 YENİ flaky.
+Faz A+B'de ilk kez görülen madde 19 (update_customer TC-004-07[Soyad])
+bu koşumda PASSED - flaky teşhisini destekliyor. Madde 18 (address_update
+TC-006-06b) yine FAILED, yani tekrar eden bir flaky.
+
+20. steps/test_order_submission_steps.py :: test_tceacrml01603
+    (Gönder'e tıklandığında siparişin oluşturulup ürünlerin fatura
+    hesabına eklenmesi)
+    Hata: assert 0 >= 1 - get_product_row_count(panel_id) sipariş
+    gönderildikten hemen sonra 0 döndü.
+    İzole koşum 3 KEZ tekrarlandı: 1 FAILED / 2 PASSED. Yani suite
+    yükünden DEĞİL, testin kendisinden kaynaklanan gerçek bir flaky.
+
+    KÖK NEDEN (kod okumasıyla, henüz canlı ölçülmedi): ilgili @then adımı
+    driver.get(customer_url) ile müşteri detayına dönüyor, yalnızca
+    customer-detail-header'ın görünmesini bekliyor ve HEMEN ürün
+    satırlarını sayıyor. Sipariş gönderimi ile ürünün fatura hesabında
+    GÖRÜNMESİ arasındaki asenkron gecikme beklenmiyor. Bu, TC-005-03 /
+    TC-012-03 / TC-006-06b ile AYNI aile: "backend mutasyonu kabul
+    ediliyor ama saniyeler sonra tamamlanıyor".
+
+    FAZ C İLE İLGİSİ: yok. Faz C'nin dokunduğu tek şey müşterinin NEREDE
+    oluşturulduğu (yardımcı fonksiyon yerine fixture); sipariş gönderimi
+    ile ürün sayımı arasındaki kod ve SIRA birebir aynı kaldı - eski
+    kodda da sayfa nesnesi kurulup SONRA current_url okunuyordu.
+    Dürüstlük payı: bu test Faz A+B koşumunda PASSED vermişti, yani
+    "her zaman flaky'di, önce şanslıydık" ile "Faz C sonrası ortaya
+    çıktı" arasında tek koşumluk bir veriyle kesin ayrım yapılamaz.
+    İzole 1/3 başarısızlık oranı birinci açıklamayı destekliyor.
+
+    ÖNERİLEN DÜZELTME (Faz C kapsamına ALINMADI - Faz C bilinçli olarak
+    "yapı değişir, davranış değişmez" sözleşmesiyle yürütüldü, bir
+    bekleme eklemek regresyon kanıtını bulandırırdı): sayımı
+    utils/waits.py::poll_until veya projedeki wait_for_*_persisted_
+    after_reload deseniyle sarmalamak.
