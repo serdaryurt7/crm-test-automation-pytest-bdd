@@ -3,12 +3,13 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+
+from pages.base_page import BasePage
 
 fake = Faker("tr_TR")
 
 
-class ContactUpdatePage:
+class ContactUpdatePage(BasePage):
     TAB_CONTACT = (By.CSS_SELECTOR, "[data-testid='tab-contact']")
     EDIT_BUTTON = (By.CSS_SELECTOR, "[data-testid='customer-contact-edit']")
 
@@ -52,8 +53,7 @@ class ContactUpdatePage:
     }
 
     def __init__(self, driver):
-        self.driver = driver
-        self.wait = WebDriverWait(driver, 10)
+        super().__init__(driver)
         self.driver.find_element(*self.TAB_CONTACT).click()
         self.wait.until(EC.visibility_of_element_located(self.EDIT_BUTTON))
         self._pre_edit_email = None

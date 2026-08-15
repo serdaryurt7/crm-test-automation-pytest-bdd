@@ -1,15 +1,15 @@
 import random
 import time
 from faker import Faker
-from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+
+from pages.base_page import BasePage
 
 fake = Faker("tr_TR")
 
-class CreateCustomerPage:
+class CreateCustomerPage(BasePage):
     PAGE_TITLE = (By.CSS_SELECTOR, "[data-testid='page-title']")
 
     STEPPER_STEP_1 = (By.CSS_SELECTOR, "[data-testid='stepper-step-1']")
@@ -89,8 +89,10 @@ class CreateCustomerPage:
     }
 
     def __init__(self, driver):
-        self.driver = driver
-        self.wait = WebDriverWait(driver, 10, ignored_exceptions=(StaleElementReferenceException,))
+        # Not: BasePage zaten ignored_exceptions=(StaleElementReferenceException,)
+        # kuruyor - bu sayfada ELDE EDİLEN davranış birebir aynı, yalnızca
+        # tanım tek yere taşındı.
+        super().__init__(driver)
         self.wait.until(EC.visibility_of_element_located(self.FIRST_NAME))
         self._entered_addresses = []
 

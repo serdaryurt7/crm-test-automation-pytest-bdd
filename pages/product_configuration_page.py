@@ -2,10 +2,11 @@ import random
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+
+from pages.base_page import BasePage
 
 
-class ProductConfigurationPage:
+class ProductConfigurationPage(BasePage):
     # "İleri" ile Teklif Seçimi'nden ulaşılan "Ürün Konfigürasyonu" ekranı -
     # OfferSelectionPage/SalesSetupPage ile AYNI "has-a, is-a değil"
     # tasarım kararı: kavramsal olarak ayrı bir ekran, inheritance ilişkiyi
@@ -35,8 +36,7 @@ class ProductConfigurationPage:
     NEXT_BUTTON = (By.CSS_SELECTOR, "[data-testid='sales-config-next']")
 
     def __init__(self, driver):
-        self.driver = driver
-        self.wait = WebDriverWait(driver, 10)
+        super().__init__(driver)
         self.wait.until(EC.visibility_of_element_located(self.CONFIG_FIELD))
 
     # --- Konfigürasyon kartları ---

@@ -1,10 +1,11 @@
 from selenium.common.exceptions import NoAlertPresentException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+
+from pages.base_page import BasePage
 
 
-class LoginPage:
+class LoginPage(BasePage):
     USERNAME_INPUT = (By.CSS_SELECTOR, "[data-testid='login-username']")
     PASSWORD_INPUT = (By.CSS_SELECTOR, "[data-testid='login-password']")
     LOGIN_BUTTON = (By.CSS_SELECTOR, "[data-testid='login-submit']")
@@ -12,8 +13,7 @@ class LoginPage:
     PASSWORD_TOGGLE = (By.CSS_SELECTOR, "[data-testid='login-password-toggle']")
 
     def __init__(self, driver):
-        self.driver = driver
-        self.wait = WebDriverWait(driver, 10)
+        super().__init__(driver)
         self._last_username = None
         self._last_password = None
 

@@ -1,12 +1,12 @@
 import random
 import re
 import time
-from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+
+from pages.base_page import BasePage
 
 # Türkçe alfabeye özgü büyük/küçük harf ve aksan farklarını (İ/I/ı/i,
 # ğ/Ğ, ş/Ş, ç/Ç, ö/Ö, ü/Ü) normalize eden dönüşüm tablosu. Canlı olarak
@@ -37,7 +37,7 @@ def _turkish_fold(text):
     return text.translate(_TURKISH_FOLD_MAP).lower()
 
 
-class CustomersPage:
+class CustomersPage(BasePage):
     # Sayfa başlığı
     PAGE_TITLE = (By.CSS_SELECTOR, "[data-testid='page-title']")
     PAGE_SUBTITLE = (By.CSS_SELECTOR, "[data-testid='page-subtitle']")
@@ -125,8 +125,10 @@ class CustomersPage:
     CUSTOMER_DETAIL_HEADER = (By.CSS_SELECTOR, "[data-testid='customer-detail-header']")
 
     def __init__(self, driver):
-        self.driver = driver
-        self.wait = WebDriverWait(driver, 10, ignored_exceptions=(StaleElementReferenceException,))
+        # Not: BasePage zaten ignored_exceptions=(StaleElementReferenceException,)
+        # kuruyor - bu sayfada ELDE EDİLEN davranış birebir aynı, yalnızca
+        # tanım tek yere taşındı.
+        super().__init__(driver)
         self.wait.until(EC.visibility_of_element_located(self.SEARCH_SUBMIT))
         self._last_identity_number = None
         self._last_customer_id = None

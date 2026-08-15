@@ -1,24 +1,25 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+
+from pages.base_page import BasePage
 
 
-class LanguageSwitcherPage:
+class LanguageSwitcherPage(BasePage):
     # Sayfa başlığı/nav gibi HER ekranda ortak görünen bir topbar bileşeni
     # (app-language-switcher) - belirli bir sayfaya/akışa ait DEĞİL, bu
     # yüzden projedeki diğer standalone sayfalarla (OfferSelectionPage vb.)
-    # AYNI "has-a, is-a değil" tasarım kararı: hiçbir şeyden inherit
-    # ETMİYOR, herhangi bir authenticated ekranda kullanılabilir.
+    # AYNI "has-a, is-a değil" tasarım kararı: başka HİÇBİR SAYFADAN
+    # inherit ETMİYOR, herhangi bir authenticated ekranda kullanılabilir.
+    #
+    # BasePage bu karara aykırı değil: o bir sayfa değil, tüm page
+    # object'lerin paylaştığı ALTYAPI (driver + wait kurulumu). Sayfalar
+    # arası "is-a" ilişkisi kurmuyor.
 
     TOGGLE = (By.CSS_SELECTOR, "[data-testid='language-switcher-toggle']")
     PANEL = (By.CSS_SELECTOR, "[data-testid='language-switcher-panel']")
     OPTION_ITEMS = (By.CSS_SELECTOR, "[data-testid='language-switcher-panel'] li[role='option']")
     OPTION_TR = (By.CSS_SELECTOR, "[data-testid='language-option-tr']")
     OPTION_EN = (By.CSS_SELECTOR, "[data-testid='language-option-en']")
-
-    def __init__(self, driver):
-        self.driver = driver
-        self.wait = WebDriverWait(driver, 10)
 
     def get_current_language_code(self):
         return self.driver.find_element(*self.TOGGLE).text.strip()

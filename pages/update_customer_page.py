@@ -3,12 +3,13 @@ from selenium.common.exceptions import NoAlertPresentException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+
+from pages.base_page import BasePage
 
 fake = Faker("tr_TR")
 
 
-class UpdateCustomerPage:
+class UpdateCustomerPage(BasePage):
     DETAIL_HEADER = (By.CSS_SELECTOR, "[data-testid='customer-detail-header']")
     DETAIL_NAME = (By.CSS_SELECTOR, "[data-testid='customer-detail-name']")
     EDIT_BUTTON = (By.CSS_SELECTOR, "[data-testid='customer-info-edit']")
@@ -36,8 +37,7 @@ class UpdateCustomerPage:
     }
 
     def __init__(self, driver):
-        self.driver = driver
-        self.wait = WebDriverWait(driver, 10)
+        super().__init__(driver)
         self.wait.until(EC.visibility_of_element_located(self.DETAIL_HEADER))
         self._detail_url = driver.current_url
         self._pre_edit_first_name = None

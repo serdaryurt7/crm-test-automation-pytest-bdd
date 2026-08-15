@@ -2,10 +2,11 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+
+from pages.base_page import BasePage
 
 
-class AddressUpdatePage:
+class AddressUpdatePage(BasePage):
     TAB_ADDRESS = (By.CSS_SELECTOR, "[data-testid='tab-address']")
     ADD_ADDRESS_BUTTON = (By.CSS_SELECTOR, "[data-testid='customer-address-add']")
 
@@ -35,8 +36,7 @@ class AddressUpdatePage:
     }
 
     def __init__(self, driver):
-        self.driver = driver
-        self.wait = WebDriverWait(driver, 10)
+        super().__init__(driver)
         self.driver.find_element(*self.TAB_ADDRESS).click()
         self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CARD))
         self._pre_edit_city = None

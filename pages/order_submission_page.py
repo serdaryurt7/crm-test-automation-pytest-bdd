@@ -2,10 +2,11 @@ import re
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+
+from pages.base_page import BasePage
 
 
-class OrderSubmissionPage:
+class OrderSubmissionPage(BasePage):
     # "İleri" ile Ürün Konfigürasyonu'ndan ulaşılan "Sipariş Gönder" ekranı
     # (özet + gönderim + başarı/hata durumları) - OfferSelectionPage/
     # ProductConfigurationPage/SalesSetupPage ile AYNI "has-a, is-a değil"
@@ -28,8 +29,7 @@ class OrderSubmissionPage:
     BACK_TO_SEARCH = (By.CSS_SELECTOR, "[data-testid='sales-back-to-search']")
 
     def __init__(self, driver):
-        self.driver = driver
-        self.wait = WebDriverWait(driver, 10)
+        super().__init__(driver)
         self.wait.until(EC.visibility_of_element_located(self.SUMMARY_LINE))
 
     # --- Özet ---

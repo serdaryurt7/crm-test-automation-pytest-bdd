@@ -2,12 +2,12 @@ import random
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
+from pages.base_page import BasePage
 from pages.offer_selection_page import OfferSelectionPage
 
 
-class SalesSetupPage:
+class SalesSetupPage(BasePage):
     # Bu sayfa BİLEREK test EDİLMİYOR - "Yeni Satış" akışının kendisi
     # (Katalog -> Teklif Seçimi -> Ürün Konfigürasyonu -> Sipariş Gönder)
     # UC-EACRML 012'nin kapsamı dışında, kendi başına büyük ayrı bir
@@ -26,10 +26,6 @@ class SalesSetupPage:
     CONFIG_NEXT = (By.CSS_SELECTOR, "[data-testid='sales-config-next']")
     SUBMIT = (By.CSS_SELECTOR, "[data-testid='sales-submit']")
     SUCCESS_TITLE = (By.CSS_SELECTOR, "[data-testid='sales-success-title']")
-
-    def __init__(self, driver):
-        self.driver = driver
-        self.wait = WebDriverWait(driver, 10)
 
     def purchase_simple_offer(self, offer_name_contains="Mobil 20GB"):
         # "Mobil 20GB Paket" bilerek seçiliyor - donanım gerektiren

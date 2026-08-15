@@ -3,10 +3,11 @@ import time
 from selenium.common.exceptions import ElementClickInterceptedException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+
+from pages.base_page import BasePage
 
 
-class DeleteCustomerPage:
+class DeleteCustomerPage(BasePage):
     DETAIL_HEADER = (By.CSS_SELECTOR, "[data-testid='customer-detail-header']")
     STATUS_BADGE = (By.CSS_SELECTOR, "[data-testid='status-badge']")
     DELETE_BUTTON = (By.CSS_SELECTOR, "[data-testid='customer-info-delete']")
@@ -20,8 +21,7 @@ class DeleteCustomerPage:
     EMPTY_STATE_MESSAGE = (By.CSS_SELECTOR, "[data-testid='empty-state-message']")
 
     def __init__(self, driver):
-        self.driver = driver
-        self.wait = WebDriverWait(driver, 10)
+        super().__init__(driver)
         self.wait.until(EC.visibility_of_element_located(self.DETAIL_HEADER))
         self._detail_url = driver.current_url
         self._last_background_click_succeeded = None

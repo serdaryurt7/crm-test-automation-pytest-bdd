@@ -2,10 +2,11 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+
+from pages.base_page import BasePage
 
 
-class OfferSelectionPage:
+class OfferSelectionPage(BasePage):
     # "Yeni Satış Başlat" ile ulaşılan "Teklif Seçimi" ekranı - hesap
     # satırı bileşenleriyle "is-a" DEĞİL "has-a" ilişkisinde (SalesSetupPage
     # için de daha önce alınan AYNI karar): kavramsal olarak tamamen ayrı
@@ -51,8 +52,11 @@ class OfferSelectionPage:
     # kampanyanın indirimli fiyatını yansıtıyor.
 
     def __init__(self, driver):
-        self.driver = driver
-        self.wait = WebDriverWait(driver, 10)
+        # BasePage, StaleElementReferenceException korumasını da beraberinde
+        # getiriyor. Bu sayfada daha önce YOKTU ve TC-014-12'nin flaky
+        # olmasının kök nedeniydi (teklif listesi Angular tarafından
+        # yeniden çizilirken satır referansları kopuyordu).
+        super().__init__(driver)
         self.wait.until(EC.visibility_of_element_located(self.OFFER_ROW))
 
     def _set_field(self, locator, value):
