@@ -207,7 +207,12 @@ def user_navigates_to_next_page(customers_page):
 
 @then("her sayfada doğru sayıda kayıt gösterilir; hiçbir kayıt kaybolmaz veya tekrarlanmaz")
 def next_page_shows_correct_records_without_loss_or_duplication(customers_page):
-    customers_page.verify_next_page_records_are_new()
+    comparison = customers_page.get_next_page_record_comparison()
+    assert comparison["next_page_ids"], "Sonraki sayfada hiç kayıt yok"
+    assert not comparison["overlapping_ids"], (
+        "Sonraki sayfada önceki sayfayla çakışan (tekrarlanan) kayıtlar var: "
+        f"{sorted(comparison['overlapping_ids'])}"
+    )
 
 
 @then("sonuç listesi varsayılan olarak Customer ID'ye göre artan sırada listelenir")
@@ -238,7 +243,13 @@ def user_clicks_customer_row_link(customers_page):
 
 @then(parsers.parse('kullanıcı aynı sekmede "{customer_id}" numaralı müşterinin Customer Info ekranına yönlendirilir'))
 def navigated_to_customer_detail_same_tab(customers_page, customer_id):
-    customers_page.verify_navigated_to_customer_detail_same_tab(customer_id)
+    state = customers_page.get_customer_detail_navigation_state(customer_id)
+    assert state["window_count"] == state["window_count_before_click"], (
+        "Müşteri detayına geçişte yeni bir sekme/pencere açıldı"
+    )
+    assert f"/customers/{customer_id}" in state["url"], (
+        f"Beklenen müşteri detay adresine gidilmedi: {state['url']}"
+    )
 
 
 @when("kullanıcı tüm arama alanlarına Tab ile sırayla değer girer")
@@ -253,7 +264,9 @@ def user_clicks_clear_button(customers_page):
 
 @then("tüm arama alanları boşalır ve sonuç listesi varsayılan hale döner")
 def all_fields_cleared_and_results_reset(customers_page):
-    customers_page.verify_all_search_fields_empty()
+    values = customers_page.get_all_search_field_values()
+    not_cleared = {locator: value for locator, value in values.items() if value}
+    assert not not_cleared, f"Temizlenmeyen alanlar: {not_cleared}"
     customers_page.verify_results_reset_to_default()
 
 

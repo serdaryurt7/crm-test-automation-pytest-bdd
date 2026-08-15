@@ -362,7 +362,7 @@ class CustomersPage(BasePage):
     def go_to_next_page(self):
         self.wait.until(EC.element_to_be_clickable(self.NEXT_PAGE)).click()
 
-    def verify_next_page_records_are_new(self):
+    def get_next_page_record_comparison(self):
         # Not: sayfa gecisi sirasinda Angular DOM'u ANLIK olarak
         # bosaltabiliyor (*ngFor yeniden render edilirken) - "kume eskisinden
         # FARKLI mi" kontrolu tek basina BOS kumeyi de "farkli" say(iyord)u,
@@ -375,10 +375,13 @@ class CustomersPage(BasePage):
             and ids != self._first_page_ids
         )
         next_page_ids = set(self.get_result_customer_ids())
-        assert next_page_ids, "Sonraki sayfada hiç kayıt yok"
-        assert not (next_page_ids & self._first_page_ids), (
-            "Sonraki sayfada önceki sayfayla çakışan (tekrarlanan) kayıtlar var"
-        )
+        # İddia BİLEREK burada yapılmıyor: page object durumu döndürür,
+        # step katmanı iddia eder. Böylece bu metot "kayıtlar tekrarlanMALI"
+        # gibi ters bir senaryoda da yeniden kullanılabilir.
+        return {
+            "next_page_ids": next_page_ids,
+            "overlapping_ids": next_page_ids & self._first_page_ids,
+        }
 
     def is_create_customer_button_visible(self):
         button = self.wait.until(EC.visibility_of_element_located(self.CREATE_CUSTOMER_BUTTON))
@@ -397,13 +400,19 @@ class CustomersPage(BasePage):
         self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", link)
         link.click()
 
-    def verify_navigated_to_customer_detail_same_tab(self, customer_id):
+    def get_customer_detail_navigation_state(self, customer_id):
+        """Detaya geçiş sonrası gözlemlenen durumu döndürür - iddia step'te.
+
+        Beklemeler burada KALIYOR (bekleme page katmanının işi); yalnızca
+        iddia step'e taşındı.
+        """
         self.wait.until(lambda d: f"/customers/{customer_id}" in d.current_url)
-        assert len(self.driver.window_handles) == self._window_handle_count_before_click, (
-            "Müşteri detayına geçişte yeni bir sekme/pencere açıldı"
-        )
-        assert f"/customers/{customer_id}" in self.driver.current_url
         self.wait.until(EC.visibility_of_element_located(self.CUSTOMER_DETAIL_HEADER))
+        return {
+            "url": self.driver.current_url,
+            "window_count": len(self.driver.window_handles),
+            "window_count_before_click": self._window_handle_count_before_click,
+        }
 
     def fill_all_search_fields_via_tab_navigation(self):
         identity_number = "".join(random.choices("0123456789", k=11))
@@ -422,10 +431,12 @@ class CustomersPage(BasePage):
     def click_clear_button(self):
         self.wait.until(EC.element_to_be_clickable(self.SEARCH_CLEAR)).click()
 
-    def verify_all_search_fields_empty(self):
-        for locator in self.SEARCH_FIELDS:
-            value = self.driver.find_element(*locator).get_attribute("value")
-            assert value == "", f"Alan temizlenmedi: {locator} = {value!r}"
+    def get_all_search_field_values(self):
+        """Tüm arama alanlarının o anki değerlerini döndürür - iddia step'te."""
+        return {
+            locator: self.driver.find_element(*locator).get_attribute("value")
+            for locator in self.SEARCH_FIELDS
+        }
 
     def verify_results_reset_to_default(self):
         self.wait.until(lambda d: len(d.find_elements(*self.ROW)) == 15)

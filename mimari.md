@@ -13,15 +13,15 @@
 
 ## 0. İlerleme Durumu
 
-**Genel olgunluk: 3.8 → 4.2 / 10**
-**Page Object Model: 6 → 8 / 10** ✅
+**Genel olgunluk: 3.8 → 4.3 / 10**
+**Page Object Model: 6 → 9 / 10** ✅
 
 | Faz | Kapsam | Durum |
 |---|---|---|
 | **Faz 0** | Branch + baseline doğrulama | ✅ Tamam |
 | **Faz 1** | `BasePage` + 13 kök sınıf migrasyonu | ✅ Tamam (`ecf6251`) |
-| **Faz 2** | `utils/waits.py` + poll döngülerinin taşınması | ✅ Tamam (kapsam daraltıldı — bkz. aşağı) |
-| Faz 3 | Page içindeki 11 assert'in ayıklanması | ⏳ Sırada |
+| **Faz 2** | `utils/waits.py` + poll döngülerinin taşınması | ✅ Tamam (`96a9a65`, kapsam daraltıldı) |
+| **Faz 3** | Page içindeki assert'lerin ayıklanması (11 → 6) | ✅ Tamam |
 | Faz 4 | `create_customer_page.py` bölünmesi (735 satır) | ⏳ Ayrı karar |
 
 ### Faz 0 — Yapılanlar
@@ -117,6 +117,23 @@ Kalan 3 sabit bekleme için çözüm (`wait_for_dom_settled`) yazıldı ama
 uygulanmadı — ayrıntılı gerekçe §4.2c'de. Özet: en sıcak kod yolunda,
 kazanç ancak CI'da görünür, bugün çalışıyorlar.
 
+### Faz 3 — Yapılanlar
+
+Page object içindeki 11 assert kategorize edildi; yalnızca **gerçek POM
+ihlali olan 5 tanesi** step katmanına taşındı (ayrıntılı kategorizasyon
+ve kalan 6'nın gerekçesi için §4.2b).
+
+Etkilenen: `search_customers_page.py` + `test_search_customers_steps.py`.
+Üç `verify_*` metodu, durum döndüren `get_*` metotlarına dönüştürüldü;
+beklemeler page katmanında bırakıldı.
+
+**Doğrulama:** `search_customers` → **34 passed / 0 failed** (5dk 40sn).
+Bu feature'da bilinen kırmızı yok, dolayısıyla tam yeşil beklenen sonuçtu.
+Sıfır regresyon.
+
+**Sonuç: page içinde assert 11 → 6.** Kalan 6 POM ihlali değil:
+3'ü ayrıştırma guard'ı, 3'ü beklemenin kapsamadığı ikinci bir doğrulama.
+
 ### Faz 1 — Bilinçli olarak YAPILMAYAN
 
 `BasePage`'in 20 yardımcı metodu (`find`, `click`, `type`, `text_of`,
@@ -163,7 +180,7 @@ tek sebebi bu.
 | Boyut | İlk | Güncel | Değerlendirme |
 |---|---|---|---|
 | Senaryo kapsamı | 8 | 🟢 **8**/10 | 187 senaryo, iyi Gherkin disiplini, INVEST'e uyum |
-| Page Object Model | 6 | 🟢 **8**/10 | ✅ Faz 1: BasePage kuruldu, 18/18 sınıf bağlı. Kalan: 11 assert page içinde, 735 satırlık god class |
+| Page Object Model | 6 | 🟢 **9**/10 | ✅ Faz 1: BasePage, 18/18 sınıf bağlı. ✅ Faz 3: assert 11 → 6 (kalanlar gerekçeli). Kalan tek eksik: 735 satırlık god class |
 | Step katmanı | 3 | 🔴 **3**/10 | Ağır tekrar, sıfır paylaşılan fixture, sabit kodlanmış veri |
 | Ortak altyapı (`utils/`) | 1 | 🔴 **2**/10 | ✅ Faz 2: `utils/waits.py` eklendi (1 → 2 modül). Hedef 8 modül; `config`, `text`, `test_data`, `logger` hâlâ yok |
 | Test verisi yönetimi | 1 | 🔴 **1**/10 | `test_data/` boş, veri koda gömülü |
@@ -173,7 +190,7 @@ tek sebebi bu.
 | CI/CD | 0 | 🔴 **0**/10 | Hiç yok |
 | Kararlılık (flaky yönetimi) | 5 | 🟡 **6**/10 | ✅ Faz 1: `ignored_exceptions` kapsamı 2/13 → 13/13. Hâlâ retry/paralel/izolasyon mekanizması yok |
 
-**Genel: 3.8 → 4.2 / 10**
+**Genel: 3.8 → 4.3 / 10**
 
 > **Neden genel skor az arttı?** Skor 10 boyutun ortalamasıdır; POM
 > boyutu 2 puan yükseldi ama bu ortalamaya 0.2 olarak yansıyor. Bu
@@ -376,19 +393,61 @@ stale koruması her sayfada. Ayrıntı ve doğrulama sonuçları için §0'a bak
 kendi `self.driver.find_element(...)` çağrılarını yapıyor. Bu, ayrı bir
 faz olarak ele alınmalıdır.
 
-#### b) Page object içinde `assert` — 11 adet
+#### b) Page object içinde `assert` — 11 → 6 ✅ ÇÖZÜLDÜ (Faz 3, `?`)
 
-```
-pages/search_customers_page.py : 9 assert
-pages/contact_update_page.py   : 1 assert
-pages/update_customer_page.py  : 1 assert
-```
+POM sözleşmesi: **page object durumu döndürür, step katmanı iddia eder.**
+Assert'ler page içine girdiğinde aynı metot ters bir senaryoda yeniden
+kullanılamaz hale gelir.
 
-POM sözleşmesi: **page object durumu döndürür, step katmanı iddia eder.** Assert'ler page
-içine girdiğinde aynı page metodu farklı bir senaryoda yeniden kullanılamaz hale gelir.
+İlk tespitte 11 assert sayılmıştı. Detaylı inceleme bunların **üç farklı
+şey** yaptığını gösterdi — hepsi taşınmamalıydı:
 
-> Not: Bunların bir kısmı "veri sağlığı kontrolü" niteliğinde (`assert match, "sayıda
-> bulunamadı"`) ve savunulabilir. Ancak iş kuralı doğrulaması yapan assert'ler step'e taşınmalı.
+**Kategori A — gerçek POM ihlali (5 assert / 3 metot) → TAŞINDI**
+
+Üçü de yalnızca iddia etmek için vardı (`verify_*` isimli, anlamlı bir şey
+döndürmüyor, her biri tek bir step'ten çağrılıyor):
+
+| Eski (page iddia ediyordu) | Yeni (page durum döndürüyor) |
+|---|---|
+| `verify_next_page_records_are_new()` | `get_next_page_record_comparison()` |
+| `verify_navigated_to_customer_detail_same_tab()` | `get_customer_detail_navigation_state()` |
+| `verify_all_search_fields_empty()` | `get_all_search_field_values()` |
+
+**Beklemeler page'de bırakıldı** — bekleme page katmanının işidir; yalnızca
+iddia step'e taşındı. Yan kazanç: hata mesajları iyileşti. Örneğin alan
+temizliği kontrolü artık ilk hatada durmak yerine temizlenmeyen alanların
+**tamamını** raporluyor.
+
+**Kategori B — ayrıştırma/veri sağlığı guard'ı (3 assert) → PAGE'DE KALDI**
+
+`is_customer_id_column_sorted_ascending()`, `get_results_count_number()`,
+`get_results_range_bounds()`
+
+Bunlar iş kuralı doğrulamıyor; **dönüş değerinin anlamlı olduğunu** garanti
+ediyor. Boş listede "sıralı" yanlış-pozitifini ve regex eşleşmemesini
+engelliyorlar. Step'e taşınırlarsa page metodu sessizce anlamsız değer
+döndürür — bu daha kötüdür.
+
+**Kategori C — beklemeden sonra ek doğrulama (3 assert) → PAGE'DE KALDI**
+
+`wait_for_no_results_state()`, `wait_for_no_mobile_phone_error_and_save_enabled()`,
+`wait_for_save_enabled_with_no_identity_number_error()`
+
+Bunlar ilk bakışta "beklemeyle çakışan ölü kod" sanılabilir — **değiller.**
+Wait bir şeyi bekliyor, assert **başka** bir şeyi kontrol ediyor:
+
+| Metot | Wait ne bekliyor | Assert ne kontrol ediyor |
+|---|---|---|
+| `wait_for_no_results_state` | EMPTY_STATE görünür olsun | satır sayısı 0 mı |
+| Diğer ikisi | Kaydet butonu aktifleşsin | hata mesajı görünmüyor mu |
+
+Kodda gerekçesi yazılı: yarış durumundan kaçınmak için önce nihai durum
+bekleniyor, sonra hata elemanı okunuyor. Assert kaldırılırsa **doğrulama
+tamamen kaybolur.** Taşınabilirler ama kazanç marjinal, üç ayrı dosyaya
+dokunmak gerekir.
+
+**Sonuç: 11 → 6.** Kalan 6, POM ihlali değil; yukarıda gerekçelendirilmiş
+bilinçli kararlardır.
 
 #### c) `time.sleep` — kısmen çözüldü (Faz 2)
 
@@ -1454,7 +1513,7 @@ Bu yol haritası tamamlandığında beklenen durum:
 | Page içinde elle yazılmış poll döngüsü | 2 | ✅ **0** | 0 |
 | Page içinde sabit `time.sleep` | 3 | 3 | **0** (CI öncesi) |
 | `utils/` modül sayısı (ayrıca aşağıda) | 1 | ✅ **2** | 8 |
-| Page içinde `assert` | 11 | 11 | **≤3 guard** (Faz 3) |
+| Page içinde `assert` | 11 | ✅ **6** | 6 (3 guard + 3 tanısal) |
 | En büyük page dosyası (satır) | 735 | 735 | **~250** (Faz 4) |
 | Sabit kodlanmış şifre sayısı | 18 | 18 | **0** |
 | Login kodunun tekrarlandığı dosya | 17 | 17 | **1** (conftest) |
