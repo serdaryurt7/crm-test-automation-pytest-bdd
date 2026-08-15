@@ -21,7 +21,7 @@
 | **Faz 0** | Branch + baseline doğrulama | ✅ Tamam |
 | **Faz 1** | `BasePage` + 13 kök sınıf migrasyonu | ✅ Tamam (`ecf6251`) |
 | **Faz 2** | `utils/waits.py` + poll döngülerinin taşınması | ✅ Tamam (`96a9a65`, kapsam daraltıldı) |
-| **Faz 3** | Page içindeki assert'lerin ayıklanması (11 → 6) | ✅ Tamam |
+| **Faz 3** | Page içindeki assert'lerin ayıklanması (11 → 6) | ✅ Tamam (`e7d260c`) |
 | Faz 4 | `create_customer_page.py` bölünmesi (735 satır) | ⏳ Ayrı karar |
 
 ### Faz 0 — Yapılanlar
@@ -393,7 +393,7 @@ stale koruması her sayfada. Ayrıntı ve doğrulama sonuçları için §0'a bak
 kendi `self.driver.find_element(...)` çağrılarını yapıyor. Bu, ayrı bir
 faz olarak ele alınmalıdır.
 
-#### b) Page object içinde `assert` — 11 → 6 ✅ ÇÖZÜLDÜ (Faz 3, `?`)
+#### b) Page object içinde `assert` — 11 → 6 ✅ ÇÖZÜLDÜ (Faz 3, `e7d260c`)
 
 POM sözleşmesi: **page object durumu döndürür, step katmanı iddia eder.**
 Assert'ler page içine girdiğinde aynı metot ters bir senaryoda yeniden
