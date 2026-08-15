@@ -1,9 +1,131 @@
 # Mimari Değerlendirme ve Yol Haritası
 
 **Proje:** CRM Test Automation Framework (Selenium + pytest-bdd)
-**Değerlendirme tarihi:** 2026-08-15
+**İlk değerlendirme:** 2026-08-15
+**Son güncelleme:** 2026-08-15 — Faz 1 tamamlandı
 **Değerlendiren:** Senior Test Otomasyon Mühendisi
 **Kapsam:** Tüm proje yapısı — katman tasarımı, kod tekrarı, konfigürasyon, raporlama, repo hijyeni, CI/CD
+
+> **Bu dosya canlıdır.** Her faz tamamlandığında skorlar ve ölçütler
+> güncellenir. Güncel ilerleme için §0'a bakınız.
+
+---
+
+## 0. İlerleme Durumu
+
+**Genel olgunluk: 3.8 → 4.2 / 10**
+**Page Object Model: 6 → 8 / 10** ✅
+
+| Faz | Kapsam | Durum |
+|---|---|---|
+| **Faz 0** | Branch + baseline doğrulama | ✅ Tamam |
+| **Faz 1** | `BasePage` + 13 kök sınıf migrasyonu | ✅ Tamam (`ecf6251`) |
+| **Faz 2** | `utils/waits.py` + poll döngülerinin taşınması | ✅ Tamam (kapsam daraltıldı — bkz. aşağı) |
+| Faz 3 | Page içindeki 11 assert'in ayıklanması | ⏳ Sırada |
+| Faz 4 | `create_customer_page.py` bölünmesi (735 satır) | ⏳ Ayrı karar |
+
+### Faz 0 — Yapılanlar
+
+- `refactor/pom-base-page` branch'i açıldı; `main` temiz ve push'lu bırakıldı.
+- Bilinen-kırmızı listesi `bugsbunnyupdated.txt`'ten çıkarıldı:
+  **6 kasıtlı kırmızı + 4 flaky = 10** (baseline: 204 passed / 10 failed).
+- Kanarya koşumu (`billing_account_update`, 5 senaryo) ile listenin bugün
+  hâlâ geçerli olduğu doğrulandı: **3 passed / 2 failed**, ikisi de bilinen.
+
+> **Ortam notu:** Bu doğrulama sırasında `bff-service`'in ayakta olmadığı
+> tespit edildi. Belirti yanıltıcıydı — frontend (4200) ve Keycloak (8180)
+> sağlıklı, gateway (8080) `/actuator/health` → `UP` dönüyordu; ancak
+> `POST /bff-service/api/v1/auth/login` bir devre kesici fallback'i
+> veriyordu:
+> `{"instance":"/fallback/bff-service","service":"bff-service","status":503}`
+> Testler değil, hedef sistem eksikti. Servis ayağa kalkınca baseline
+> doğrulandı.
+
+### Faz 1 — Yapılanlar
+
+`pages/base_page.py` oluşturuldu ve **13 kök sınıfın tamamı** ona bağlandı
+(kalıtım zinciriyle birlikte **18/18 page sınıfı**).
+
+Değişiklik her sınıfta bilinçli olarak minimal tutuldu: sayfaya özel
+hazır-olma beklemeleri ve durum alanları `__init__` içinde **aynen
+korundu**, yalnızca ortak iki satır `super().__init__(driver)` ile
+değiştirildi. İki sayfada (`language_switcher`, `sales_setup`) `__init__`
+zaten ortak kısımdan ibaret olduğu için tamamen kaldırıldı.
+
+`poll_frequency` bilerek Selenium varsayılanında (0.5sn) bırakıldı —
+bu bir **refactor**'dır: yapı değişir, davranış değişmez. Ölçülmemiş bir
+zamanlama değişikliği, olası bir regresyonu ayırt etmeyi zorlaştırırdı.
+
+**Doğrulama:** 214 senaryo üç partide koşuldu.
+
+| Parti | Kapsam | Sonuç |
+|---|---|---|
+| Parti 1 | `language_switcher`, `login`, `sales_setup` | 34 passed / 2 failed |
+| Parti 2 | `offer_selection`, `order_submission`, `product_configuration`, `delete_customer`, `update_customer` | 46 passed / 2 failed |
+| Parti 3 | `contact_update`, `address_update`, `billing_account_create`, `create_customer`, `search_customers` (+5 alt sınıf) | 131 passed / 5 failed |
+
+**Benzersiz 8 kırmızı; hepsi bilinen listede.** `BasePage` kaynaklı
+regresyon YOK. Baseline'daki 10 kırmızıdan 8'e düşüş, üç flaky testin
+(`TC-014-12`, `TC-007-05`, login butonu pasifleşmesi) bu koşumlarda
+geçmesinden kaynaklandı.
+
+> **Dürüstlük notu:** `TC-014-12`'nin geçmesi umut verici — bu testin
+> bilinen kök nedeni `offer_selection_page`'de eksik olan
+> `ignored_exceptions`'tı ve `BasePage` bunu getirdi. Ancak **tek yeşil
+> koşum bir flaky'nin düzeldiğini kanıtlamaz.** Kesin yargı için birkaç
+> tam süit koşumu gerekiyor.
+
+### Faz 1 — Ölçülen sonuç
+
+| Ölçüt | Önce | Sonra |
+|---|---|---|
+| Elle `WebDriverWait` kuran sayfa | 11 | **0** |
+| `BasePage` alt sınıfı | 0 / 18 | **18 / 18** |
+| `ignored_exceptions` korumalı sayfa | 2 / 13 | **13 / 13** |
+| Zaman aşımı yönetim noktası | 11 dosya | **1 ortam değişkeni** |
+| Ortak yardımcı metot | 0 | **20** |
+
+### Faz 2 — Yapılanlar
+
+`utils/waits.py` oluşturuldu; `utils/` modül sayısı 1 → 2.
+
+| Fonksiyon | Amaç | Durum |
+|---|---|---|
+| `poll_until()` | "eylem → bekle → kontrol" turunu tekrarlar; asenkron backend işlemleri için | Kullanımda (2 yer) |
+| `wait_for_dom_settled()` | MutationObserver ile DOM durulmasını bekler | Yazıldı, **henüz kullanılmıyor** |
+
+`delete_customer_page.py` ve `search_customers_page.py` içindeki elle
+yazılmış poll döngüleri `poll_until()`'e taşındı; iki dosyadan ölü
+`import time` temizlendi.
+
+`poll_until()` bilerek **exception fırlatmıyor**, `True`/`False` döndürüyor —
+çağıran sayfa metotları bu sonucu aynen döndürüp iddiayı step katmanına
+bırakıyordu; `TimeoutException` fırlatmak test başarısızlık mesajlarını
+değiştirir ve refactor'u davranış değişikliğine dönüştürürdü.
+
+**Doğrulama:** `delete_customer` + `search_customers` → **40 passed / 1 failed**
+(7dk 34sn). Tek kırmızı TC-005-03, bilinen kasıtlı kırmızı. Taşınan
+metotları kullanan TC-005-05 ve TC-005-06 **geçti**. Sıfır regresyon.
+
+### Faz 2 — Kapsam neden daraltıldı
+
+İlk plan "6 `time.sleep`'i `poll_until`'e taşı" idi. İnceleme bu planın
+yanlış bir sayıma dayandığını gösterdi (bkz. §4.2c): gerçek sayı 5'ti,
+biri yorum satırıydı ve **3'ü poll döngüsü değildi**.
+
+Kalan 3 sabit bekleme için çözüm (`wait_for_dom_settled`) yazıldı ama
+uygulanmadı — ayrıntılı gerekçe §4.2c'de. Özet: en sıcak kod yolunda,
+kazanç ancak CI'da görünür, bugün çalışıyorlar.
+
+### Faz 1 — Bilinçli olarak YAPILMAYAN
+
+`BasePage`'in 20 yardımcı metodu (`find`, `click`, `type`, `text_of`,
+`wait_until_gone` …) şu an **hiçbir sayfa tarafından kullanılmıyor**;
+sayfalar hâlâ kendi `self.driver.find_element(...)` çağrılarını yapıyor.
+Bu, Faz 1'in "davranış değişmez" sözleşmesinin gereğiydi. Yardımcıları
+benimsetmek ayrı ve daha riskli bir iştir; ayrı bir faz olarak ele
+alınmalıdır. Şu anki değerleri, **yeni yazılacak sayfaların bu mantığı
+yeniden üretmek zorunda kalmaması**.
 
 ---
 
@@ -38,20 +160,26 @@ tek sebebi bu.
 
 ### Olgunluk Skoru
 
-| Boyut | Skor | Değerlendirme |
-|---|---|---|
-| Senaryo kapsamı | 🟢 8/10 | 187 senaryo, iyi Gherkin disiplini, INVEST'e uyum |
-| Page Object Model | 🟡 6/10 | Doğru uygulanmış ama BasePage yok, 11 assert page içinde |
-| Step katmanı | 🔴 3/10 | Ağır tekrar, sıfır paylaşılan fixture, sabit kodlanmış veri |
-| Ortak altyapı (`utils/`) | 🔴 1/10 | Fiilen yok — en kritik eksik |
-| Test verisi yönetimi | 🔴 1/10 | `test_data/` boş, veri koda gömülü |
-| Konfigürasyon | 🟡 5/10 | `.env` var ama sürüm sabitleme yok, `base_url` yanlış semantik |
-| Raporlama | 🟢 7/10 | Allure + pytest-html iyi kurulmuş, ekran görüntüsü ekleniyor |
-| Repo hijyeni | 🔴 2/10 | README'de çözülmemiş merge conflict, 321KB dosya, 22 artık klasör |
-| CI/CD | 🔴 0/10 | Hiç yok |
-| Kararlılık (flaky yönetimi) | 🟡 5/10 | Bilinçli triyaj yapılmış ama retry/paralel/izolasyon mekanizması yok |
+| Boyut | İlk | Güncel | Değerlendirme |
+|---|---|---|---|
+| Senaryo kapsamı | 8 | 🟢 **8**/10 | 187 senaryo, iyi Gherkin disiplini, INVEST'e uyum |
+| Page Object Model | 6 | 🟢 **8**/10 | ✅ Faz 1: BasePage kuruldu, 18/18 sınıf bağlı. Kalan: 11 assert page içinde, 735 satırlık god class |
+| Step katmanı | 3 | 🔴 **3**/10 | Ağır tekrar, sıfır paylaşılan fixture, sabit kodlanmış veri |
+| Ortak altyapı (`utils/`) | 1 | 🔴 **2**/10 | ✅ Faz 2: `utils/waits.py` eklendi (1 → 2 modül). Hedef 8 modül; `config`, `text`, `test_data`, `logger` hâlâ yok |
+| Test verisi yönetimi | 1 | 🔴 **1**/10 | `test_data/` boş, veri koda gömülü |
+| Konfigürasyon | 5 | 🟡 **5**/10 | `.env` var ama sürüm sabitleme yok, `base_url` yanlış semantik |
+| Raporlama | 7 | 🟢 **7**/10 | Allure + pytest-html iyi kurulmuş, ekran görüntüsü ekleniyor |
+| Repo hijyeni | 2 | 🔴 **2**/10 | README'de çözülmemiş merge conflict, 321KB dosya, 25 artık klasör |
+| CI/CD | 0 | 🔴 **0**/10 | Hiç yok |
+| Kararlılık (flaky yönetimi) | 5 | 🟡 **6**/10 | ✅ Faz 1: `ignored_exceptions` kapsamı 2/13 → 13/13. Hâlâ retry/paralel/izolasyon mekanizması yok |
 
-**Genel: 3.8 / 10 — "Çalışan prototip"ten "üretim framework'ü"ne geçiş gerekiyor.**
+**Genel: 3.8 → 4.2 / 10**
+
+> **Neden genel skor az arttı?** Skor 10 boyutun ortalamasıdır; POM
+> boyutu 2 puan yükseldi ama bu ortalamaya 0.2 olarak yansıyor. Bu
+> yanıltıcı değil, **gerçekçi**: framework'ün olgunluğu tek bir katmanın
+> düzelmesiyle sıçramaz. Asıl sıçrama, en düşük üç boyutun (step katmanı,
+> `utils/`, CI) birlikte ele alınmasıyla gelecek — bkz. §11.
 
 ---
 
@@ -105,15 +233,21 @@ bu **ilk fark edilen şey** olur.
 
 ---
 
-### 🔴 K2 — `test-design/final-test-set/` altındaki 17 dosya diskten silinmiş (commit edilmemiş)
+### 🔴 K2 — `test-design/final-test-set/` altındaki 17 dosya silindi ve **commit edildi**
 
-`git status` çıktısı 17 dosyayı `D` (deleted) olarak gösteriyor ve dizin boş.
-Bunlar hâlâ git geçmişinde duruyor, yani **kurtarılabilir** — ama commit edilirse kalıcı olur.
+İlk tespitte bu dosyalar çalışma ağacında silinmiş ama commit edilmemişti.
+Sonraki kontrolde silmenin `87a7bae` ile **commit edilip push edildiği**
+görüldü — 17 dosya artık `HEAD`'de yok.
 
-**Yapılacak (kasıtlı değilse hemen):**
+Hâlâ git geçmişinde duruyorlar, yani **kurtarılabilirler**:
+
 ```bash
-git restore test-design/
+git restore --source=58b416b test-design/
 ```
+
+Silme kasıtlıysa bir işlem gerekmiyor; değilse yukarıdaki komut yeterli.
+Bu dosyalar `kesif_testi.txt` ile birlikte projenin test tasarımı
+belleğini oluşturuyordu, kaybı geri döndürülemez olmasa da maliyetlidir.
 
 ---
 
@@ -216,22 +350,31 @@ Ayrıca pytest-bdd step loglama hook'u ve pytest-html entegrasyonu bulunuyor.
 
 **Sorunlar:**
 
-#### a) `BasePage` yok — en önemli yapısal eksik
+#### a) ~~`BasePage` yok — en önemli yapısal eksik~~ ✅ ÇÖZÜLDÜ (Faz 1, `ecf6251`)
 
-11 ayrı sınıf kendi `__init__`'inde aynı satırı yazıyor:
+**Tespit edilen durum:** 11 ayrı sınıf kendi `__init__`'inde aynı satırı yazıyordu:
 
 ```python
 def __init__(self, driver):
     self.driver = driver
-    self.wait = WebDriverWait(driver, 10)   # 11 kez tekrarlanıyor
+    self.wait = WebDriverWait(driver, 10)   # 11 kez tekrarlanıyordu
 ```
 
 Sonuçları:
-- **Timeout tek yerden değiştirilemiyor.** Yavaş bir CI ortamında 10sn yetmezse 11 dosya düzenlenecek.
-- `ignored_exceptions=(StaleElementReferenceException,)` gibi ortak ayarlar bazı
-  sayfalarda var, bazılarında yok — **kanıtlanmış flaky kaynağı**
-  (`offer_selection_page.py` bu yüzden daha önce sorun çıkarmıştı).
-- Her sayfa kendi `click`, `type`, `get_text` mantığını yeniden yazıyor.
+- Timeout tek yerden değiştirilemiyordu. Yavaş bir CI ortamında 10sn yetmezse
+  11 dosya düzenlenecekti.
+- `ignored_exceptions=(StaleElementReferenceException,)` yalnızca 2 sayfada
+  vardı — **kanıtlanmış flaky kaynağı** (`offer_selection_page.py` /
+  TC-014-12 bu yüzden sorun çıkarıyordu).
+- Her sayfa kendi `click`, `type`, `get_text` mantığını yeniden yazıyordu.
+
+**Yapılan:** `pages/base_page.py` oluşturuldu; 18/18 sınıf bağlandı.
+Timeout artık `DEFAULT_TIMEOUT` ortam değişkeniyle tek yerden yönetiliyor,
+stale koruması her sayfada. Ayrıntı ve doğrulama sonuçları için §0'a bakınız.
+
+**Kalan iş:** 20 ortak yardımcı metot henüz benimsenmedi — sayfalar hâlâ
+kendi `self.driver.find_element(...)` çağrılarını yapıyor. Bu, ayrı bir
+faz olarak ele alınmalıdır.
 
 #### b) Page object içinde `assert` — 11 adet
 
@@ -247,19 +390,42 @@ içine girdiğinde aynı page metodu farklı bir senaryoda yeniden kullanılamaz
 > Not: Bunların bir kısmı "veri sağlığı kontrolü" niteliğinde (`assert match, "sayıda
 > bulunamadı"`) ve savunulabilir. Ancak iş kuralı doğrulaması yapan assert'ler step'e taşınmalı.
 
-#### c) `time.sleep` — 6 adet, proje kuralına aykırı
+#### c) `time.sleep` — kısmen çözüldü (Faz 2)
 
-```
-pages/create_customer_page.py    : 3
-pages/address_update_page.py     : 1
-pages/delete_customer_page.py    : 1
-pages/search_customers_page.py   : 1
-```
+> **İlk sayımda hata vardı — düzeltildi.** İlk taramada 6 kullanım
+> raporlanmıştı; `address_update_page.py`'deki geçişin bir **yorum satırı**
+> olduğu sonradan görüldü. Gerçek sayı **5**'ti ve hepsi aynı problem
+> değildi:
 
-Bunların bir kısmı **bilinçli** (asenkron silme için yoklama döngüsü —
-`wait_for_deleted_customer_not_found_after_reload`). Ama bilinçli olanlar bile
-`utils/waits.py` içindeki adı konmuş bir `poll_until()` yardımcısına taşınmalı ki
-niyet kodda görünsün.
+| Konum | Tür | Durum |
+|---|---|---|
+| `delete_customer_page.py` × 1 | Gerçek poll döngüsü | ✅ `poll_until`'e taşındı |
+| `search_customers_page.py` × 1 | Gerçek poll döngüsü | ✅ `poll_until`'e taşındı |
+| `create_customer_page.py` × 3 | Sabit 0.3sn bekleme | ⏸️ Bilinçli olarak bırakıldı |
+| `address_update_page.py` | Yorum satırı | — (bulgu geçersiz) |
+
+**Taşınan ikisi**, asenkron silme gecikmesini tolere etmek için
+"eylem → bekle → kontrol" turunu tekrarlayan gerçek yoklama döngüleriydi.
+Artık `utils/waits.py::poll_until()` ile adı konmuş durumda.
+
+**Kalan üçü** farklı bir problem: bir adımın son alanına değer girilip
+odak kaydırıldıktan sonra Angular'ın form geçerliliğini yeniden
+hesaplaması bekleniyor. Tek bir `WebDriverWait` koşulu yazılamıyor çünkü
+*ne* bekleneceği senaryoya göre değişiyor — pozitif senaryoda buton
+aktifleşmeli, negatifte **pasif kalmalı**.
+
+Bunlar için `utils/waits.py::wait_for_dom_settled()` yazıldı
+(MutationObserver ile DOM durulmasını bekler; hızlı makinede ~150ms →
+bugünkünden hızlı, yavaş CI'da 1.5sn'ye kadar → bugünkünden sağlam).
+Ancak **uygulanmadı**: bu üç bekleme, 14 step dosyasının disposable
+müşteri oluşturmak için kullandığı en sıcak kod yolunda. Bugün çalışıyor
+olmaları ve kazancın ancak CI'ya geçildiğinde görünür olması nedeniyle
+değişiklik ertelendi.
+
+> **Yapılacak (CI'ya geçişten önce):** `create_customer_page.py`'deki üç
+> `time.sleep(0.3)` çağrısını `wait_for_dom_settled()` ile değiştir ve
+> `create_customer` + ona bağlı feature'ları koş (~35 dk). Sabit 300ms
+> varsayımı, CI'da kırılacak ilk şeylerden biridir.
 
 #### d) `create_customer_page.py` 735 satır — tek sorumluluk ihlali
 
@@ -977,9 +1143,35 @@ def create_driver():
 Şu an her adres/iletişim/fatura testi, UI üzerinden sıfırdan müşteri oluşturuyor:
 sihirbazın 3 adımı, ~15 saniye. 14 step dosyası bunu yapıyor.
 
-Eğer uygulamanın bir REST arka ucu varsa (`localhost:8180` üzerinde Keycloak
-gözlemlendi, yani muhtemelen bir BFF API'si var), **kurulum API ile yapılıp
-doğrulama UI ile** yapılmalıdır:
+**Arka uç topolojisi (Faz 0 sırasında CANLI DOĞRULANDI):**
+
+| Adres | Rol | Durum |
+|---|---|---|
+| `localhost:4200` | Angular frontend | ✅ |
+| `localhost:8080` | **API Gateway** (Spring Cloud Gateway) | ✅ |
+| `localhost:8080/bff-service/api/v1/...` | BFF servisi (gateway arkasında) | ✅ |
+| `localhost:8180/realms/etiya-crm` | Keycloak | ✅ |
+| `localhost:8081/8082/8084/8085/8090` | Diğer mikroservisler | ✅ |
+
+Doğrulanmış login uç noktası:
+
+```
+POST http://localhost:8080/bff-service/api/v1/auth/login
+Content-Type: application/json
+{"username":"demo","password":"..."}
+→ 200 {"accessToken":"eyJhbGciOiJSUzI1NiIs..."}
+```
+
+> ⚠️ **Gateway'de rate limiting var.** Yanıt başlıklarında görüldü:
+> `X-RateLimit-Burst-Capacity: 20`, `X-RateLimit-Replenish-Rate: 1`,
+> `X-RateLimit-Requested-Tokens: 4`.
+> Yani saniyede 1 token dolan, 20 kapasiteli bir kova ve her istek 4 token
+> tüketiyor → **sürdürülebilir hız ≈ 15 istek/dakika**. API ile toplu
+> kurulum yaparken veya `pytest-xdist` ile paralel koşarken bu sınır
+> aşılırsa 429 alınır. `ApiClient` bir geri-çekilme (backoff) mekanizması
+> içermelidir.
+
+Kurulum API ile yapılıp doğrulama UI ile yapılmalıdır:
 
 ```python
 """Test ÖN KOŞULLARINI API ile kurar - UI yalnızca DOĞRULAMA için kullanılır.
@@ -994,8 +1186,12 @@ from utils.config import config
 
 
 class ApiClient:
+    # Gateway rate limit'i: ~15 istek/dk sürdürülebilir. Toplu kurulumda
+    # 429 alınırsa üstel geri çekilme (backoff) uygulanmalı.
+    BASE_PATH = "/bff-service/api/v1"
+
     def __init__(self, token: str | None = None):
-        self.base = config.base_url.replace(":4200", ":8080")  # BFF portu doğrulanmalı
+        self.base = config.base_url.replace(":4200", ":8080") + self.BASE_PATH
         self.session = requests.Session()
         if token:
             self.session.headers["Authorization"] = f"Bearer {token}"
@@ -1150,23 +1346,24 @@ def user_on_address_tab(driver, disposable_customer):
 
 ### Sprint 2 — Ortak Altyapı (2 gün, orta risk)
 
-| # | İş | Etki |
-|---|---|---|
-| 8 | `utils/config.py` + `.env` kimlik bilgileri | 18 sabit kodlanmış şifre yok olur |
-| 9 | `pages/base_page.py` + 11 sınıfı ona bağla | Timeout tek yerden; stale koruması her yerde |
-| 10 | `utils/text.py` (Türkçe katlama dışarı çıkar) | Dil bağımsızlığı tüm projede kullanılabilir |
-| 11 | `utils/logger.py` | CI'da hata ayıklama mümkün olur |
-| 12 | `conftest.py`'ye `logged_in` fixture'ı | 17 dosyadaki login tekrarı biter |
+| # | İş | Etki | Durum |
+|---|---|---|---|
+| 8 | `utils/config.py` + `.env` kimlik bilgileri | 18 sabit kodlanmış şifre yok olur | ⏳ |
+| 9 | `pages/base_page.py` + 13 sınıfı ona bağla | Timeout tek yerden; stale koruması her yerde | ✅ `ecf6251` |
+| 10 | `utils/text.py` (Türkçe katlama dışarı çıkar) | Dil bağımsızlığı tüm projede kullanılabilir | ⏳ |
+| 11 | `utils/logger.py` | CI'da hata ayıklama mümkün olur | ⏳ |
+| 12 | `conftest.py`'ye `logged_in` fixture'ı | 17 dosyadaki login tekrarı biter | ⏳ |
 
 ### Sprint 3 — Tekrarın Ortadan Kaldırılması (2 gün, orta risk)
 
-| # | İş | Etki |
-|---|---|---|
-| 13 | `conftest.py`'ye `disposable_customer` fixture'ı | 14 dosyada 20 satır → 2 satır |
-| 14 | `utils/test_data.py` + `FIELD_LIMITS` | SDA senaryoları tek kaynaktan beslenir |
-| 15 | `utils/waits.py`; `time.sleep`'leri `poll_until`'e taşı | Niyet kodda görünür olur |
-| 16 | Step'lerdeki ~48 çıplak `WebDriverWait`'i page metotlarına taşı | Katman ihlali biter |
-| 17 | `create_customer_page.py`'yi 3 sınıfa böl | 735 satırlık dosya biter |
+| # | İş | Etki | Durum |
+|---|---|---|---|
+| 13 | `conftest.py`'ye `disposable_customer` fixture'ı | 14 dosyada 20 satır → 2 satır | ⏳ |
+| 14 | `utils/test_data.py` + `FIELD_LIMITS` | SDA senaryoları tek kaynaktan beslenir | ⏳ |
+| 15 | `utils/waits.py`; poll döngülerini `poll_until`'e taşı | Niyet kodda görünür olur | ✅ Faz 2 |
+| 15b | `create_customer`'daki 3 sabit beklemeyi `wait_for_dom_settled`'a taşı | CI'da 300ms varsayımı kırılmaz | ⏳ CI öncesi |
+| 16 | Step'lerdeki ~48 çıplak `WebDriverWait`'i page metotlarına taşı | Katman ihlali biter | ⏳ |
+| 17 | `create_customer_page.py`'yi 3 sınıfa böl | 735 satırlık dosya biter | ⏳ |
 
 ### Sprint 4 — CI/CD ve Ölçek (2 gün, yüksek değer)
 
@@ -1248,19 +1445,30 @@ jobs:
 
 Bu yol haritası tamamlandığında beklenen durum:
 
-| Ölçüt | Şu an | Hedef |
-|---|---|---|
-| Sabit kodlanmış şifre sayısı | 18 | **0** |
-| Login kodunun tekrarlandığı dosya | 17 | **1** (conftest) |
-| Disposable müşteri bloğunun tekrarı | 14 | **1** (fixture) |
-| Step katmanında çıplak `WebDriverWait` | ~48 | **0** |
-| Kendi `__init__`'ini yazan page sınıfı | 11 | **0** (BasePage) |
-| `utils/` modül sayısı | 1 | **8** |
-| `test_data/` içerik | boş | Alan sınırları + veri fabrikası |
-| Sürümü sabitlenmiş bağımlılık | 0 / 8 | **8 / 8** |
-| CI koşumu | yok | Her PR + gecelik |
-| Tam regresyon süresi | ~50 dk (tahmini) | **~20 dk** (API kurulum + paralel) |
-| Feature başına ortalama step satırı | 227 | **~120** |
+| Ölçüt | İlk | **Güncel** | Hedef |
+|---|---|---|---|
+| Elle `WebDriverWait` kuran page sınıfı | 11 | ✅ **0** | 0 |
+| `BasePage` alt sınıfı | 0 / 18 | ✅ **18 / 18** | 18 / 18 |
+| `ignored_exceptions` korumalı sayfa | 2 / 13 | ✅ **13 / 13** | 13 / 13 |
+| Zaman aşımı yönetim noktası | 11 dosya | ✅ **1 env** | 1 |
+| Page içinde elle yazılmış poll döngüsü | 2 | ✅ **0** | 0 |
+| Page içinde sabit `time.sleep` | 3 | 3 | **0** (CI öncesi) |
+| `utils/` modül sayısı (ayrıca aşağıda) | 1 | ✅ **2** | 8 |
+| Page içinde `assert` | 11 | 11 | **≤3 guard** (Faz 3) |
+| En büyük page dosyası (satır) | 735 | 735 | **~250** (Faz 4) |
+| Sabit kodlanmış şifre sayısı | 18 | 18 | **0** |
+| Login kodunun tekrarlandığı dosya | 17 | 17 | **1** (conftest) |
+| Disposable müşteri bloğunun tekrarı | 14 | 14 | **1** (fixture) |
+| Step katmanında çıplak `WebDriverWait` | ~48 | ~48 | **0** |
+| `test_data/` içerik | boş | boş | Alan sınırları + veri fabrikası |
+| Sürümü sabitlenmiş bağımlılık | 0 / 8 | 0 / 8 | **8 / 8** |
+| CI koşumu | yok | yok | Her PR + gecelik |
+| Tam regresyon süresi | ~50 dk | ~53 dk | **~20 dk** (API kurulum + paralel) |
+| Bilinen kırmızı test | 10 | **8** | 6 (yalnızca kasıtlı) |
+
+> Tam regresyon süresi Faz 1'de düşmedi — düşmesi de beklenmiyordu.
+> `BasePage` bir **yapı** iyileştirmesidir; süre kazancı API tabanlı
+> kurulum ve paralelleştirmeden (Sprint 4) gelecek.
 
 ---
 
@@ -1276,12 +1484,29 @@ biraz daha kırılgan çalışır.
 
 Eğer bu listeden **yalnızca üç şey** yapılacaksa:
 
-1. **`utils/config.py` + `pages/base_page.py`** — sabit kodlanmış kimlik bilgilerini ve
-   11 kez tekrarlanan wait kurulumunu bitirir. (Sprint 2, yarım gün)
-2. **`conftest.py`'ye `logged_in` ve `disposable_customer` fixture'ları** — 17 ve 14
-   dosyadaki tekrarı tek yerde toplar. (Sprint 2-3, bir gün)
-3. **CI iş akışı** — framework'ü kişisel bir araçtan takım kalite kapısına dönüştürür.
-   (Sprint 4, yarım gün)
+1. ~~**`pages/base_page.py`** — 11 kez tekrarlanan wait kurulumunu bitirir.~~
+   ✅ **Faz 1'de yapıldı** (`ecf6251`). POM 6 → 8, kararlılık 5 → 6.
+2. **`utils/config.py` + `conftest.py`'ye `logged_in` ve `disposable_customer`
+   fixture'ları** — 18 sabit kodlanmış şifreyi, 17 dosyadaki login tekrarını ve
+   14 dosyadaki müşteri oluşturma bloğunu tek yerde toplar. (~1.5 gün)
+3. **CI iş akışı** — framework'ü kişisel bir araçtan takım kalite kapısına
+   dönüştürür. (~yarım gün)
 
-Bu üçü, toplam iki günlük iş karşılığında framework'ün olgunluğunu
-**3.8/10'dan yaklaşık 7/10'a** taşır.
+Kalan iki madde, toplam iki günlük iş karşılığında olgunluğu
+**4.1/10'dan yaklaşık 7/10'a** taşır.
+
+### Faz 1'den çıkan ders
+
+Refactor'un başarısı tek bir karara dayandı: **önce baseline'ı doğrulamak.**
+`bugsbunnyupdated.txt`'teki bilinen-kırmızı listesi olmasaydı, koşumlardaki
+8 kırmızının "zaten kırmızıydı" mı yoksa "ben mi kırdım" mı olduğunu ayırt
+etmek imkansız olurdu ve refactor ya geri alınır ya da körlemesine kabul
+edilirdi.
+
+Aynı şekilde, `poll_frequency`'yi "biraz daha iyi olur" diye değiştirmemek
+de bilinçli bir karardı. Bir refactor'da **aynı anda hem yapıyı hem
+davranışı değiştirmek**, bir sorun çıktığında hangisinin sebep olduğunu
+bulmayı imkansız hale getirir.
+
+Bu iki alışkanlık — baseline'ı önce sabitlemek ve tek seferde tek tür
+değişiklik yapmak — sonraki fazlarda da korunmalıdır.

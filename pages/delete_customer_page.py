@@ -1,10 +1,9 @@
-import time
-
 from selenium.common.exceptions import ElementClickInterceptedException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
+from utils.waits import poll_until
 
 
 class DeleteCustomerPage(BasePage):
@@ -115,9 +114,10 @@ class DeleteCustomerPage(BasePage):
         # hem de sıkı-reload yan etkisinden kaçınıyor. Beklenmedik şekilde
         # login ekranına düşülürse bu AYRICA ve AÇIKÇA raporlanıyor (farklı
         # bir bulgu olarak karışmasın diye sessizce yutulmuyor).
-        for _ in range(max_attempts):
+        def _reload_detail_page():
             self.driver.get(self._detail_url)
-            time.sleep(poll_interval_seconds)
+
+        def _customer_not_found():
             if "/login" in self.driver.current_url:
                 raise AssertionError(
                     "Beklenmeyen durum: eski detay URL'ine tekrar giden reload'lar sırasında "
@@ -125,9 +125,14 @@ class DeleteCustomerPage(BasePage):
                     "'bulunamadı' durumundan FARKLI, ayrı bir bulgu olarak araştırılmalı."
                 )
             messages = self.driver.find_elements(*self.EMPTY_STATE_MESSAGE)
-            if messages and messages[0].is_displayed() and messages[0].text.strip():
-                return True
-        return False
+            return bool(messages) and messages[0].is_displayed() and bool(messages[0].text.strip())
+
+        return poll_until(
+            condition=_customer_not_found,
+            action=_reload_detail_page,
+            attempts=max_attempts,
+            interval=poll_interval_seconds,
+        )
 
     def wait_for_delete_rejected(self):
         # KASITLI KIRMIZI (canlı doğrulandı, bkz. bugsbunny.txt madde 17 -

@@ -1,12 +1,13 @@
 import random
 import re
-import time
+
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
+from utils.waits import poll_until
 
 # Türkçe alfabeye özgü büyük/küçük harf ve aksan farklarını (İ/I/ı/i,
 # ğ/Ğ, ş/Ş, ç/Ç, ö/Ö, ü/Ü) normalize eden dönüşüm tablosu. Canlı olarak
@@ -219,13 +220,19 @@ class CustomersPage(BasePage):
         # driver.get() denemesinin oturumu düşürdüğü (ayrı bir yan etki)
         # keşfedildiğinden, burada da AYNI temkinli/seyrek kadans tercih
         # edildi.
-        for _ in range(max_attempts):
+        def _search_again():
             self.enter_customer_id(customer_id)
             self.submit_search()
-            time.sleep(poll_interval_seconds)
-            if self.get_row_count() == 0 and bool(self.driver.find_elements(*self.EMPTY_STATE)):
-                return True
-        return False
+
+        def _no_results():
+            return self.get_row_count() == 0 and bool(self.driver.find_elements(*self.EMPTY_STATE))
+
+        return poll_until(
+            condition=_no_results,
+            action=_search_again,
+            attempts=max_attempts,
+            interval=poll_interval_seconds,
+        )
 
     def enter_customer_id(self, value):
         field = self.driver.find_element(*self.CUSTOMER_ID)
