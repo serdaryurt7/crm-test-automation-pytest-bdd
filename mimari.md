@@ -13,7 +13,7 @@
 
 ## 0. İlerleme Durumu
 
-**Genel olgunluk: 3.8 → 6.0 / 10**
+**Genel olgunluk: 3.8 → 6.1 / 10**
 **Page Object Model: 6 → 9 / 10** ✅ &nbsp;·&nbsp; **Step katmanı: 3 → 7 / 10** ✅
 
 | Faz | Kapsam | Durum |
@@ -351,11 +351,11 @@ tek sebebi bu.
 | Test verisi yönetimi | 1 | 🔴 **3**/10 | ✅ Faz D: üretilen veri tek kaynakta (`utils/test_data.py`). Kalan: `test_data/` dizini hâlâ boş, sınır değer kataloğu yok, literaller Gherkin Examples'ta dağınık |
 | Konfigürasyon | 5 | 🟡 **6**/10 | ✅ Faz A: tek kaynak `utils/config.py`, origin semantiği düzeltildi. Kalan: `requirements.txt`'te sürüm sabitleme yok (K3) |
 | Raporlama | 7 | 🟢 **7**/10 | Allure + pytest-html iyi kurulmuş, ekran görüntüsü ekleniyor |
-| Repo hijyeni | 2 | 🟡 **6**/10 | ✅ Faz G: README merge conflict'i çözüldü, 8 bağımlılık sabitlendi, 28 artık rapor klasörü silindi (15→6 MB). Kalan: `project_brain.txt` (316KB) izleniyor, `test-design/` silinmiş (K2) |
+| Repo hijyeni | 2 | 🟢 **7**/10 | ✅ Faz G: README merge conflict'i çözüldü, 8 bağımlılık sabitlendi, 28 artık rapor klasörü silindi (15→6 MB), silinmiş 17 test tasarım dosyası geri alındı. Kalan: `login.feature`'ın tasarım karşılığı yok |
 | CI/CD | 0 | 🟡 **4**/10 | ✅ Faz G: her PR'da çalışan statik doğrulama (derleme, eksik step tanımı, toplama, ölü import) + elle tetiklenen UI job. Kalan: UI suite otomatik koşmuyor (runner yok), gecelik regresyon ve rapor yayımlama yok |
 | Kararlılık (flaky yönetimi) | 5 | 🟡 **6**/10 | ✅ Faz 1: `ignored_exceptions` kapsamı 2/13 → 13/13. Hâlâ retry/paralel/izolasyon mekanizması yok |
 
-**Genel: 3.8 → 6.0 / 10**
+**Genel: 3.8 → 6.1 / 10**
 
 > **Neden genel skor yavaş artıyor?** Skor 10 boyutun ortalamasıdır; POM
 > 3, step katmanı 3.5 puan yükseldi ama bu ortalamaya yalnızca 0.65
@@ -418,21 +418,23 @@ bu **ilk fark edilen şey** olur.
 
 ---
 
-### 🔴 K2 — `test-design/final-test-set/` altındaki 17 dosya silindi ve **commit edildi**
+### ✅ K2 — `test-design/final-test-set/` altındaki 17 dosya silindi — **GERİ ALINDI (Faz G)**
 
 İlk tespitte bu dosyalar çalışma ağacında silinmiş ama commit edilmemişti.
 Sonraki kontrolde silmenin `87a7bae` ile **commit edilip push edildiği**
 görüldü — 17 dosya artık `HEAD`'de yok.
 
-Hâlâ git geçmişinde duruyorlar, yani **kurtarılabilirler**:
+**Yapıldı (Faz G):** `git checkout 87a7bae^ -- test-design/` ile
+17 dosyanın tamamı (110 KB) geri getirildi.
 
-```bash
-git restore --source=58b416b test-design/
-```
+Geri almanın gerekçesi kanıtlandı: **kod yorumları bu dosyalara atıf
+yapıyor.** Örneğin `steps/test_delete_customer_steps.py` içinde
+"başarı ekranında kalınıyor, bkz. `order_submission.md` TC-016-05" ve
+`create_customer.md` notlarına yapılan bir gönderme var. Silme,
+koddaki bu belge bağlantılarını sessizce kırmıştı.
 
-Silme kasıtlıysa bir işlem gerekmiyor; değilse yukarıdaki komut yeterli.
-Bu dosyalar `kesif_testi.txt` ile birlikte projenin test tasarımı
-belleğini oluşturuyordu, kaybı geri döndürülemez olmasa da maliyetlidir.
+**Kalan boşluk:** 16 tasarım dosyası var ama 17 feature — `login.feature`'ın
+karşılığı yok. Bu, silmeden ÖNCE de böyleydi, yani ayrı bir eksik.
 
 ---
 

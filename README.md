@@ -10,6 +10,7 @@ Selenium + pytest-bdd ile UI test otomasyon iskeleti. **214 senaryo**, 17 featur
 - `pages/` — Page Object Model sınıfları; hepsi `pages/base_page.py::BasePage`'ten türer
 - `utils/` — ortak altyapı: `config.py`, `waits.py`, `test_data.py`, `session.py`
 - `test_data/` — dosya tabanlı test verisi (JSON/YAML/CSV) için ayrıldı, şu an boş. Üretilen (Faker) veri `utils/test_data.py`'de
+- `test-design/final-test-set/` — otomasyonun uyguladığı manuel test case'lerin kaynağı (UC-EACRML 001–017). Kod yorumları buraya atıf yapıyor (ör. "bkz. `order_submission.md` TC-016-05")
 - `conftest.py` — kök fixture'lar (`driver`, `base_url`) ve raporlama hook'ları
 - `pytest.ini` — pytest/pytest-bdd konfigürasyonu (`pythonpath = .` sayesinde `pages`/`utils` paketleri `steps/` altından import edilebiliyor)
 - `.env` — ortam değişkenleri (repoya dahil DEĞİL, aşağıya bakın)
