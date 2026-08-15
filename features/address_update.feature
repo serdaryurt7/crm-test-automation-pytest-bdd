@@ -38,6 +38,23 @@ Feature: Müşteri Adresinin Güncellenmesi
     When Açıklama alanına 3000 karakterlik bir metin girilir
     Then alan tanımlı karakter sınırını aşan girişi kabul etmez
 
+  # Canlı doğrulandı: address-street/address-building input'larının HTML
+  # maxlength özniteliği yok - 500 karakterlik bir değer (native
+  # value-setter ile) tam olarak kabul ediliyor. Bina No'nun ayrıca
+  # serbest biçimli (alfanümerik + özel karakter) olduğu TC-EACRML-007-04
+  # ile zaten doğrulanmış durumda. Dilden bağımsız: kontrol yapısal
+  # (girilen değerin uzunluğu), literal metin/mesaj karşılaştırmıyor - TR
+  # veya EN arayüzde aynı şekilde çalışır.
+  Scenario Outline: TC-EACRML-006-09/006-10 - Sokak/Bina No Alanlarının Herhangi Bir Üst Karakter Sınırı Olmadan Uzun Metni Kabul Etmesi
+    Given kullanıcı adres düzenleme formundadır
+    When "<alan>" alanına 500 karakterlik bir metin girilir
+    Then alan girilen 500 karakterlik değerin tamamını kabul eder
+
+    Examples:
+      | alan    |
+      | Sokak   |
+      | Bina No |
+
   Scenario: TC-EACRML-006-06a - Birden Fazla Adresten İkincisi Primary Seçildiğinde Anlık Olarak Yalnızca Onun Primary Kalması
     Given müşterinin birden fazla adresi vardır
     When kullanıcı ikinci adresi Primary olarak işaretler

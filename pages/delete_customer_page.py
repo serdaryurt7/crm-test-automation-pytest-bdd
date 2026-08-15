@@ -1,3 +1,5 @@
+import time
+
 from selenium.common.exceptions import ElementClickInterceptedException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -87,6 +89,45 @@ class DeleteCustomerPage:
         # durumu içermesi) kontrol ediliyor.
         message_el = self.wait.until(EC.visibility_of_element_located(self.EMPTY_STATE_MESSAGE))
         return bool(message_el.text.strip())
+
+    def wait_for_deleted_customer_not_found_after_reload(self, max_attempts=6, poll_interval_seconds=2):
+        # DÜZELTME (canlı olarak yakalanan bir yarış durumu, tam suite
+        # koşumunda bulundu): silme işlemi HER müşteri için (aktif ürünü
+        # olmasa dahi) ASENKRON tamamlanıyor - yönlendirme HEMEN oluyor
+        # ama backend'deki gerçek silme birkaç saniye sürebiliyor (bkz.
+        # TC-005-03'teki "fatura hesapları kontrol edildikten sonra
+        # tamamlanacak" toast'ı ile AYNI kök neden). Tek bir reload'a
+        # dayanan eski implementasyon bu gecikmeyi kaçırıp HENÜZ silinmemiş
+        # müşteriyi normal şekilde gösterebiliyordu.
+        #
+        # İLK DÜZELTME DENEMESİ BAŞARISIZ OLDU (canlı olarak yakalandı):
+        # WebDriverWait'in kendi ~0.5sn'lik polling'i İÇİNDE driver.get()
+        # ile SIKI/hızlı ardışık reload denemek (billing_account_create_
+        # page.py'deki wait_for_account_persisted_after_reload() ile AYNI
+        # desen), BEKLENMEYEN bir yan etkiye yol açtı: ekran görüntüsü
+        # kanıtladı ki hızlı ardışık reload'lar oturumu düşürdü (login
+        # ekranına ?redirectTo=... ile yönlendirildik) - muhtemelen
+        # uygulamanın kendi token-yenileme mantığında hızlı ardışık
+        # isteklerin tetiklediği ayrı bir sorun. Bu yüzden burada BİLEREK
+        # DAHA SEYREK (varsayılan: 2sn arayla, en fazla 6 deneme = ~12sn)
+        # ve WebDriverWait yerine açık bir döngü kullanılıyor - hem
+        # asenkron silme gecikmesini (canlı ölçümde ~3sn) tolere ediyor
+        # hem de sıkı-reload yan etkisinden kaçınıyor. Beklenmedik şekilde
+        # login ekranına düşülürse bu AYRICA ve AÇIKÇA raporlanıyor (farklı
+        # bir bulgu olarak karışmasın diye sessizce yutulmuyor).
+        for _ in range(max_attempts):
+            self.driver.get(self._detail_url)
+            time.sleep(poll_interval_seconds)
+            if "/login" in self.driver.current_url:
+                raise AssertionError(
+                    "Beklenmeyen durum: eski detay URL'ine tekrar giden reload'lar sırasında "
+                    "oturum sonlandı (login ekranına yönlendirildi) - bu, silinen müşterinin "
+                    "'bulunamadı' durumundan FARKLI, ayrı bir bulgu olarak araştırılmalı."
+                )
+            messages = self.driver.find_elements(*self.EMPTY_STATE_MESSAGE)
+            if messages and messages[0].is_displayed() and messages[0].text.strip():
+                return True
+        return False
 
     def wait_for_delete_rejected(self):
         # KASITLI KIRMIZI (canlı doğrulandı, bkz. bugsbunny.txt madde 17 -

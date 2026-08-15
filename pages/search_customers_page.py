@@ -1,5 +1,6 @@
 import random
 import re
+import time
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
@@ -202,6 +203,27 @@ class CustomersPage:
     def wait_for_no_results_state(self):
         self.wait.until(EC.visibility_of_element_located(self.EMPTY_STATE))
         assert self.get_row_count() == 0, "Sonuç bulunamadı durumu beklenirken hâlâ satırlar görüntüleniyor"
+
+    def wait_for_customer_id_search_to_show_no_results(self, customer_id, max_attempts=6, poll_interval_seconds=2):
+        # DÜZELTME (canlı olarak yakalanan bir yarış durumu -
+        # delete_customer_page.py'deki wait_for_deleted_customer_not_
+        # found_after_reload() ile AYNI kök neden): silme işlemi HER
+        # müşteri için ASENKRON tamamlanıyor - yönlendirme HEMEN oluyor
+        # ama backend'deki gerçek silme birkaç saniye sürebiliyor. TEK
+        # BİR arama denemesi bu gecikmeyi kaçırıp az önce silinen
+        # müşteriyi HÂLÂ sonuçlarda gösterebiliyordu. Bu yüzden arama
+        # BİLEREK SEYREK aralıklarla (varsayılan 2sn, en fazla 6 deneme)
+        # tekrar deneniyor - delete_customer_page.py'de hızlı ardışık
+        # driver.get() denemesinin oturumu düşürdüğü (ayrı bir yan etki)
+        # keşfedildiğinden, burada da AYNI temkinli/seyrek kadans tercih
+        # edildi.
+        for _ in range(max_attempts):
+            self.enter_customer_id(customer_id)
+            self.submit_search()
+            time.sleep(poll_interval_seconds)
+            if self.get_row_count() == 0 and bool(self.driver.find_elements(*self.EMPTY_STATE)):
+                return True
+        return False
 
     def enter_customer_id(self, value):
         field = self.driver.find_element(*self.CUSTOMER_ID)

@@ -1,0 +1,2159 @@
+================================================================================
+KEŞİF TESTİ (EXPLORATORY TESTING) — EKSİK TEST SENARYOLARI
+================================================================================
+Uygulama    : Etiya CRM  —  http://localhost:4200  (v4.2.1)
+Tarih       : 2026-08-14
+Hazırlayan  : Senior Test Otomasyon Mühendisi — keşif turu
+Yöntem      : Canlı uygulama üzerinde 16 turluk keşif; DOM/testid envanteri,
+              auth guard sondajları, sınır değer sondajları, oturum ve
+              tarayıcı depolama analizi, satış akışının uçtan uca gezilmesi,
+              tüm veri giriş formlarının açılıp incelenmesi, gerçek veriyle
+              çapraz doğrulama.
+              Aşağıdaki bulguların TAMAMI canlı olarak doğrulanmıştır.
+
+TAHRİBATSIZLIK: Veri oluşturan/değiştiren tüm formlar açılıp incelendikten
+              sonra İPTAL ile kapatılmış, tüm silme onayları "Hayır" ile
+              reddedilmiştir. Keşif boyunca HİÇBİR müşteri, adres, fatura
+              hesabı veya sipariş oluşturulmamış, değiştirilmemiş veya
+              silinmemiştir. Ayrıntı için dosyanın sonundaki
+              "ORTAM DEĞİŞİKLİKLERİ" bölümüne bakınız.
+
+MEVCUT KAPSAM : 17 feature dosyası / 187 senaryo
+BU DOSYA      : Feature dosyalarında KARŞILIĞI OLMAYAN 106 yeni senaryo
+                  Bölüm 1 — mevcut 16 feature dosyasına eklenecek : 91
+                  Bölüm 2 — yeni açılacak 2 feature dosyası       : 15
+
+--------------------------------------------------------------------------------
+KISALTMALAR
+--------------------------------------------------------------------------------
+  [P]   Pozitif senaryo
+  [N]   Negatif senaryo
+  [SDA] Sınır Değer Analizi (Boundary Value Analysis)
+  [G]   Güvenlik
+  [E]   Erişilebilirlik (a11y)
+  [!]   Keşifte tespit edilen KUSUR / ŞÜPHELİ DAVRANIŞ. Senaryo, uygulamanın
+        mevcut davranışını değil, OLMASI GEREKEN davranışı iddia eder —
+        yani bilinçli olarak KIRMIZI dönmesi beklenir ("kasıtlı kırmızı").
+
+--------------------------------------------------------------------------------
+INVEST UYGULAMASI (her senaryo için geçerli)
+--------------------------------------------------------------------------------
+  Independent : Her senaryo kendi Given'ı ile başlar; başka bir senaryonun
+                bıraktığı duruma bağlı değildir.
+  Negotiable  : "Nasıl" değil "ne" doğrulanır; adımlar uygulama iç yapısına
+                değil, kullanıcı gözlemine dayanır.
+  Valuable    : Her senaryo tek ve somut bir riski kapatır.
+  Estimable   : Tek ekran / tek akış kapsamındadır.
+  Small       : Tek doğrulama amacı taşır; çok amaçlı adaylar bölünmüştür
+                (ör. Account Number için üst sınır, alt sınır, harf reddi ve
+                arama işlevi AYRI senaryolardır).
+  Testable    : Gözlemlenebilir ve deterministik bir sonuç iddia eder.
+
+--------------------------------------------------------------------------------
+DİL BAĞIMSIZLIĞI KURALI (tüm senaryolar için geçerli)
+--------------------------------------------------------------------------------
+  Uygulama TR ve EN destekliyor. Bu nedenle hiçbir senaryo literal metne
+  bağlanmaz. Doğrulamalar şunlara dayanır:
+    • data-testid ve eleman görünürlüğü
+    • değer uzunluğu (len)
+    • URL ve yönlendirme parametresi
+    • dilden bağımsız değişmez belirteçler (rakam, "+90", "—", sayı)
+  Örnek: "10 hane" doğrulaması, mesajın içindeki "10" rakamına bakılarak
+  yapılır; TR "…tam 10 hane…" ve EN karşılığı için de aynı şekilde çalışır.
+
+
+################################################################################
+#                                                                              #
+#  BÖLÜM 1 — MEVCUT FEATURE DOSYALARINA EKLENECEK SENARYOLAR  (91)             #
+#                                                                              #
+################################################################################
+
+
+################################################################################
+# 1) features/login.feature            mevcut: 20  →  eklenecek: 11
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı)
+----------------------------------
+  • Oturum belirteci   : sessionStorage → `etiya.refreshToken`
+  • Kilit sayacı       : localStorage   → `etiya.loginAttempts`
+      {"demo":{"failures":5,"lastFailureAt":...,"lockedUntil":...}}
+  • Yönlendirme parametresi ÇALIŞAN route'lar:
+      /customers        → /login?redirectTo=%2Fcustomers
+      /customers/1      → /login?redirectTo=%2Fcustomers%2F1
+      /customers/new    → /login?redirectTo=%2Fcustomers%2Fnew
+    Giriş sonrası kullanıcı gerçekten istenen sayfaya dönüyor.  ✓
+  • Yönlendirme parametresi ÜRETİLMEYEN route'lar:
+      /customers/1/addresses         → /login   (parametre YOK)  ✗
+      /customers/1/billing-accounts  → /login   (parametre YOK)  ✗
+  • Login ekranında giriş YAPMADAN tema ve dil değiştirici mevcut.
+  • Kilit SUNUCU tarafında da uygulanıyor: localStorage'daki sayaç silinse
+    bile doğru şifreyle giriş reddediliyor.  ✓ (olumlu güvenlik bulgusu)
+  • Ancak kilitliyken doğru şifre girilince mesaj "kullanıcı adı veya şifre
+    hatalı" diyor — gerçek engel KİLİT.  ✗ (yanıltıcı mesaj)
+  • İki ayrı çıkış yolu var: `nav-logout` ve `user-menu-logout`.
+    İkincisi hiç test edilmiyor.
+
+................................................................................
+KESIF-LOGIN-01   [P]   Giriş Sonrası İstenen Korumalı Sayfaya Yönlendirme
+................................................................................
+  Scenario: Giriş Sonrası Kullanıcının Başlangıçta İstediği Korumalı Sayfaya Yönlendirilmesi
+    Given kullanıcı oturum açmamıştır
+    When kullanıcı doğrudan "/customers/new" adresine gitmeye çalışır
+    Then kullanıcı login ekranına yönlendirilir
+    And adres satırındaki yönlendirme parametresi "/customers/new" değerini taşır
+    When kullanıcı geçerli kullanıcı adı ve şifre ile giriş yapar
+    Then kullanıcı "/customers/new" adresine yönlendirilir
+
+................................................................................
+KESIF-LOGIN-02   [N][!] Derin Route'larda Yönlendirme Parametresinin Korunmaması
+................................................................................
+  # BULGU: iç içe route'larda redirectTo üretilmiyor. Kullanıcı giriş
+  # yaptıktan sonra çalışmak istediği sayfaya değil, varsayılan listeye
+  # düşüyor. Senaryo DOĞRU davranışı iddia eder → kasıtlı kırmızı.
+  Scenario Outline: Derin Route'larda da Yönlendirme Parametresinin Üretilmesi
+    Given kullanıcı oturum açmamıştır
+    When kullanıcı doğrudan "<route>" adresine gitmeye çalışır
+    Then kullanıcı login ekranına yönlendirilir
+    And adres satırındaki yönlendirme parametresi "<route>" değerini taşır
+
+    Examples:
+      | route                          |
+      | /customers/1/addresses         |
+      | /customers/1/billing-accounts  |
+
+................................................................................
+KESIF-LOGIN-03   [N][G] Oturum Belirteci Silindiğinde Erişimin Engellenmesi
+................................................................................
+  Scenario: Oturum Belirteci Kaldırıldığında Korumalı Sayfaya Erişimin Engellenmesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    When oturum belirteci tarayıcı oturum deposundan kaldırılır
+    And kullanıcı müşteri arama sayfasını yeniden açar
+    Then kullanıcı login ekranına yönlendirilir
+    And login formu görüntülenir
+
+................................................................................
+KESIF-LOGIN-04   [N][G] Oturumun Yeni Sekmeye Taşınmaması
+................................................................................
+  # Belirteç sessionStorage'da tutuluyor; sessionStorage sekmeye özeldir.
+  # Bu bilinçli bir güvenlik tercihi ise regresyona karşı kilitlenmelidir.
+  Scenario: Aynı Tarayıcıda Açılan Yeni Sekmede Oturumun Geçerli Olmaması
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    When kullanıcı yeni bir tarayıcı sekmesinde müşteri arama sayfasını açar
+    Then yeni sekmede kullanıcı login ekranına yönlendirilir
+    And ilk sekmedeki oturum etkilenmeden açık kalır
+
+................................................................................
+KESIF-LOGIN-05   [N][G] Çıkış Sonrası Geri Tuşuyla Korumalı Sayfaya Dönülememesi
+................................................................................
+  Scenario: Oturum Kapatıldıktan Sonra Geri Tuşuyla Korumalı Sayfaya Dönülememesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    And kullanıcı müşteri arama sayfasındadır
+    When kullanıcı oturumu kapatır
+    And kullanıcı tarayıcının geri tuşuna basar
+    Then kullanıcı login ekranında kalır
+    And hiçbir müşteri kaydı görüntülenmez
+
+................................................................................
+KESIF-LOGIN-06   [P]   Kullanıcı Menüsü Üzerinden de Oturum Kapatılabilmesi
+................................................................................
+  Scenario: Kullanıcı Menüsü Panelinden Oturumun Kapatılması
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    When kullanıcı sağ üstteki kullanıcı menüsünü açar
+    Then kullanıcı menüsü paneli görüntülenir
+    When kullanıcı menü içindeki çıkış seçeneğine tıklar
+    Then kullanıcı login ekranına yönlendirilir
+    And oturum belirteci tarayıcı oturum deposundan silinir
+
+................................................................................
+KESIF-LOGIN-07   [SDA] Kilitlenme Eşiğinin Altında ve Tam Eşikte Farklı Mesaj
+................................................................................
+  # SDA: eşik 5. 4. denemede "hatalı kimlik bilgisi", 5. denemede
+  # "kilitlendi" mesajı geliyor (canlı doğrulandı).
+  @lockout
+  Scenario: Kilitlenme Eşiğinin Hemen Altında ve Tam Eşikte Farklı Mesaj Gösterilmesi
+    Given kullanıcı login ekranındadır
+    And kullanıcının başarısız giriş sayacı sıfırlanmıştır
+    When kullanıcı geçerli bir kullanıcı adıyla 4 kez hatalı şifre dener
+    Then gösterilen hata mesajı hesabın kilitlendiğini belirtmez
+    When kullanıcı 5. kez hatalı şifre dener
+    Then gösterilen hata mesajı hesabın kilitlendiğini belirtir
+
+................................................................................
+KESIF-LOGIN-08   [G]   Kilit Sayacının İstemciden Silinmesinin Erişim Sağlamaması
+................................................................................
+  # OLUMLU BULGU: kilit sayacı localStorage'da tutulsa da, silindiğinde
+  # sunucu girişe yine izin vermiyor → kilit sunucu tarafında da uygulanıyor.
+  # Bu davranış regresyona karşı kilitlenmelidir.
+  @lockout
+  Scenario: Kilit Sayacı Tarayıcı Deposundan Silinse Dahi Girişin Reddedilmesi
+    Given kullanıcının hesabı 5 başarısız denemeden sonra kilitlenmiştir
+    When kilit sayacı tarayıcı yerel deposundan silinir
+    And kullanıcı DOĞRU kullanıcı adı ve şifre ile giriş yapmayı dener
+    Then giriş reddedilir
+    And kullanıcı login ekranında kalır
+
+................................................................................
+KESIF-LOGIN-09   [N][!] Kilitliyken Doğru Şifre Girildiğinde Mesajın Yanıltıcı
+                        Olmaması
+................................................................................
+  # BULGU: hesap kilitliyken kilit sayacı istemciden silinip DOĞRU şifre
+  # girilirse "Kullanıcı adı veya şifre hatalı" mesajı gösteriliyor. Oysa
+  # kimlik bilgisi doğru, engel KİLİT. Kullanıcı boşuna şifre sıfırlamaya
+  # yönlendiriliyor ve çağrı merkezine gereksiz yük biniyor.
+  # Senaryo DOĞRU davranışı iddia eder → kasıtlı kırmızı.
+  @lockout
+  Scenario: Hesap Kilitliyken Doğru Şifre Girildiğinde Kilit Gerekçesinin Bildirilmesi
+    Given kullanıcının hesabı 5 başarısız denemeden sonra kilitlenmiştir
+    And kilit sayacı tarayıcı yerel deposundan silinmiştir
+    When kullanıcı DOĞRU kullanıcı adı ve şifre ile giriş yapmayı dener
+    Then gösterilen hata mesajı hesabın kilitli olduğunu belirtir
+    And gösterilen hata mesajı kimlik bilgilerinin hatalı olduğunu belirtmez
+
+................................................................................
+KESIF-LOGIN-10   [P]   Login Ekranında Dil Değiştirilebilmesi
+................................................................................
+  # BULGU: mevcut language_support.feature senaryolarının TAMAMI giriş
+  # yapılmış olmayı varsayıyor → giriş ÖNCESİ dil desteği hiç test edilmiyor.
+  Scenario: Oturum Açılmadan Login Ekranındaki Arayüz Dilinin Değiştirilebilmesi
+    Given kullanıcı oturum açmamış olarak login ekranındadır
+    And arayüz dili Türkçe'dir
+    When kullanıcı dil değiştiriciyi açar
+    Then dil panelinde yalnızca TR ve EN seçenekleri listelenir
+    When kullanıcı İngilizce dilini seçer
+    Then login ekranındaki başlık ve giriş butonu metni değişir
+    And kullanıcı adı alanının yer tutucu metni değişir
+
+................................................................................
+KESIF-LOGIN-11   [P]   Login Ekranında Hata Mesajının Seçilen Dilde Görüntülenmesi
+................................................................................
+  Scenario: İngilizce Dil Seçiliyken Hatalı Giriş Mesajının Seçilen Dilde Gösterilmesi
+    Given kullanıcı oturum açmamış olarak login ekranındadır
+    And kullanıcı arayüz dilini İngilizce olarak ayarlamıştır
+    When kullanıcı tanımsız bir kullanıcı adı ve hatalı şifre ile giriş dener
+    Then bir hata mesajı görüntülenir
+    And hata mesajı Türkçe dildeki karşılığından farklıdır
+
+
+################################################################################
+# 2) features/search_customers.feature    mevcut: 26  →  eklenecek: 19
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı)
+----------------------------------
+  Alan            id              maxlength  inputmode  yer tutucu
+  --------------- --------------- ---------- ---------- ------------------------
+  Account Number  accountNumber   10         numeric    "10 haneli, sadece rakam"
+  Order Number    orderNumber      8         numeric    "8 haneli, sadece rakam"
+  TC Kimlik No    identityNumber  11         numeric    "11 haneli TC kimlik no"
+  Müşteri ID      customerId      20         numeric    "Sayısal müşteri ID"
+  GSM             gsm             10         numeric    "Telefon numarası"
+  First/Last Name firstName/…     50         —          "İle başlayan..."
+
+  • Account Number ve Order Number alanları için HİÇBİR senaryo yok. Bu iki
+    alan yalnızca fill_all_search_fields_via_tab_navigation() içinde dolaylı
+    olarak dolduruluyor; ne doğrulaması ne arama işlevi test ediliyor.
+  • Harf/özel karakter girişi her iki alanda da tamamen engelleniyor
+    (alan boş kalıyor).
+  • Eksik haneli değerde doğrulama mesajı ÇIKIYOR — ancak mesaj bir form
+    hata alanında değil, `empty-state-message` içinde gösteriliyor:
+        accountNumber 9 hane  → "…yalnızca rakam, tam 10 hane."
+        orderNumber   7 hane  → "…yalnızca rakam, tam 8 hane."
+        identityNumber 10 hane→ "…geçerli 11 haneli bir kimlik numarası…"
+  • GERÇEK KUSUR: müşteri 1'in ekranda görünen hesap numaraları
+    "0000000001" ve "0000000002". Bu numaralarla Account Number araması
+    yapıldığında "Arama kriterlerine uygun müşteri bulunamadı" dönüyor.
+    Yani Account Number filtresi HİÇBİR gerçek kaydı bulamıyor.
+  • Sayfalama: 1106 kayıt / 74 sayfa. 1. sayfada "Önceki" pasif; son
+    sayfada "Sonraki" pasif ve 11 satır ("1106 kayıttan 1096–1106 arası").
+  • Sıralanabilir sütunlar: customerId, firstName, secondName, lastName,
+    nationalityId ve **role**. Mevcut sıralama senaryosu `role` sütununu
+    KAPSAMIYOR.
+  • GSM ülke kodu seçicisi (`customer-search-gsm-country`) bir <button>,
+    üzerinde "+90" yazıyor ve aria-expanded="false" taşıyor; ancak
+    tıklandığında hiçbir panel açılmıyor, DOM'a eleman eklenmiyor,
+    aria-expanded değişmiyor.
+  • Clear: filtreleri boşaltır, sonuçları varsayılan listeye ve İLK SAYFAYA
+    döndürür, Ara butonunu tekrar pasifleştirir.
+
+................................................................................
+KESIF-SEARCH-01  [P]   Account Number ile Arama Yapılabilmesi
+................................................................................
+  Scenario: Account Number Alanına Geçerli Değer Girildiğinde Ara Butonunun Aktifleşmesi
+    Given kullanıcı müşteri arama ekranındadır
+    And Ara butonu pasiftir
+    When kullanıcı Account Number alanına 10 haneli bir değer girer
+    Then Ara butonu aktif hale gelir
+
+................................................................................
+KESIF-SEARCH-02  [SDA] Account Number Üst Sınırının Korunması
+................................................................................
+  Scenario: Account Number Alanının 10 Haneden Fazla Rakam Kabul Etmemesi
+    Given kullanıcı müşteri arama ekranındadır
+    When kullanıcı Account Number alanına 30 haneli bir rakam dizisi yazmayı dener
+    Then alandaki değer tam olarak 10 hane uzunluğunda kalır
+
+................................................................................
+KESIF-SEARCH-03  [N]   Account Number Alanının Harf ve Özel Karakter Reddetmesi
+................................................................................
+  Scenario: Account Number Alanına Harf ve Özel Karakter Yazılamaması
+    Given kullanıcı müşteri arama ekranındadır
+    When kullanıcı Account Number alanına harf ve özel karakter yazmayı dener
+    Then alan boş kalır
+
+................................................................................
+KESIF-SEARCH-04  [SDA] Account Number Alt Sınırında Doğrulama Uyarısı
+................................................................................
+  # SDA — eşiğin bir altı. Mesaj `empty-state-message` içinde çıkıyor.
+  # Dilden bağımsızlık: mesajın içindeki "10" rakamı doğrulanır.
+  Scenario Outline: Account Number Alanına 10 Haneden Az Rakam Girildiğinde Doğrulama Uyarısı Gösterilmesi
+    Given kullanıcı müşteri arama ekranındadır
+    When kullanıcı Account Number alanına <hane> haneli bir değer girer
+    And kullanıcı Ara butonuna tıklar
+    Then hesap numarasının 10 haneli olması gerektiğine dair bir uyarı görüntülenir
+    And sonuç listesinde hiçbir satır bulunmaz
+
+    Examples:
+      | hane |
+      | 1    |
+      | 9    |
+
+................................................................................
+KESIF-SEARCH-05  [SDA] Account Number Tam Eşikte Doğrulamayı Geçmesi
+................................................................................
+  # SDA — tam eşik. 10 hanede doğrulama uyarısı ARTIK gösterilmemeli.
+  Scenario: Account Number Alanına Tam 10 Haneli Değer Girildiğinde Doğrulama Uyarısı Gösterilmemesi
+    Given kullanıcı müşteri arama ekranındadır
+    When kullanıcı Account Number alanına 10 haneli bir değer girer
+    And kullanıcı Ara butonuna tıklar
+    Then hesap numarası hane sayısına dair bir uyarı görüntülenmez
+
+................................................................................
+KESIF-SEARCH-06  [N][!] Var Olan Hesap Numarasıyla Arandığında Müşterinin
+                        Bulunması
+................................................................................
+  # KUSUR (canlı doğrulandı): müşteri 1'in Müşteri Hesabı sekmesinde
+  # "0000000001" ve "0000000002" hesap numaraları GÖRÜNÜYOR. Aynı
+  # numaralarla Account Number araması yapıldığında sonuç bulunamıyor.
+  # Account Number filtresi hiçbir gerçek kaydı döndürmüyor → filtre
+  # fiilen çalışmıyor. Senaryo DOĞRU davranışı iddia eder → kasıtlı kırmızı.
+  Scenario: Ekranda Görüntülenen Bir Hesap Numarasıyla Arandığında İlgili Müşterinin Bulunması
+    Given kullanıcı bir müşterinin Müşteri Hesabı sekmesinden geçerli bir hesap numarasını almıştır
+    When kullanıcı müşteri arama ekranında Account Number alanına bu hesap numarasını girer
+    And kullanıcı Ara butonuna tıklar
+    Then sonuç listesinde en az bir müşteri görüntülenir
+    And listelenen müşteri, hesap numarasının alındığı müşteridir
+
+................................................................................
+KESIF-SEARCH-07  [P]   Order Number ile Arama Yapılabilmesi
+................................................................................
+  Scenario: Order Number Alanına Geçerli Değer Girildiğinde Ara Butonunun Aktifleşmesi
+    Given kullanıcı müşteri arama ekranındadır
+    And Ara butonu pasiftir
+    When kullanıcı Order Number alanına 8 haneli bir değer girer
+    Then Ara butonu aktif hale gelir
+
+................................................................................
+KESIF-SEARCH-08  [SDA] Order Number Üst Sınırının Korunması
+................................................................................
+  Scenario: Order Number Alanının 8 Haneden Fazla Rakam Kabul Etmemesi
+    Given kullanıcı müşteri arama ekranındadır
+    When kullanıcı Order Number alanına 30 haneli bir rakam dizisi yazmayı dener
+    Then alandaki değer tam olarak 8 hane uzunluğunda kalır
+
+................................................................................
+KESIF-SEARCH-09  [N]   Order Number Alanının Harf ve Özel Karakter Reddetmesi
+................................................................................
+  Scenario: Order Number Alanına Harf ve Özel Karakter Yazılamaması
+    Given kullanıcı müşteri arama ekranındadır
+    When kullanıcı Order Number alanına harf ve özel karakter yazmayı dener
+    Then alan boş kalır
+
+................................................................................
+KESIF-SEARCH-10  [SDA] Order Number Alt Sınırında Doğrulama Uyarısı
+................................................................................
+  Scenario Outline: Order Number Alanına 8 Haneden Az Rakam Girildiğinde Doğrulama Uyarısı Gösterilmesi
+    Given kullanıcı müşteri arama ekranındadır
+    When kullanıcı Order Number alanına <hane> haneli bir değer girer
+    And kullanıcı Ara butonuna tıklar
+    Then sipariş numarasının 8 haneli olması gerektiğine dair bir uyarı görüntülenir
+    And sonuç listesinde hiçbir satır bulunmaz
+
+    Examples:
+      | hane |
+      | 1    |
+      | 7    |
+
+................................................................................
+KESIF-SEARCH-11  [SDA] Tüm Sayısal Alanların Üst Sınırının Toplu Doğrulanması
+................................................................................
+  # DRY: tek bir etiket→locator sözlüğü üzerinden sürülür.
+  Scenario Outline: Sayısal Arama Alanlarının Tanımlı Hane Sınırını Aşan Girişi Kabul Etmemesi
+    Given kullanıcı müşteri arama ekranındadır
+    When kullanıcı "<alan>" alanına 30 haneli bir rakam dizisi yazmayı dener
+    Then alandaki değer tam olarak <sınır> hane uzunluğunda kalır
+
+    Examples:
+      | alan           | sınır |
+      | Account Number | 10    |
+      | Order Number   | 8     |
+      | TC Kimlik No   | 11    |
+      | Müşteri ID     | 20    |
+      | GSM            | 10    |
+
+................................................................................
+KESIF-SEARCH-12  [SDA] Sabit Uzunluklu Alanların Alt Sınır Doğrulamasının
+                       Tutarlı Olması
+................................................................................
+  # Üç alan da "tam N hane" kuralına sahip; doğrulama davranışları TEK bir
+  # Outline ile tutarlılık açısından karşılaştırılır. Dilden bağımsız:
+  # mesajın içindeki hane sayısı rakamı aranır.
+  Scenario Outline: Sabit Uzunluklu Arama Alanlarında Eksik Haneli Girişin Uyarı Üretmesi
+    Given kullanıcı müşteri arama ekranındadır
+    When kullanıcı "<alan>" alanına <eksik_hane> haneli bir değer girer
+    And kullanıcı Ara butonuna tıklar
+    Then görüntülenen uyarı "<beklenen_hane>" hane bilgisini içerir
+
+    Examples:
+      | alan           | eksik_hane | beklenen_hane |
+      | Account Number | 9          | 10            |
+      | Order Number   | 7          | 8             |
+      | TC Kimlik No   | 10         | 11            |
+
+................................................................................
+KESIF-SEARCH-13  [SDA] İlk Sayfada Önceki Sayfa Butonunun Pasif Olması
+................................................................................
+  Scenario: Sonuç Listesinin İlk Sayfasında Önceki Sayfa Butonunun Pasif Olması
+    Given kullanıcı kriter girmeden arama yapıp çok sayfalı bir sonuç listesi elde etmiştir
+    Then görüntülenen sayfa ilk sayfadır
+    And Önceki Sayfa butonu pasiftir
+    And Sonraki Sayfa butonu aktiftir
+
+................................................................................
+KESIF-SEARCH-14  [SDA] Son Sayfada Sonraki Sayfa Butonunun Pasif Olması
+................................................................................
+  Scenario: Sonuç Listesinin Son Sayfasında Sonraki Sayfa Butonunun Pasif Olması
+    Given kullanıcı kriter girmeden arama yapıp çok sayfalı bir sonuç listesi elde etmiştir
+    When kullanıcı son sayfaya geçer
+    Then Sonraki Sayfa butonu pasiftir
+    And Önceki Sayfa butonu aktiftir
+
+................................................................................
+KESIF-SEARCH-15  [SDA] Son Sayfadaki Kayıt Sayısının Toplamla Tutarlı Olması
+................................................................................
+  # SDA: son sayfa, sayfa boyutunun (15) tam katı olmayan bir "kalan"
+  # içerir — canlı: 1106 kayıt → son sayfada 11 satır.
+  Scenario: Son Sayfadaki Satır Sayısının Aralık Bilgisi ve Toplam Kayıt Sayısıyla Tutarlı Olması
+    Given kullanıcı kriter girmeden arama yapıp çok sayfalı bir sonuç listesi elde etmiştir
+    When kullanıcı son sayfaya geçer
+    Then aralık bilgisindeki üst değer toplam kayıt sayısına eşittir
+    And aralık bilgisindeki alt ve üst değerin farkı o sayfadaki gerçek satır sayısıyla tutarlıdır
+
+................................................................................
+KESIF-SEARCH-16  [P]   Yeni Arama Yapıldığında Sayfalamanın Sıfırlanması
+................................................................................
+  Scenario: İleri Bir Sayfadayken Yeni Arama Yapıldığında İlk Sayfaya Dönülmesi
+    Given kullanıcı kriter girmeden arama yapıp çok sayfalı bir sonuç listesi elde etmiştir
+    And kullanıcı ikinci sayfaya geçmiştir
+    When kullanıcı bir isim kriteri girip tekrar arama yapar
+    Then sonuç listesi ilk sayfadan başlar
+    And Önceki Sayfa butonu pasiftir
+
+................................................................................
+KESIF-SEARCH-17  [P]   Clear Sonrası Sayfalamanın da Sıfırlanması
+................................................................................
+  # Mevcut "Clear Butonuyla Tüm Filtrelerin ve Sonuçların Sıfırlanması"
+  # senaryosu SAYFALAMA durumunu doğrulamıyor.
+  Scenario: İleri Bir Sayfadayken Clear Butonuna Tıklandığında Sayfalamanın da Sıfırlanması
+    Given kullanıcı kriter girmeden arama yapıp çok sayfalı bir sonuç listesi elde etmiştir
+    And kullanıcı ikinci sayfaya geçmiştir
+    When kullanıcı Clear butonuna tıklar
+    Then sonuç listesi ilk sayfadan başlar
+    And Önceki Sayfa butonu pasiftir
+    And Ara butonu tekrar pasif hale gelir
+
+................................................................................
+KESIF-SEARCH-18  [P]   Rol Sütununun Görüntülenmesi ve Sıralanabilir Olması
+................................................................................
+  # BULGU: `customer-row-role` ve `customer-results-sort-role` mevcut;
+  # sıralama Scenario Outline'ı bu sütunu kapsamıyor.
+  # NOT: mevcut veri setinde tüm kayıtların rolü aynı ("Müşteri") olduğundan
+  # sıralamanın ETKİSİ gözlemlenemiyor. Senaryo bu yüzden bilinçli olarak
+  # daraltılmıştır — Testable kalması için sütunun görüntülendiğini ve
+  # başlığın hatasız çalıştığını doğrular, sıra değişimini iddia etmez.
+  Scenario: Sonuç Tablosunda Rol Sütununun Görüntülenmesi ve Başlığının Sıralanabilir Olması
+    Given kullanıcı kriter girmeden arama yapıp sonuç listesi elde etmiştir
+    Then sonuç tablosunda her satır için rol bilgisi görüntülenir
+    And rol sütun başlığı tıklanabilir durumdadır
+    When kullanıcı rol sütun başlığına tıklar
+    Then sonuç listesi hata vermeden yeniden yüklenir
+
+................................................................................
+KESIF-SEARCH-19  [N][!] GSM Ülke Kodu Seçicisinin İşlevsel Olması
+................................................................................
+  # BULGU: seçici bir <button>, aria-expanded="false" taşıyor — yani AÇILIR
+  # bir kontrol olduğunu BEYAN ediyor. Tıklandığında hiçbir panel açılmıyor,
+  # aria-expanded değişmiyor. Mevcut senaryo "…Ülkelere Göre Karakter
+  # Sınırı" diyerek çoklu ülke desteğini varsayıyor.
+  # Senaryo BEYAN EDİLEN davranışı iddia eder → kasıtlı kırmızı.
+  Scenario: GSM Ülke Kodu Seçicisine Tıklandığında Ülke Seçenek Panelinin Açılması
+    Given kullanıcı müşteri arama ekranındadır
+    And GSM ülke kodu seçicisi kapalı olarak işaretlenmiştir
+    When kullanıcı GSM ülke kodu seçicisine tıklar
+    Then ülke seçenek paneli görüntülenir
+    And seçici genişletilmiş olarak işaretlenir
+
+
+################################################################################
+# 3) features/update_customer.feature     mevcut: 13  →  eklenecek: 8
+#    (müşteri detay ekranının genel davranışı)
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı) — /customers/1
+-------------------------------------------------
+  • Sekmeler: tab-info (varsayılan seçili), tab-account, tab-address, tab-contact
+  • Sekme değiştirmek URL'yi DEĞİŞTİRMİYOR (hep /customers/1) → derin bağlantı
+    (deep link) yok; sayfa yenilenince aktif sekme "Müşteri Bilgisi"ne dönüyor.
+  • `breadcrumb` / `breadcrumb-item` / `breadcrumb-link` → HİÇ test edilmiyor
+  • `status-badge` (müşteri durumu: "Aktif") → HİÇ test edilmiyor
+  • `customer-detail-name`, `customer-detail-meta` ("1 · B2C · Müşteri ·
+    Ağustos 2026'den beri") → HİÇ test edilmiyor
+  • Salt okunur alanlar: first-name, second-name, last-name, identity-number,
+    birth-date, gender, father-name, mother-name
+  • Geçersiz müşteri ID'lerinde (999999999 / abc / -1 / 0) aynı boş durum:
+    empty-state + empty-state-message + customer-detail-back-to-search
+
+................................................................................
+KESIF-CUST-01    [N]   Geçersiz Müşteri ID'si ile Detay Ekranına Erişilmesi
+................................................................................
+  Scenario Outline: Geçersiz veya Var Olmayan Müşteri ID'si ile Detay Ekranı Açıldığında Boş Durum Gösterilmesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    When kullanıcı doğrudan "<musteri_id>" ID'li müşteri detay adresine gider
+    Then müşteri bilgilerinin yüklenemediğine dair boş durum mesajı görüntülenir
+    And müşteri aramaya dönüş bağlantısı görüntülenir
+    And hiçbir müşteri demografik bilgisi görüntülenmez
+
+    Examples:
+      | musteri_id |
+      | 999999999  |
+      | abc        |
+      | -1         |
+      | 0          |
+
+................................................................................
+KESIF-CUST-02    [P]   Boş Durumdaki Dönüş Bağlantısıyla Aramaya Geri Dönülmesi
+................................................................................
+  Scenario: Müşteri Bulunamadı Ekranındaki Dönüş Bağlantısıyla Müşteri Arama Ekranına Geçilmesi
+    Given kullanıcı var olmayan bir müşteri ID'si ile detay ekranını açmıştır
+    When kullanıcı müşteri aramaya dönüş bağlantısına tıklar
+    Then kullanıcı müşteri arama ekranına yönlendirilir
+    And arama filtreleri formu görüntülenir
+
+................................................................................
+KESIF-CUST-03    [P]   Müşteri Detayında Gezinme İzinin Görüntülenmesi
+................................................................................
+  Scenario: Müşteri Detay Ekranında Gezinme İzinin (Breadcrumb) Görüntülenmesi
+    Given kullanıcı arama sonucundan bir müşterinin detay ekranını açmıştır
+    Then gezinme izi görüntülenir
+    And gezinme izi en az bir tıklanabilir bağlantı içerir
+
+................................................................................
+KESIF-CUST-04    [P]   Gezinme İzi Bağlantısıyla Arama Ekranına Dönülmesi
+................................................................................
+  Scenario: Gezinme İzindeki Bağlantıyla Müşteri Arama Ekranına Dönülmesi
+    Given kullanıcı arama sonucundan bir müşterinin detay ekranını açmıştır
+    When kullanıcı gezinme izindeki bağlantıya tıklar
+    Then kullanıcı müşteri arama ekranına yönlendirilir
+
+................................................................................
+KESIF-CUST-05    [P]   Müşteri Başlığında Ad, Durum ve Özet Bilgisinin Gösterilmesi
+................................................................................
+  Scenario: Müşteri Detay Başlığında Müşteri Adının, Durum Rozetinin ve Özet Bilgisinin Görüntülenmesi
+    Given kullanıcı arama sonucundan bir müşterinin detay ekranını açmıştır
+    Then müşteri adı boş olmayan bir değerle görüntülenir
+    And müşteri durum rozeti boş olmayan bir değerle görüntülenir
+    And müşteri özet bilgisi müşteri ID'sini içerir
+
+................................................................................
+KESIF-CUST-06    [P]   Detay Ekranındaki Sekmeler Arasında Geçiş Yapılabilmesi
+................................................................................
+  Scenario Outline: Müşteri Detay Ekranındaki Sekmeler Arasında Geçiş Yapılabilmesi
+    Given kullanıcı arama sonucundan bir müşterinin detay ekranını açmıştır
+    And varsayılan olarak Müşteri Bilgisi sekmesi seçilidir
+    When kullanıcı "<sekme>" sekmesine tıklar
+    Then "<sekme>" sekmesi seçili olarak işaretlenir
+    And diğer sekmeler seçili olmaktan çıkar
+
+    Examples:
+      | sekme           |
+      | Müşteri Hesabı  |
+      | Adres           |
+      | İletişim Kanalı |
+
+................................................................................
+KESIF-CUST-07    [N][!] Sekme Seçiminin Sayfa Yenilendiğinde Korunması
+................................................................................
+  # BULGU: sekme değişimi URL'ye yansımıyor; sayfa yenilenince aktif sekme
+  # her zaman "Müşteri Bilgisi"ne dönüyor. Kullanıcı Adres sekmesinde
+  # çalışırken sayfayı yenilerse bağlamını kaybediyor; ayrıca belirli bir
+  # sekmenin bağlantısı paylaşılamıyor.
+  # Senaryo KORUNAN davranışı iddia eder → kasıtlı kırmızı.
+  Scenario: Bir Sekme Seçiliyken Sayfa Yenilendiğinde Aktif Sekmenin Korunması
+    Given kullanıcı arama sonucundan bir müşterinin detay ekranını açmıştır
+    And kullanıcı Adres sekmesine geçmiştir
+    When kullanıcı sayfayı yeniler
+    Then Adres sekmesi seçili olarak kalır
+
+................................................................................
+KESIF-CUST-08    [P]   Tüm Demografik Alanların Salt Okunur Görüntülenmesi
+................................................................................
+  # Mevcut TC-004-05 yalnızca ekranın salt okunur olduğunu ve Edit/Delete
+  # ikonlarının varlığını doğruluyor; ALAN BAZINDA eksiksizlik kontrolü yok.
+  Scenario Outline: Müşteri Bilgisi Sekmesinde Her Demografik Alanın Salt Okunur Olarak Görüntülenmesi
+    Given kullanıcı arama sonucundan bir müşterinin detay ekranını açmıştır
+    Then "<alan>" alanının değeri salt okunur olarak görüntülenir
+    And "<alan>" alanı için düzenlenebilir bir giriş kutusu bulunmaz
+
+    Examples:
+      | alan         |
+      | Ad           |
+      | İkinci Ad    |
+      | Soyad        |
+      | Kimlik No    |
+      | Doğum Tarihi |
+      | Cinsiyet     |
+      | Baba Adı     |
+      | Anne Adı     |
+
+
+################################################################################
+# 4) features/billing_account_products.feature   mevcut: 8  →  eklenecek: 5
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı) — Müşteri Hesabı sekmesi
+-----------------------------------------------------------
+  • Hesap satırı aksiyonları (aria-label ile hesap numarasını taşıyor):
+      account-row-toggle  → "Hesap ürünlerini göster/gizle: 0000000001"
+      account-row-edit    → "Hesabı düzenle: 0000000001"
+      account-row-delete  → "Hesabı sil: 0000000001"
+  • Ürün satırı aksiyonları:
+      product-row-preview → "Ürün Önizleme: Ev İnterneti Fiber 100"
+      product-row-delete  → "Ürünü sil: Ev İnterneti Fiber 100"
+  • HİÇ KAPSANMAYAN iki aksiyon (features/, steps/, pages/ genelinde tek bir
+    eşleşme dahi yok — grep ile doğrulandı):
+      account-transfer                → "Devret"
+      account-change-service-address  → "Hizmet Adresi Değişikliği"
+    Her ikisi de enabled=True, tıklanabiliyor; ancak tıklandığında URL
+    değişmiyor, modal/dialog açılmıyor, toast çıkmıyor, DOM'a hiçbir yeni
+    eleman eklenmiyor. Yani `product-row-delete` (TC-013-04) gibi
+    prototipte YER TUTUCU durumdalar.
+  • Genişletilmiş hesabın ürün tablosu sütunları:
+      ÜRÜN ID | ÜRÜN / AKSİYON | KAMPANYA ADI | KAMPANYA ID | İŞLEM
+  • Kampanyasız ürün satırında kampanya alanları "—" (TC-013-03 kapsıyor).
+
+................................................................................
+KESIF-PROD-01    [P]   "Devret" Butonunun Görüntülenmesi ve İşlevsiz Olması
+................................................................................
+  # TC-013-04 ile aynı çerçevede yazıldı: prototipte yer tutucu olan bir
+  # aksiyonun MEVCUT durumu kilitlenir. Buton işlevsel hale geldiğinde bu
+  # senaryo bilinçli olarak kırmızıya döner ve kapsam güncellemesini tetikler.
+  Scenario: Genişletilmiş Hesap Altındaki "Devret" Butonunun Görüntülenmesi ve Tıklandığında İşlem Başlatmaması
+    Given kullanıcı bir müşterinin Müşteri Hesabı sekmesindedir
+    And kullanıcı bir fatura hesabının ürün detaylarını genişletmiştir
+    Then "Devret" butonu görüntülenir
+    When kullanıcı "Devret" butonuna tıklar
+    Then kullanıcı aynı ekranda kalır
+    And herhangi bir onay penceresi veya bilgilendirme mesajı görüntülenmez
+
+................................................................................
+KESIF-PROD-02    [P]   "Hizmet Adresi Değişikliği" Butonunun Görüntülenmesi ve
+                       İşlevsiz Olması
+................................................................................
+  Scenario: Genişletilmiş Hesap Altındaki "Hizmet Adresi Değişikliği" Butonunun Görüntülenmesi ve Tıklandığında İşlem Başlatmaması
+    Given kullanıcı bir müşterinin Müşteri Hesabı sekmesindedir
+    And kullanıcı bir fatura hesabının ürün detaylarını genişletmiştir
+    Then "Hizmet Adresi Değişikliği" butonu görüntülenir
+    When kullanıcı "Hizmet Adresi Değişikliği" butonuna tıklar
+    Then kullanıcı aynı ekranda kalır
+    And herhangi bir onay penceresi veya bilgilendirme mesajı görüntülenmez
+
+................................................................................
+KESIF-PROD-03    [P]   Genişletilmiş Hesapta Üç Aksiyonun Birlikte Sunulması
+................................................................................
+  Scenario: Bir Fatura Hesabı Genişletildiğinde Hesap Seviyesi Aksiyonlarının Eksiksiz Sunulması
+    Given kullanıcı bir müşterinin Müşteri Hesabı sekmesindedir
+    When kullanıcı bir fatura hesabının ürün detaylarını genişletir
+    Then "Yeni Satış Başlat" butonu görüntülenir
+    And "Devret" butonu görüntülenir
+    And "Hizmet Adresi Değişikliği" butonu görüntülenir
+
+................................................................................
+KESIF-PROD-04    [E]   Hesap Satırı Aksiyonlarının Hesabı Ayırt Eden
+                       Erişilebilirlik Etiketi Taşıması
+................................................................................
+  # Bir müşterinin birden fazla hesabı olduğunda ikonlar metinsiz olduğu
+  # için ekran okuyucu kullanıcısı hangi hesaba işlem yaptığını yalnızca
+  # aria-label'dan anlayabiliyor. Dilden bağımsız: etikette hesap
+  # NUMARASININ geçtiği doğrulanır, metnin kendisi değil.
+  Scenario: Birden Fazla Hesabı Olan Müşteride Her Hesap Aksiyonunun Kendi Hesap Numarasını Erişilebilirlik Etiketinde Taşıması
+    Given kullanıcı birden fazla fatura hesabı bulunan bir müşterinin Müşteri Hesabı sekmesindedir
+    Then her hesap satırının düzenleme aksiyonu, o satırın hesap numarasını erişilebilirlik etiketinde içerir
+    And her hesap satırının silme aksiyonu, o satırın hesap numarasını erişilebilirlik etiketinde içerir
+    And her hesap satırının genişletme aksiyonu, o satırın hesap numarasını erişilebilirlik etiketinde içerir
+
+................................................................................
+KESIF-PROD-05    [E]   Ürün Satırı Aksiyonlarının Ürünü Ayırt Eden
+                       Erişilebilirlik Etiketi Taşıması
+................................................................................
+  Scenario: Bir Hesap Altındaki Her Ürün Aksiyonunun Kendi Ürün Adını Erişilebilirlik Etiketinde Taşıması
+    Given kullanıcı bir müşterinin Müşteri Hesabı sekmesindedir
+    And kullanıcı birden fazla ürün içeren bir fatura hesabını genişletmiştir
+    Then her ürün satırının önizleme aksiyonu, o satırın ürün adını erişilebilirlik etiketinde içerir
+    And her ürün satırının silme aksiyonu, o satırın ürün adını erişilebilirlik etiketinde içerir
+
+
+################################################################################
+# 5) features/contact_update.feature      mevcut: 14  →  eklenecek: 3
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı) — İletişim Kanalı sekmesi
+------------------------------------------------------------
+  • Salt okunur değerler:
+      customer-contact-value-email        → "ahmet.yilmaz@example.com"
+      customer-contact-value-home-phone   → "+90 2161112233"
+      customer-contact-value-mobile-phone → "+90 5321112233"
+      customer-contact-value-fax          → "—"   (boş alan göstergesi)
+  • Telefonlar görüntüleme modunda "+90 " önekiyle birlikte gösteriliyor.
+    Mevcut TC-009-10 yalnızca DÜZENLEME formundaki sabit ülke kodunu
+    doğruluyor; GÖRÜNTÜLEME formatı test edilmiyor.
+  • Boş opsiyonel alanlar "—" ile gösteriliyor. Mevcut TC-009-07 yalnızca
+    alanın boş bırakılabildiğini doğruluyor; boş değerin nasıl SUNULDUĞU
+    test edilmiyor.
+
+................................................................................
+KESIF-CONTACT-01 [P]   Boş Opsiyonel İletişim Alanlarının Yer Tutucu ile
+                       Gösterilmesi
+................................................................................
+  # Dilden bağımsız: "—" karakteri her iki dilde de aynı.
+  Scenario: Doldurulmamış Opsiyonel İletişim Alanlarının Boş Bırakılmayıp Yer Tutucu ile Görüntülenmesi
+    Given kullanıcı Faks alanı boş olan bir müşterinin İletişim Kanalı sekmesindedir
+    Then Faks alanı boş bir değer yerine yer tutucu işaretiyle görüntülenir
+
+................................................................................
+KESIF-CONTACT-02 [P]   Telefon Numaralarının Ülke Kodu Önekiyle Görüntülenmesi
+................................................................................
+  Scenario Outline: Salt Okunur Görünümde Telefon Numaralarının Ülke Kodu Önekiyle Görüntülenmesi
+    Given kullanıcı telefon bilgileri dolu olan bir müşterinin İletişim Kanalı sekmesindedir
+    Then "<alan>" alanının değeri "+90" ülke kodu önekiyle başlar
+    And "<alan>" alanının değerindeki numara kısmı 10 hanedir
+
+    Examples:
+      | alan         |
+      | Ev Telefonu  |
+      | Cep Telefonu |
+
+................................................................................
+KESIF-CONTACT-03 [P]   Tüm İletişim Alanlarının Salt Okunur Olarak Sunulması
+................................................................................
+  # Mevcut TC-009-05 sekmenin salt okunur olduğunu genel olarak doğruluyor;
+  # ALAN BAZINDA eksiksizlik kontrolü yok.
+  Scenario Outline: İletişim Kanalı Sekmesinde Her Alanın Salt Okunur Olarak Görüntülenmesi
+    Given kullanıcı bir müşterinin İletişim Kanalı sekmesindedir
+    Then "<alan>" alanının değeri salt okunur olarak görüntülenir
+    And "<alan>" alanı için düzenlenebilir bir giriş kutusu bulunmaz
+
+    Examples:
+      | alan         |
+      | E-posta      |
+      | Ev Telefonu  |
+      | Cep Telefonu |
+      | Faks         |
+
+
+################################################################################
+# 6) features/address_update.feature      mevcut: 11  →  eklenecek: 2
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı) — Adres sekmesi
+--------------------------------------------------
+  • Adres kartı İKİ satırdan oluşuyor:
+      address-card-title  → "İstanbul, Bağdat Caddesi, No:12 D:4"
+      address-card-detail → "Kadıköy - ev adresi"   (ilçe - açıklama)
+  • Mevcut TC-006-08 yalnızca BAŞLIK satırının "Şehir, Sokak, No" formatını
+    doğruluyor; İLÇE ve AÇIKLAMA'yı taşıyan detay satırı test edilmiyor.
+  • address-card-menu aria-label'ı adresi ayırt ediyor:
+      "Adres işlemleri: İstanbul, Bağdat Caddesi, No:12 D:4"
+
+................................................................................
+KESIF-ADDR-01    [P]   Adres Kartı Detay Satırında İlçe ve Açıklamanın
+                       Görüntülenmesi
+................................................................................
+  Scenario: Adres Kartında İlçe ve Adres Açıklamasının Detay Satırında Görüntülenmesi
+    Given kullanıcı ilçe ve açıklama bilgisi dolu olan bir adresi bulunan müşterinin Adres sekmesindedir
+    Then adres kartının detay satırı görüntülenir
+    And detay satırı adresin ilçe bilgisini içerir
+    And detay satırı adresin açıklama bilgisini içerir
+
+................................................................................
+KESIF-ADDR-02    [E]   Adres Kartı Menüsünün Adresi Ayırt Eden Erişilebilirlik
+                       Etiketi Taşıması
+................................................................................
+  # Birden fazla adres kartı olduğunda menü ikonları metinsiz; ekran okuyucu
+  # kullanıcısı hangi adrese işlem yaptığını yalnızca aria-label'dan anlıyor.
+  Scenario: Birden Fazla Adresi Olan Müşteride Her Adres Kartı Menüsünün Kendi Adresini Erişilebilirlik Etiketinde Taşıması
+    Given kullanıcı birden fazla adresi bulunan bir müşterinin Adres sekmesindedir
+    Then her adres kartının işlem menüsü, o kartın adres başlığını erişilebilirlik etiketinde içerir
+    And iki farklı adres kartının erişilebilirlik etiketleri birbirinden farklıdır
+
+
+################################################################################
+# 7) features/language_support.feature    mevcut: 8  →  eklenecek: 3
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı)
+----------------------------------
+  • Dil tercihi localStorage `etiya.language` anahtarında ("tr" / "en")
+  • Panel testid'leri: language-switcher-panel, language-option-tr,
+    language-option-en. Aktif dil "•" işaretiyle vurgulanıyor.
+  • Dil değişimi aria-label'ları DA çeviriyor:
+      'Koyu temaya geç'  →  'Switch to light theme'
+      'Menüyü daralt'    →  (EN karşılığı)
+  • Login ekranında (auth OLMADAN) da dil değiştirilebiliyor
+    → KESIF-LOGIN-10 ve KESIF-LOGIN-11
+
+................................................................................
+KESIF-LANG-01    [E]   Dil Değişikliğinin Erişilebilirlik Etiketlerini de
+                       Çevirmesi
+................................................................................
+  # Mevcut TC-017-05 "yalnızca görünen metin değişir" diyor; oysa
+  # aria-label'lar da çevriliyor. Ekran okuyucu kullanıcıları için bu
+  # davranış regresyona karşı kilitlenmelidir.
+  Scenario: Dil Değiştirildiğinde Erişilebilirlik Etiketlerinin de Seçilen Dile Çevrilmesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    And arayüz dili Türkçe'dir
+    When kullanıcı arayüz dilini İngilizce olarak değiştirir
+    Then tema değiştirici butonunun erişilebilirlik etiketi değişir
+    And menü daraltma butonunun erişilebilirlik etiketi değişir
+
+................................................................................
+KESIF-LANG-02    [P]   Aktif Dilin Panelde İşaretli Görüntülenmesi
+................................................................................
+  Scenario Outline: Dil Panelinde Yalnızca Aktif Dilin İşaretli Olarak Gösterilmesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    And kullanıcı arayüz dilini "<dil>" olarak ayarlamıştır
+    When kullanıcı dil değiştirici panelini açar
+    Then "<dil>" seçeneği aktif olarak işaretlenir
+    And diğer dil seçeneği aktif olarak işaretlenmez
+
+    Examples:
+      | dil |
+      | TR  |
+      | EN  |
+
+................................................................................
+KESIF-LANG-03    [P]   Dil Tercihinin Tarayıcı Deposunda Saklanması
+................................................................................
+  # Mevcut TC-017-03/04 kalıcılığı yalnızca arayüz üzerinden doğruluyor.
+  # Bu senaryo, kalıcılık kırıldığında kök nedeni doğrudan işaret eder.
+  Scenario: Seçilen Dil Tercihinin Tarayıcı Yerel Deposuna Yazılması
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    When kullanıcı arayüz dilini İngilizce olarak değiştirir
+    Then dil tercihi tarayıcı yerel deposunda İngilizce olarak saklanır
+    When kullanıcı arayüz dilini Türkçe olarak değiştirir
+    Then dil tercihi tarayıcı yerel deposunda Türkçe olarak saklanır
+
+
+################################################################################
+# 8) features/offer_selection.feature     mevcut: 12  →  eklenecek: 9
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı) — /customers/1/new-sale?accountId=1
+----------------------------------------------------------------------
+  • Satış akışı: "Yeni Satış Başlat" → Teklif Seçimi → Ürün Konfigürasyonu
+    → Sipariş Gönder. ÜÇ ADIM DA AYNI URL'yi kullanıyor.
+  • Katalogda 11 teklif; Kampanya sekmesinde 3 kampanya.
+  • Teklif ADI filtresi — büyük/küçük harf davranışı TUTARSIZ:
+        'Fiber'  → 4 satır      'fiber' → 4 satır
+        'FiBeR'  → 4 satır      'FIBER' → 0 satır   ✗
+    Yalnızca TAMAMI BÜYÜK harfle yazılan girdi eşleşmiyor. Bu, Türkçe
+    yerel ayarında küçültme hatasının klasik belirtisi: Türkçe'de
+    "FIBER".toLowerCase() → "fıber" (noktasız ı) olur ve "fiber" ile
+    eşleşmez. 'Mobil'/'mobil' ve 'Ev'/'ev' çiftlerinin ikisinin de
+    çalışması bu açıklamayı destekliyor (içlerinde büyük I yok).
+  • Teklif ID filtresi: KISMİ (substring) eşleşme yapıyor — '1' girildiğinde
+    11 teklifin 3'ü dönüyor (ID 1, 10, 11). Müşteri arama ekranında
+    Customer ID TAM EŞLEŞME ile çalışıyor → tutarsızlık.
+  • Teklif ID filtresi harf kabul ediyor (maxlength ve rakam kısıtı YOK);
+    müşteri arama ekranındaki sayısal alanlar harfi tamamen engelliyor.
+  • ID + Ad birlikte girildiğinde AND mantığı uygulanıyor.  ✓
+  • SEPET KALICI: taze bir tarayıcı oturumunda, yeni giriş sonrası
+    başlatılan satışta sepette ÖNCEKİ satıştan kalan 6 satır bulundu.
+    Akıştan çıkıp ("Müşteri Arama") geri dönüldüğünde de sepet aynen
+    duruyor. Sepet localStorage/sessionStorage'da DEĞİL → sunucu tarafında
+    tutuluyor ve yeni satış başlatılırken sıfırlanmıyor.
+  • `sales-cart-line-remove` ile TEK satır kaldırılabiliyor ve toplam doğru
+    güncelleniyor (3 satır/1.149,70 TL → 2 satır/849,80 TL). Mevcut
+    senaryolar yalnızca "Temizle"yi (TC-014-09) kapsıyor.
+  • Kampanya satırı `sales-campaign-row-offer-ids` (bağlı teklif ID'leri),
+    `-offer-names`, `-list-price`, `-price` gösteriyor; ancak KAMPANYANIN
+    KENDİ ADI satırda hiç görüntülenmiyor (`sales-campaign-row-name` yok).
+    Buna rağmen kampanya ADI ile filtreleme ÇALIŞIYOR ve büyük/küçük harf
+    duyarsız ('Ev'/'ev'/'EV' → 3 kampanyanın 2'si).
+  • Kampanya indirimleri (hepsi liste fiyatından ucuz):
+        Kampanya 1: 449,80 → 399,90  (49,90 / %11,1)
+        Kampanya 2: 949,70 → 749,90  (199,80 / %21,0)
+        Kampanya 3: 599,80 → 499,90  (99,90 / %16,7)
+  • Kampanya sepete eklenince TEK satır ("Ev + TV Paketi") oluşuyor; ancak
+    konfigürasyon adımında bağlı tekliflerin her biri için AYRI kart açılıyor.
+
+  NOT: "Sepete mükerrer ekleme engellenmiyor" davranışı da doğrulandı; ancak
+  bu, mevcut TC-014-13 senaryosu ve bugsbunnyupdated.txt madde 7 ile ZATEN
+  kayıt altında olduğu için burada TEKRAR senaryo yazılmadı.
+
+................................................................................
+KESIF-OFFER-01   [N][!] Teklif Adı Filtresinin Büyük/Küçük Harften Bağımsız
+                        Çalışması
+................................................................................
+  # KUSUR: yalnızca TAMAMI BÜYÜK harfli girdi ('FIBER') eşleşmiyor.
+  # Türkçe yerel ayarı küçültme hatası (I → ı). Aynı hata, içinde "I"
+  # geçen tüm teklif adları için geçerli olacaktır.
+  # Senaryo DOĞRU davranışı iddia eder → kasıtlı kırmızı.
+  Scenario Outline: Teklif Adı Filtresinin Yazım Büyüklüğünden Bağımsız Aynı Sonucu Döndürmesi
+    Given kullanıcı bir fatura hesabı için Teklif Seçimi ekranındadır
+    When kullanıcı teklif adı filtresine "<arama>" değerini girip arar
+    Then sonuç listesinde en az bir teklif görüntülenir
+    And dönen teklif sayısı, aynı kelimenin diğer yazım büyüklükleriyle aranmasında dönen sayıyla aynıdır
+
+    Examples:
+      | arama |
+      | Fiber |
+      | fiber |
+      | FIBER |
+      | FiBeR |
+
+................................................................................
+KESIF-OFFER-02   [P]   Teklif ID Filtresinin Kısmi Eşleşmeyle Çalışması
+................................................................................
+  # Mevcut davranış kilitlenir: ID filtresi substring eşleşmesi yapıyor.
+  # Müşteri arama ekranındaki Customer ID TAM EŞLEŞME kullanıyor; bu
+  # tutarsızlığın bilinçli mi olduğu ürün sahibine sorulmalıdır.
+  Scenario: Teklif ID Filtresine Girilen Değerin Teklif ID'sinin Bir Parçası Olarak Eşleşmesi
+    Given kullanıcı bir fatura hesabı için Teklif Seçimi ekranındadır
+    And katalogda ID'si birden fazla haneli teklifler bulunmaktadır
+    When kullanıcı teklif ID filtresine tek haneli bir değer girip arar
+    Then sonuç listesinde ID'si tam olarak bu değere eşit olan teklif görüntülenir
+    And sonuç listesinde ID'si bu değeri içeren çok haneli teklifler de görüntülenir
+
+................................................................................
+KESIF-OFFER-03   [N]   Teklif ID ve Adının Birlikte AND Mantığıyla Değerlendirilmesi
+................................................................................
+  Scenario: Teklif ID ve Teklif Adı Birlikte Girildiğinde Her İki Kritere de Uyan Sonuçların Dönmesi
+    Given kullanıcı bir fatura hesabı için Teklif Seçimi ekranındadır
+    When kullanıcı teklif ID filtresine katalogda karşılığı olan bir değer girer
+    And kullanıcı teklif adı filtresine hiçbir teklifle eşleşmeyen bir değer girer
+    And kullanıcı arama yapar
+    Then sonuç listesinde hiçbir teklif görüntülenmez
+
+................................................................................
+KESIF-OFFER-04   [N][!] Yeni Satış Başlatıldığında Sepetin Boş Olması
+................................................................................
+  # KUSUR (canlı doğrulandı): sepet sunucu tarafında kalıcı ve yeni satış
+  # başlatılırken sıfırlanmıyor. Taze bir tarayıcı oturumunda, yeni giriş
+  # sonrası açılan Teklif Seçimi ekranında ÖNCEKİ satıştan kalan 6 satır
+  # ve 1.899,40 TL tutar bulundu.
+  # İŞ ETKİSİ: müşteri temsilcisi bir müşteri için satış başlattığında,
+  # yarım bırakılmış BAŞKA bir satışın ürünlerini devralıyor ve farkına
+  # varmazsa yanlış sipariş gönderebiliyor.
+  # Senaryo DOĞRU davranışı iddia eder → kasıtlı kırmızı.
+  Scenario: Bir Fatura Hesabı İçin Yeni Satış Başlatıldığında Sepetin Boş Olarak Açılması
+    Given kullanıcı daha önce bir satış akışında sepete ürün eklemiş ve akışı tamamlamadan terk etmiştir
+    When kullanıcı yeniden bir fatura hesabı için satış başlatır
+    Then sepet boş olarak görüntülenir
+    And sepet toplam tutarı sıfırdır
+    And İleri butonu pasiftir
+
+................................................................................
+KESIF-OFFER-05   [P]   Sepetten Tek Bir Satırın Kaldırılması
+................................................................................
+  # Mevcut senaryolar yalnızca "Temizle" ile TÜM sepetin boşaltılmasını
+  # (TC-014-09) kapsıyor; tek satır kaldırma hiç test edilmiyor.
+  Scenario: Sepetteki Satırlardan Yalnızca Birinin Kaldırılması ve Toplam Tutarın Güncellenmesi
+    Given kullanıcı bir fatura hesabı için Teklif Seçimi ekranındadır
+    And kullanıcı sepete farklı tutarlarda iki teklif eklemiştir
+    When kullanıcı sepetteki ilk satırın kaldır aksiyonuna tıklar
+    Then sepetteki satır sayısı bir azalır
+    And kaldırılan teklif sepette artık görüntülenmez
+    And sepet toplam tutarı, kaldırılan satırın tutarı kadar azalır
+    And diğer teklif sepette kalmaya devam eder
+
+................................................................................
+KESIF-OFFER-06   [P]   Kampanya Fiyatının Liste Fiyatından Düşük Olması
+................................................................................
+  # Dilden bağımsız: tutarlar metinden regex ile sayıya çevrilip
+  # karşılaştırılır; para birimi etiketi okunmaz.
+  Scenario: Kampanya Sekmesindeki Her Kampanyanın Liste Fiyatından Daha Düşük Bir Kampanya Fiyatı Sunması
+    Given kullanıcı bir fatura hesabı için Teklif Seçimi ekranındadır
+    When kullanıcı Kampanya sekmesine geçer
+    Then listelenen her kampanya için liste fiyatı görüntülenir
+    And listelenen her kampanya için kampanya fiyatı görüntülenir
+    And her kampanyanın kampanya fiyatı liste fiyatından küçüktür
+
+................................................................................
+KESIF-OFFER-07   [P]   Kampanya Adı Filtresinin Büyük/Küçük Harften Bağımsız
+                       Çalışması
+................................................................................
+  # Kampanya adı filtresi doğru çalışıyor (canlı doğrulandı); teklif adı
+  # filtresindeki KESIF-OFFER-01 hatası burada YOK. Bu farkın regresyona
+  # karşı kilitlenmesi, hata düzeltilirken doğru referansı sağlar.
+  Scenario Outline: Kampanya Adı Filtresinin Yazım Büyüklüğünden Bağımsız Aynı Sonucu Döndürmesi
+    Given kullanıcı bir fatura hesabı için Teklif Seçimi ekranındadır
+    And kullanıcı Kampanya sekmesine geçmiştir
+    When kullanıcı kampanya adı filtresine "<arama>" değerini girip arar
+    Then sonuç listesinde en az bir kampanya görüntülenir
+
+    Examples:
+      | arama |
+      | Ev    |
+      | ev    |
+      | EV    |
+
+................................................................................
+KESIF-OFFER-08   [N][!] Kampanya Satırında Kampanya Adının Görüntülenmesi
+................................................................................
+  # BULGU: kampanya satırı yalnızca ID, bağlı teklif ID'leri, bağlı teklif
+  # adları ve fiyatları gösteriyor; KAMPANYANIN KENDİ ADI ("Ev + TV
+  # Paketi") satırda hiç yok. Ad ancak kampanya sepete eklendikten SONRA
+  # sepet satırında görülebiliyor. Buna karşın kampanya adıyla filtreleme
+  # yapılabiliyor — yani kullanıcı GÖREMEDİĞİ bir alana göre arıyor.
+  # Senaryo DOĞRU davranışı iddia eder → kasıtlı kırmızı.
+  Scenario: Kampanya Listesindeki Her Satırda Kampanya Adının Görüntülenmesi
+    Given kullanıcı bir fatura hesabı için Teklif Seçimi ekranındadır
+    When kullanıcı Kampanya sekmesine geçer
+    Then listelenen her kampanya için kampanya adı görüntülenir
+    And görüntülenen kampanya adı, o kampanya sepete eklendiğinde sepet satırında görünen adla aynıdır
+
+................................................................................
+KESIF-OFFER-09   [P]   Kampanyanın Sepete Tek Satır Olarak Eklenmesi
+................................................................................
+  # Mevcut TC-014-14 "bağlı tüm ürünlerin sepete eklenmesi" diyor; canlı
+  # davranış ise sepete TEK satır (kampanya adıyla) eklenmesi, bağlı
+  # tekliflerin ise KONFİGÜRASYON adımında ayrı kartlara açılması yönünde.
+  # Bu senaryo, sepet tarafındaki gerçek davranışı ayrı ve net biçimde
+  # kilitler (Small: tek doğrulama amacı).
+  Scenario: Bir Kampanya Sepete Eklendiğinde Sepette Kampanya Adıyla Tek Satır Oluşması
+    Given kullanıcı bir fatura hesabı için Teklif Seçimi ekranındadır
+    And sepet boştur
+    When kullanıcı Kampanya sekmesinden birden fazla teklif içeren bir kampanyayı sepete ekler
+    Then sepette tam olarak bir satır bulunur
+    And sepet toplam tutarı kampanya fiyatına eşittir
+
+
+################################################################################
+# 9) features/product_configuration.feature   mevcut: 6  →  eklenecek: 5
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı)
+----------------------------------
+  • Konfigürasyon alanı, bir kapsayıcı DEĞİL, doğrudan input'un kendisi:
+      <input data-testid="sales-config-field" class="field-control"
+             id="config-260--1-1" type="text"
+             data-testid-key="260::1::1" aria-required="true">
+    `data-testid-key` = sepetSatırıID::teklifID::karakteristikID
+  • Her alan için `<label for>` mevcut: "Fiber No *", "ONT Seri No *"
+    (yıldız zorunluluğu işaretliyor).
+  • `aria-required="true"` var; ancak NATİF `required` özniteliği YOK
+    → doğrulama tamamen JavaScript'e bağlı.
+  • `maxlength` YOK → alan 300 karakterlik girdiyi kısaltmadan kabul etti.
+  • "İleri" butonu YALNIZCA tüm alanlar dolduğunda aktifleşiyor:
+      hiçbiri dolu değil → pasif
+      1/2 dolu          → pasif   ← mevcut senaryolarda YOK
+      2/2 dolu          → aktif
+  • Adres seçimi `address-card-primary` ile yapılıyor; bu bir RADIO:
+      <input type="radio" name="primaryAddress" class="peer sr-only"
+             value="1" aria-label="Birincil adres yap: İstanbul, ...">
+    Görsel olarak gizli (sr-only), seçim göstergesi CSS ile veriliyor.
+    Her kartta bir radio var, aynı grupta yalnızca biri seçili olabiliyor.
+  • Kampanyadan gelen ürünlerde her bileşen teklif için AYRI konfigürasyon
+    kartı açılıyor (kampanya 1 → teklif 1 ve teklif 7 için iki kart) ve
+    `sales-config-campaign-name` testid'i ekleniyor.
+  • "Geri" ile Teklif Seçimi'ne dönüldüğünde sepet korunuyor  ✓ (TC-015-05)
+
+................................................................................
+KESIF-CONFIG-01  [SDA] Zorunlu Alanların Bir Kısmı Doldurulduğunda İleri'nin
+                       Pasif Kalması
+................................................................................
+  # SDA: eşiğin bir altı. Mevcut TC-015-02 yalnızca "hiçbiri dolu değilken"
+  # durumunu kapsıyor; kısmi doldurma (n-1 alan) test edilmiyor.
+  Scenario: Zorunlu Konfigürasyon Alanlarının Yalnızca Bir Kısmı Doldurulduğunda İleri Butonunun Pasif Kalması
+    Given kullanıcı birden fazla zorunlu konfigürasyon alanı olan bir teklif için Ürün Konfigürasyonu ekranındadır
+    And kullanıcı hizmet adresini seçmiştir
+    When kullanıcı zorunlu alanların tamamı hariç hepsini doldurur
+    Then İleri butonu pasiftir
+    When kullanıcı kalan son zorunlu alanı da doldurur
+    Then İleri butonu aktif hale gelir
+
+................................................................................
+KESIF-CONFIG-02  [SDA][!] Karakteristik Alanlarının Bir Üst Karakter Sınırına
+                          Sahip Olması
+................................................................................
+  # BULGU: konfigürasyon alanlarında maxlength yok; 300 karakterlik değer
+  # kısaltılmadan kabul edildi. "Fiber No" / "ONT Seri No" gibi alanların
+  # gerçek dünyada sabit ve kısa bir uzunluğu vardır; sınırsız giriş hem
+  # veri kalitesi hem de arka uç için risktir. Bu proje genelinde diğer
+  # tüm metin alanları (Ad/Soyad 50, Hesap Adı, Adres alanları) sınırlıdır.
+  # Senaryo TUTARLI davranışı iddia eder → kasıtlı kırmızı.
+  Scenario: Konfigürasyon Karakteristik Alanının Tanımlı Bir Üst Karakter Sınırını Aşan Girişi Reddetmesi
+    Given kullanıcı bir teklif için Ürün Konfigürasyonu ekranındadır
+    When kullanıcı bir karakteristik alanına 300 karakterlik bir değer yazmayı dener
+    Then alandaki değerin uzunluğu 300 karakterden azdır
+
+................................................................................
+KESIF-CONFIG-03  [E]   Karakteristik Alanlarının Etiketlenmiş ve Zorunlu Olarak
+                       İşaretlenmiş Olması
+................................................................................
+  Scenario: Her Konfigürasyon Karakteristik Alanının Kendi Etiketiyle İlişkilendirilmiş ve Zorunlu Olarak İşaretlenmiş Olması
+    Given kullanıcı bir teklif için Ürün Konfigürasyonu ekranındadır
+    Then her karakteristik alanı için boş olmayan bir etiket görüntülenir
+    And her karakteristik alanı kendi etiketiyle ilişkilendirilmiştir
+    And her karakteristik alanı zorunlu olarak işaretlenmiştir
+
+................................................................................
+KESIF-CONFIG-04  [E]   Adres Seçim Kontrollerinin Tekil Seçim ve Ayırt Edici
+                       Etiket Taşıması
+................................................................................
+  # Seçim kontrolü görsel olarak gizli (sr-only) olduğundan, ekran okuyucu
+  # kullanıcısı hangi adresi seçtiğini yalnızca etiketten anlayabiliyor.
+  # Dilden bağımsız: etikette ADRES BAŞLIĞININ geçtiği doğrulanır.
+  Scenario: Birden Fazla Adres Sunulduğunda Her Seçim Kontrolünün Kendi Adresini Etiketinde Taşıması ve Yalnızca Birinin Seçili Olması
+    Given kullanıcı birden fazla kayıtlı adresi olan bir müşteri için Ürün Konfigürasyonu ekranındadır
+    Then her adres seçim kontrolü, o kartın adres başlığını erişilebilirlik etiketinde içerir
+    And iki farklı adres seçim kontrolünün etiketleri birbirinden farklıdır
+    When kullanıcı ikinci adresi seçer
+    Then yalnızca ikinci adres seçili durumdadır
+    And birinci adres seçili olmaktan çıkar
+
+................................................................................
+KESIF-CONFIG-05  [P]   Kampanya Bileşenleri İçin Ayrı Konfigürasyon Kartı
+                       Açılması
+................................................................................
+  # Mevcut TC-015-01 "sepetteki her teklif için ayrı kart" diyor; kampanya
+  # durumu farklı: sepette TEK satır var ama konfigürasyonda bileşen teklif
+  # SAYISI kadar kart açılıyor. Bu ayrım hiç test edilmiyor.
+  Scenario: Sepetteki Tek Kampanya Satırı İçin Bileşen Teklif Sayısı Kadar Konfigürasyon Kartı Açılması
+    Given kullanıcı Teklif Seçimi ekranında birden fazla teklif içeren bir kampanyayı sepete eklemiştir
+    And sepette tam olarak bir satır bulunmaktadır
+    When kullanıcı Ürün Konfigürasyonu adımına geçer
+    Then konfigürasyon kartı sayısı kampanyaya bağlı teklif sayısına eşittir
+    And her konfigürasyon kartı kendi teklif ID'sini ve teklif adını görüntüler
+
+
+################################################################################
+# 10) features/order_submission.feature   mevcut: 7  →  eklenecek: 6
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı) — akış uçtan uca gezildi
+-----------------------------------------------------------
+  NOT: "Gönder" butonuna BİLEREK basılmadı; ortamda gerçek sipariş
+  oluşturulmadı. Gönder butonunun aktif olduğu ve hata alanının o anda
+  bulunmadığı doğrulandı.
+
+  • Özet ekranı testid'leri:
+      sales-summary-line, sales-summary-line-id, sales-summary-line-name,
+      sales-summary-line-total, sales-summary-address-title,
+      sales-summary-address-detail, sales-summary-total,
+      sales-submit, sales-submit-back, sales-submit-error
+    Bunlardan `sales-summary-line-id` ve `sales-summary-line-total`
+    page object'te TANIMLI DEĞİL → hiç doğrulanmıyor.
+  • Özet toplamı sepet toplamıyla birebir aynı: '299.90 TL' = '299.90 TL' ✓
+  • Özetteki hizmet adresi, konfigürasyonda seçilen adresle aynı:
+      başlık: 'İstanbul, Bağdat Caddesi, No:12 D:4'
+      detay : 'Kadıköy - ev adresi'
+  • "Geri" ile konfigürasyona dönüldüğünde alan değerleri ('TEST1','TEST2')
+    ve adres seçimi (radio: [True, False]) korunuyor  ✓ (TC-016-04)
+  • Üç adım da AYNI URL'yi kullanıyor. Sayfa YENİLENDİĞİNDE akış 1. adıma
+    (Teklif Seçimi) dönüyor; sepet korunuyor ama konfigürasyon kaybediliyor.
+  • Var olmayan hesap ID'siyle doğrudan giriş:
+      ?accountId=999999 → satış ekranı NORMAL açılıyor, 11 teklif listeleniyor ✗
+      ?accountId=abc    → "Satış başlatmak için bir fatura hesabı
+                           seçilmelidir." + "Müşteriye Dön"                  ✓
+      (parametre yok)   → satış ekranı açılmıyor                             ✓
+    Yani yalnızca FORMAT hatası yakalanıyor, VAR OLMAYAN hesap yakalanmıyor.
+
+................................................................................
+KESIF-ORDER-01   [P]   Özet Toplamının Sepet Toplamıyla Birebir Aynı Olması
+................................................................................
+  # Mevcut TC-016-01 "toplam tutarın özet olarak görüntülenmesi" diyor;
+  # sepet tutarıyla KARŞILAŞTIRMA yapmıyor. Fiyat hesabındaki bir sapma
+  # ancak bu karşılaştırmayla yakalanır.
+  Scenario: Sipariş Özetindeki Toplam Tutarın Teklif Seçimi Adımındaki Sepet Toplamıyla Aynı Olması
+    Given kullanıcı sepete bir teklif ekleyip sepet toplam tutarını not etmiştir
+    When kullanıcı konfigürasyonu tamamlayıp Sipariş Gönder adımına geçer
+    Then özet toplam tutarı, not edilen sepet toplam tutarına eşittir
+
+................................................................................
+KESIF-ORDER-02   [P]   Özetteki Hizmet Adresinin Seçilen Adresle Aynı Olması
+................................................................................
+  Scenario: Sipariş Özetinde Görüntülenen Hizmet Adresinin Konfigürasyonda Seçilen Adresle Aynı Olması
+    Given kullanıcı birden fazla kayıtlı adresi olan bir müşteri için konfigürasyon adımındadır
+    When kullanıcı hizmet adresi olarak belirli bir adresi seçer
+    And kullanıcı konfigürasyonu tamamlayıp Sipariş Gönder adımına geçer
+    Then özetteki hizmet adresi başlığı seçilen adresin başlığıyla aynıdır
+    And özetteki hizmet adresi detayı boş değildir
+
+................................................................................
+KESIF-ORDER-03   [P]   Özet Satırlarında Teklif ID ve Satır Tutarının
+                       Görüntülenmesi
+................................................................................
+  # `sales-summary-line-id` ve `sales-summary-line-total` hiç doğrulanmıyor.
+  Scenario: Sipariş Özetindeki Her Satırın Teklif ID'sini, Adını ve Satır Tutarını Görüntülemesi
+    Given kullanıcı sepete iki farklı teklif ekleyip Sipariş Gönder adımına geçmiştir
+    Then özetteki satır sayısı sepetteki satır sayısına eşittir
+    And her özet satırı boş olmayan bir teklif ID'si görüntüler
+    And her özet satırı boş olmayan bir teklif adı görüntüler
+    And her özet satırı boş olmayan bir satır tutarı görüntüler
+    And özet satır tutarlarının toplamı özet toplam tutarına eşittir
+
+................................................................................
+KESIF-ORDER-04   [N][!] Satış Adımının Sayfa Yenilendiğinde Korunması
+................................................................................
+  # BULGU: üç adım da aynı URL'yi kullanıyor. Sipariş Gönder adımındayken
+  # sayfa yenilenirse kullanıcı Teklif Seçimi'ne düşüyor; sepet korunuyor
+  # ama girilen tüm konfigürasyon değerleri kayboluyor ve adres seçimi
+  # sıfırlanıyor. Uzun bir konfigürasyon sonrası yanlışlıkla F5'e basmak
+  # tüm emeği siliyor.
+  # Senaryo KORUNAN davranışı iddia eder → kasıtlı kırmızı.
+  Scenario: Sipariş Gönder Adımındayken Sayfa Yenilendiğinde Aynı Adımda Kalınması
+    Given kullanıcı konfigürasyonu tamamlayıp Sipariş Gönder adımına geçmiştir
+    When kullanıcı sayfayı yeniler
+    Then kullanıcı Sipariş Gönder adımında kalır
+    And özetteki satırlar ve toplam tutar korunur
+
+................................................................................
+KESIF-ORDER-05   [N][!] Var Olmayan Fatura Hesabıyla Satış Akışının
+                        Başlatılamaması
+................................................................................
+  # KUSUR: geçersiz FORMAT ("abc") doğru şekilde engelleniyor, ancak
+  # VAR OLMAYAN sayısal bir hesap ID'si ("999999") ile satış ekranı normal
+  # açılıyor ve 11 teklif listeleniyor. Bu durumda sipariş, var olmayan bir
+  # hesaba bağlanmaya çalışılacaktır.
+  # Senaryo DOĞRU davranışı iddia eder → kasıtlı kırmızı.
+  Scenario: Var Olmayan Bir Fatura Hesabı Numarasıyla Satış Akışına Doğrudan Erişilememesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    When kullanıcı var olmayan bir fatura hesabı numarasıyla satış akışı adresine doğrudan gider
+    Then teklif listesi görüntülenmez
+    And bir fatura hesabı seçilmesi gerektiğine dair yönlendirici bir mesaj görüntülenir
+
+................................................................................
+KESIF-ORDER-06   [N]   Geçersiz Formatlı Hesap Numarasında Yönlendirici Mesaj
+................................................................................
+  # Mevcut (doğru) davranışı kilitler; KESIF-ORDER-05 düzeltilirken bu
+  # senaryo doğru referansı sağlar.
+  Scenario: Geçersiz Formatta Bir Fatura Hesabı Numarasıyla Satış Akışına Girildiğinde Yönlendirici Mesaj Gösterilmesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    When kullanıcı sayısal olmayan bir fatura hesabı numarasıyla satış akışı adresine doğrudan gider
+    Then teklif listesi görüntülenmez
+    And bir fatura hesabı seçilmesi gerektiğine dair yönlendirici bir mesaj görüntülenir
+    And müşteriye dönüş bağlantısı görüntülenir
+
+
+################################################################################
+# 11) features/address_add.feature          mevcut: 8  →  eklenecek: 3
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı) — "Yeni Adres Ekle" formu
+-------------------------------------------------------------
+  TAHRİBATSIZ KEŞİF: form açıldı, alanlar incelendi, İPTAL ile kapatıldı;
+  hiçbir adres kaydedilmedi.
+
+  • Form testid'leri: address-form, address-city, address-street,
+    address-building-no, address-description, address-save, address-cancel
+  • HATA testid'leri (page object'te TANIMLI DEĞİL, hiç doğrulanmıyor):
+      address-street-error, address-building-error, address-description-error
+    Alan boşaltılıp odak kaydırılınca (blur) "Bu alan zorunludur." çıkıyor.
+  • Alan türleri ve zorunluluk:
+      Sokak / Cadde *      → INPUT,    required=true,  maxlength YOK
+      Bina / Daire No *    → INPUT,    required=true,  maxlength YOK
+      Adres Açıklaması *   → TEXTAREA, required=true,  maxlength YOK
+    Üçü de 300 karakterlik girdiyi kısaltmadan kabul etti.
+  • Kaydet, ancak Şehir + Sokak + Bina No + Açıklama'nın DÖRDÜ de dolunca
+    aktifleşiyor. (Bu koşul mevcut TC-007-03 Scenario Outline ile ZATEN
+    kapsanıyor → tekrar senaryo yazılmadı.)
+  • Şehir seçici: <button> + role="listbox", 81 il, her biri role="option"
+    ve data-value taşıyor (Adana … Zonguldak). Liste içinde ARAMA ALANI
+    YOK (input sayısı 0) ve klavyeden harf yazmak listeyi filtrelemiyor
+    ya da odağı ilgili ile taşımıyor (type-ahead yok).
+
+................................................................................
+KESIF-ADDADD-01  [P]   Zorunlu Adres Alanlarının Boşaltıldığında Hata Mesajı
+                       Göstermesi
+................................................................................
+  # Mevcut TC-007-03 yalnızca "Save butonu pasif kalır" diyor; kullanıcıya
+  # NEDEN pasif olduğunu söyleyen hata mesajları hiç doğrulanmıyor.
+  # Dilden bağımsız: hata elemanının GÖRÜNÜR ve boş olmayan bir metne sahip
+  # olması doğrulanır, metnin kendisi karşılaştırılmaz.
+  Scenario Outline: Zorunlu Bir Adres Alanı Boşaltılıp Odak Kaydırıldığında İlgili Alanın Hatalı İşaretlenmesi
+    Given kullanıcı yeni adres formundadır
+    When "<alan>" alanı doldurulup ardından boşaltılır ve odak alandan çıkarılır
+    Then "<alan>" alanı için boş olmayan bir hata mesajı görüntülenir
+    And Kaydet butonu pasiftir
+
+    Examples:
+      | alan     |
+      | Sokak    |
+      | Bina No  |
+      | Açıklama |
+
+................................................................................
+KESIF-ADDADD-02  [SDA][!] Adres Metin Alanlarının Bir Üst Karakter Sınırına
+                          Sahip Olması
+................................................................................
+  # BULGU: üç alanda da maxlength yok; 300 karakter kısaltılmadan kabul
+  # edildi. Projedeki diğer metin alanları (Ad/Soyad 50, İkinci Ad 100,
+  # Kimlik No 11) sınırlıdır. Not: address_update tarafında TC-006-05b ve
+  # TC-006-09/010 aynı eksikliği ADRES GÜNCELLEME formu için zaten
+  # belgeliyor; bu senaryo ADRES EKLEME formunu kapsar.
+  # Senaryo TUTARLI davranışı iddia eder → kasıtlı kırmızı.
+  Scenario Outline: Yeni Adres Formundaki Metin Alanlarının Tanımlı Bir Üst Karakter Sınırını Aşan Girişi Reddetmesi
+    Given kullanıcı yeni adres formundadır
+    When kullanıcı "<alan>" alanına 300 karakterlik bir değer yazmayı dener
+    Then alandaki değerin uzunluğu 300 karakterden azdır
+
+    Examples:
+      | alan     |
+      | Sokak    |
+      | Bina No  |
+      | Açıklama |
+
+................................................................................
+KESIF-ADDADD-03  [E][!] Şehir Listesinde Arama veya Klavyeyle Hızlı Erişim
+                        Bulunması
+................................................................................
+  # BULGU: 81 öğelik listbox'ta ne arama alanı ne de type-ahead var.
+  # Kullanıcı "Zonguldak"a ulaşmak için 81 öğe boyunca kaydırmak zorunda;
+  # klavye kullanıcıları için erişim maliyeti çok yüksek.
+  # Senaryo KULLANILABİLİR davranışı iddia eder → kasıtlı kırmızı.
+  Scenario: Şehir Listesi Açıkken Harf Yazıldığında Listenin Daralması veya Odağın İlgili İle Taşınması
+    Given kullanıcı yeni adres formundadır
+    And kullanıcı şehir listesini açmıştır
+    And listede 81 il seçeneği bulunmaktadır
+    When kullanıcı klavyeden bir ilin baş harflerini yazar
+    Then listelenen seçenekler yazılan harflerle başlayanlarla sınırlanır
+
+
+################################################################################
+# 12) features/billing_account_create.feature   mevcut: 13  →  eklenecek: 3
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı) — "Yeni Hesap Oluştur" formu
+----------------------------------------------------------------
+  TAHRİBATSIZ KEŞİF: form açıldı, İPTAL ile kapatıldı; hiçbir hesap
+  oluşturulmadı (hesap satırı sayısı 2 → 2).
+
+  • Form testid'leri: account-form, account-name, account-description,
+    account-add-address, account-save ("Oluştur"), account-cancel
+  • Hizmet adresi seçimi form İÇİNDE address-card + address-card-primary
+    (radio) ile yapılıyor.
+  • "Hesap Açıklaması *" ZORUNLU bir TEXTAREA — mevcut senaryolarda
+    HİÇ GEÇMİYOR. Yalnızca Hesap Adı doldurulduğunda "Oluştur" hâlâ pasif
+    kalıyor; asıl engel açıklama alanı.
+  • Boşaltılıp odak kaydırıldığında (blur) her iki alan da
+    "Bu alan zorunludur." hatası gösteriyor
+    (account-name-error / account-description-error).
+    NOT: yalnızca .clear() ile temizlemek hata TETİKLEMİYOR — Angular'ın
+    "touched" durumu için odak kaybı (Tab) şart.
+  • account-description'da maxlength YOK → 300 karakter kabul edildi.
+    (Hesap Adı'ndaki aynı eksiklik TC-010-09b ve bugsbunnyupdated.txt
+    madde 3 ile zaten kayıtlı → tekrar yazılmadı.)
+
+................................................................................
+KESIF-BACRE-01   [P]   Hesap Açıklamasının Zorunlu Olması
+................................................................................
+  Scenario: Hesap Adı Doldurulmuş Olsa Bile Hesap Açıklaması Boşken Hesabın Oluşturulamaması
+    Given kullanıcı yeni fatura hesabı oluşturma formundadır
+    When kullanıcı Hesap Adı alanını geçerli bir değerle doldurur
+    And kullanıcı Hesap Açıklaması alanını boş bırakır
+    Then Oluştur butonu pasiftir
+
+................................................................................
+KESIF-BACRE-02   [P]   Hesap Açıklaması Boşaltıldığında Hata Gösterilmesi
+................................................................................
+  Scenario: Hesap Açıklaması Doldurulup Boşaltıldığında İlgili Alanın Hatalı İşaretlenmesi
+    Given kullanıcı yeni fatura hesabı oluşturma formundadır
+    When Hesap Açıklaması alanı doldurulup ardından boşaltılır ve odak alandan çıkarılır
+    Then Hesap Açıklaması alanı için boş olmayan bir hata mesajı görüntülenir
+    And Oluştur butonu pasiftir
+
+................................................................................
+KESIF-BACRE-03   [SDA][!] Hesap Açıklamasının Bir Üst Karakter Sınırına Sahip
+                          Olması
+................................................................................
+  # Senaryo TUTARLI davranışı iddia eder → kasıtlı kırmızı.
+  Scenario: Hesap Açıklaması Alanının Tanımlı Bir Üst Karakter Sınırını Aşan Girişi Reddetmesi
+    Given kullanıcı yeni fatura hesabı oluşturma formundadır
+    When kullanıcı Hesap Açıklaması alanına 300 karakterlik bir değer yazmayı dener
+    Then alandaki değerin uzunluğu 300 karakterden azdır
+
+
+################################################################################
+# 13) features/billing_account_update.feature   mevcut: 5  →  eklenecek: 3
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı) — "Fatura Hesabını Düzenle" formu
+---------------------------------------------------------------------
+  TAHRİBATSIZ KEŞİF: form açıldı, İPTAL ile kapatıldı; hesap adları
+  değişmedi ('Ahmet Ev Hattı', 'Ahmet İş Hattı').
+
+  • Düzenleme formu, oluşturma formuyla AYNI bileşeni kullanıyor; alanlar
+    ön-dolu geliyor ('Ahmet Ev Hattı' / 'Birincil fatura hesabı').
+  • HESAP NUMARASI ve HESAP TİPİ düzenlenebilir bir alan olarak SUNULMUYOR
+    (account-number / account-type input'u yok) — bu doğru davranış hiç
+    doğrulanmıyor.
+  • Ad veya Açıklama boşaltılıp odak kaydırıldığında "Bu alan zorunludur."
+    çıkıyor ve Kaydet pasifleşiyor.  ✓
+
+  ÖNEMLİ DÜZELTME — YANLIŞ ALARM
+  ------------------------------
+  Bu keşfin ilk turunda ".clear()" ile temizleme yapıldığı için hata
+  görünmedi ve "düzenleme formunda boş ad kabul ediliyor" şeklinde bir
+  KUSUR sanıldı. Doğru ölçüm (Ctrl+A → Backspace → Tab) ile davranışın
+  DOĞRU olduğu görüldü: hata çıkıyor, Kaydet pasifleşiyor. Mevcut
+  TC-011-03 senaryosu bu nedenle geçerlidir; kusur BİLDİRİLMEMİŞTİR.
+
+................................................................................
+KESIF-BAUPD-01   [P]   Hesap Numarası ve Tipinin Düzenlenememesi
+................................................................................
+  # Sistem tarafından üretilen hesap numarasının kullanıcı tarafından
+  # değiştirilememesi kritik bir veri bütünlüğü kuralıdır; hiç test
+  # edilmiyor.
+  Scenario: Fatura Hesabı Düzenleme Formunda Hesap Numarasının ve Hesap Tipinin Değiştirilebilir Olarak Sunulmaması
+    Given kullanıcı bir fatura hesabının düzenleme formundadır
+    Then Hesap Adı alanı düzenlenebilir olarak görüntülenir
+    And Hesap Açıklaması alanı düzenlenebilir olarak görüntülenir
+    And hesap numarası için düzenlenebilir bir giriş alanı bulunmaz
+    And hesap tipi için düzenlenebilir bir giriş alanı bulunmaz
+
+................................................................................
+KESIF-BAUPD-02   [P]   Hesap Açıklaması Boşaltıldığında Güncellemenin
+                       Engellenmesi
+................................................................................
+  # Mevcut TC-011-03 yalnızca Hesap ADI'nı kapsıyor; Açıklama alanı da
+  # zorunlu olmasına rağmen hiç test edilmiyor.
+  Scenario: Güncelleme Formunda Hesap Açıklaması Boşaltıldığında Güncellemenin Engellenmesi
+    Given kullanıcı bir fatura hesabının düzenleme formundadır
+    When Hesap Açıklaması alanı boşaltılır ve odak alandan çıkarılır
+    Then Hesap Açıklaması alanı için boş olmayan bir hata mesajı görüntülenir
+    And Kaydet butonu pasiftir
+
+................................................................................
+KESIF-BAUPD-03   [P]   Düzenleme Formunun Değişiklik Yapılmadan da
+                       Kaydedilebilir Olması
+................................................................................
+  # Ön-dolu form açıldığında Kaydet AKTİF geliyor (oluşturma formunda pasif).
+  # Bu bilinçli bir tasarım tercihi ise regresyona karşı kilitlenmelidir.
+  Scenario: Ön-Dolu Düzenleme Formu Açıldığında Kaydet Butonunun Aktif Gelmesi
+    Given kullanıcı bir fatura hesabının düzenleme formundadır
+    Then Hesap Adı alanı mevcut değeriyle dolu görüntülenir
+    And Hesap Açıklaması alanı mevcut değeriyle dolu görüntülenir
+    And Kaydet butonu aktiftir
+
+
+################################################################################
+# 14) features/billing_account_delete.feature   mevcut: 6  →  eklenecek: 2
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı) — hesap silme onay penceresi
+----------------------------------------------------------------
+  TAHRİBATSIZ KEŞİF: onay penceresi açıldı, "Hayır" ile kapatıldı; hesap
+  satırı sayısı 2 → 2, hiçbir hesap silinmedi.
+
+  • Pencere: role="alertdialog", aria-modal="true",
+    aria-label = mesajın kendisi
+    ("Bu fatura hesabını silmek istediğinize emin misiniz?")
+  • Butonlar: confirm-dialog-cancel ("Hayır"), confirm-dialog-confirm ("Evet")
+  • AÇILIŞTA ODAK "Hayır" butonuna gidiyor → güvenli varsayılan  ✓
+  • GERÇEK Escape tuşu pencereyi KAPATIYOR ve silme yapılmıyor  ✓
+
+  ÖNEMLİ DÜZELTME — YANLIŞ ALARM
+  ------------------------------
+  İlk turda Escape, JavaScript ile sentetik bir KeyboardEvent olarak
+  gönderildiği için pencere kapanmamış ve "Escape çalışmıyor" sanılmıştı.
+  Gerçek klavye tuşuyla tekrarlandığında pencerenin KAPANDIĞI görüldü.
+  Kusur BİLDİRİLMEMİŞTİR.
+
+................................................................................
+KESIF-BADEL-01   [E]   Onay Penceresinin Erişilebilir Modal Semantiği ve
+                       Güvenli Varsayılan Odağı
+................................................................................
+  Scenario: Hesap Silme Onay Penceresinin Modal Olarak İşaretlenmesi ve Açılışta Vazgeçme Butonuna Odaklanması
+    Given kullanıcı bir müşterinin Müşteri Hesabı sekmesindedir
+    When kullanıcı bir hesabın silme aksiyonuna tıklar
+    Then onay penceresi modal olarak işaretlenmiş şekilde görüntülenir
+    And onay penceresi boş olmayan bir erişilebilirlik adı taşır
+    And açılışta odak, işlemi onaylayan butona değil vazgeçme butonuna verilir
+
+................................................................................
+KESIF-BADEL-02   [P]   Escape Tuşuyla Silme İşleminden Vazgeçilmesi
+................................................................................
+  Scenario: Hesap Silme Onay Penceresinin Escape Tuşuyla Kapatılması ve Hesabın Silinmemesi
+    Given kullanıcı bir hesabın silme onay penceresini açmıştır
+    And kullanıcı mevcut hesap sayısını not etmiştir
+    When kullanıcı Escape tuşuna basar
+    Then onay penceresi kapanır
+    And hesap sayısı değişmeden kalır
+
+
+################################################################################
+# 15) features/create_customer.feature      mevcut: 17  →  eklenecek: 5
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı) — müşteri oluşturma sihirbazı
+-----------------------------------------------------------------
+  TAHRİBATSIZ KEŞİF: sihirbazın 1. ve 2. adımı gezildi, HİÇBİR MÜŞTERİ
+  OLUŞTURULMADI (akış "Oluştur" adımına götürülmeden terk edildi).
+
+  • Adım göstergesi: stepper-step-1 ("1 Demografik Bilgi"),
+    stepper-step-2 ("2 Adres"), stepper-step-3 ("3 İletişim Kanalı")
+      - Aktif adım aria-current="step" ile işaretleniyor  ✓
+      - İleri'ye basınca işaret 1'den 2'ye doğru şekilde taşınıyor  ✓
+      - <li> elemanları; TIKLANARAK adım değiştirilemiyor (step-1'e
+        tıklandığında adım 1'e dönülmedi)
+      - page object'te locator'ları TANIMLI ama hiçbir feature/step
+        kullanmıyor → fiilen HİÇ TEST EDİLMİYOR
+  • Adım 1 alanları (maxlength / zorunluluk):
+      Ad *              firstName        50   required=true
+      İkinci Ad         secondName      100   required=false
+      Soyad *           lastName         50   required=true
+      Doğum Tarihi *    birthDate        10   required=FALSE, aria-required=true
+      Baba Adı          fatherName      100   required=false
+      Anne Adı          motherName      100   required=false
+      Uyruk / TC No *   identityNumber   11   required=true
+    NOT: Doğum Tarihi görsel olarak zorunlu (*) ve aria-required="true"
+    olmasına rağmen NATİF required özniteliği taşımıyor — diğer zorunlu
+    alanlardan farklı.
+  • Ad/Soyad 50 karakter sınırı canlı doğrulandı (120 karakter → 50).
+    Bu sınır update_customer.feature'da test ediliyor ancak
+    create_customer.feature'da HİÇ test edilmiyor.
+  • Doğum Tarihi maskesi: "15061990" → "15/06/1990"  ✓
+  • Doğum Tarihi ve TC No harf girişini tamamen reddediyor (değer boş kaldı).
+  • Cinsiyet: <button>, VARSAYILAN OLARAK "Erkek" seçili geliyor.
+    Seçenekler yalnızca ikisi: Erkek (male, aria-selected="true") ve
+    Kadın (female). Seçeneklerin data-testid'i yok, id'leri
+    gender-option-0/1.
+  • Takvim: customer-create-birth-date-calendar (aria-label "Takvimi aç")
+    → role="dialog" panel açıyor ve İKİ YENİ kontrol ekliyor:
+      customer-create-birth-date-month, customer-create-birth-date-year
+    Panel geçerli ayı gösteriyor ("Ağustos 2026").
+    Takvim ve ay/yıl seçicileri projede HİÇ TEST EDİLMİYOR.
+    DÜRÜSTLÜK NOTU: gün hücreleri role="gridcell" ile işaretlenmemiş ve
+    genel bir seçiciyle tıklanamadı; bu senaryolar implemente edilirken
+    gün hücresi için uygulamaya özel bir locator gerekecektir.
+  • Adım 2 testid'leri: customer-create-add-address,
+    customer-create-address-back, customer-create-address-next
+
+................................................................................
+KESIF-CREATE-01  [P]   Adım Göstergesinin Aktif Adımı İşaretlemesi
+................................................................................
+  Scenario: Sihirbazda İlerledikçe Adım Göstergesinin Aktif Adımı Güncellemesi
+    Given kullanıcı müşteri oluşturma sihirbazının Demografik Bilgi adımındadır
+    Then adım göstergesinde birinci adım geçerli adım olarak işaretlenir
+    And diğer adımlar geçerli adım olarak işaretlenmez
+    When kullanıcı zorunlu demografik alanları doldurup İleri butonuna tıklar
+    Then adım göstergesinde ikinci adım geçerli adım olarak işaretlenir
+    And birinci adım geçerli adım olarak işaretlenmekten çıkar
+
+................................................................................
+KESIF-CREATE-02  [N]   Adım Göstergesine Tıklayarak Adım Atlanamaması
+................................................................................
+  # Adım göstergesi bir gezinme kontrolü DEĞİL, yalnızca durum
+  # göstergesidir. Kullanıcının doğrulamayı atlayarak adım değiştirememesi
+  # bilinçli bir kısıttır ve regresyona karşı kilitlenmelidir.
+  Scenario: Adım Göstergesindeki Bir Adıma Tıklandığında Adım Değişmemesi
+    Given kullanıcı müşteri oluşturma sihirbazının Adres adımındadır
+    When kullanıcı adım göstergesindeki birinci adıma tıklar
+    Then kullanıcı Adres adımında kalır
+    And adım göstergesinde ikinci adım geçerli adım olarak işaretli kalır
+
+................................................................................
+KESIF-CREATE-03  [SDA] Ad ve Soyad Alanlarının 50 Karakter Sınırı
+................................................................................
+  # Bu sınır update_customer.feature'da (TC-004-07) test ediliyor ancak
+  # OLUŞTURMA formunda hiç test edilmiyor.
+  Scenario Outline: Müşteri Oluşturma Formunda Ad ve Soyad Alanlarının 50 Karakter Sınırını Koruması
+    Given kullanıcı müşteri oluşturma sihirbazının Demografik Bilgi adımındadır
+    When kullanıcı "<alan>" alanına 120 karakterlik bir değer yazmayı dener
+    Then alandaki değer tam olarak 50 karakter uzunluğunda kalır
+
+    Examples:
+      | alan  |
+      | Ad    |
+      | Soyad |
+
+................................................................................
+KESIF-CREATE-04  [P]   Cinsiyet Seçicisinin Yalnızca İki Seçenek Sunması
+................................................................................
+  # Varsayılanın "Erkek" olarak GELMESİ bir veri kalitesi tercihidir
+  # (kullanıcı hiç dokunmazsa tüm müşteriler erkek kaydedilir). Senaryo
+  # mevcut davranışı kilitler; ürün sahibi nötr bir varsayılan isterse
+  # bilinçli olarak kırmızıya döner.
+  Scenario: Cinsiyet Seçicisinin Yalnızca İki Seçenek Sunması ve Varsayılan Seçimin İşaretli Gelmesi
+    Given kullanıcı müşteri oluşturma sihirbazının Demografik Bilgi adımındadır
+    Then cinsiyet seçicisi boş olmayan bir varsayılan değerle görüntülenir
+    When kullanıcı cinsiyet seçicisini açar
+    Then tam olarak iki cinsiyet seçeneği listelenir
+    And seçeneklerden yalnızca biri seçili olarak işaretlenir
+    And işaretli seçenek, seçicide görüntülenen varsayılan değerle aynıdır
+
+................................................................................
+KESIF-CREATE-05  [P]   Doğum Tarihinin Takvim Seçicisiyle Girilebilmesi
+................................................................................
+  # Takvim seçicisi ve ay/yıl kontrolleri projede HİÇ test edilmiyor;
+  # doğum tarihi yalnızca maskeli yazım üzerinden doğrulanıyor.
+  Scenario: Takvim Seçicisi Açıldığında Ay ve Yıl Kontrollerinin Sunulması ve Seçilen Tarihin Alana Yazılması
+    Given kullanıcı müşteri oluşturma sihirbazının Demografik Bilgi adımındadır
+    And Doğum Tarihi alanı boştur
+    When kullanıcı takvim açma butonuna tıklar
+    Then takvim paneli görüntülenir
+    And ay seçim kontrolü görüntülenir
+    And yıl seçim kontrolü görüntülenir
+    When kullanıcı takvimden bir gün seçer
+    Then Doğum Tarihi alanı gg/aa/yyyy biçiminde 10 karakterlik bir değerle dolar
+
+
+################################################################################
+# 16) features/delete_customer.feature      mevcut: 7  →  eklenecek: 4
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı) — müşteri silme
+---------------------------------------------------
+  TAHRİBATSIZ KEŞİF: hiçbir müşteri silinmedi; onay penceresi "Hayır" ile,
+  engelleme uyarısı kapatma butonuyla kapatıldı.
+
+  ★ EN ÖNEMLİ BULGU: SİLME ENGELLEME UYARISI — SIFIR KAPSAM ★
+  ------------------------------------------------------------
+  Aktif ürünü olan bir müşteride Delete'e basıldığında ONAY PENCERESİ
+  AÇILMIYOR; bunun yerine satır içi bir uyarı paneli beliriyor:
+
+      <div role="alert" data-testid="customer-info-delete-blocked">
+        Müşteri hesabına bağlı aktif ürün olduğu için müşteri silinemez.
+        Önce ilgili ürünleri kaldırın.
+        <button data-testid="customer-info-delete-blocked-dismiss"
+                aria-label="Uyarıyı kapat">
+      </div>
+
+  `customer-info-delete-blocked` ve `-dismiss` testid'leri features/,
+  steps/ ve pages/ genelinde HİÇ GEÇMİYOR (grep ile doğrulandı) →
+  bu güvenlik ağı tamamen test edilmemiş durumda.
+
+  Canlı gözlem:
+      müşteri 1 → ENGELLENDİ (onay penceresi açılmadı)
+      müşteri 2 → ENGELLENDİ
+      müşteri 3 → normal onay penceresi açıldı
+                  ("Bu müşteriyi silmek istediğinize emin misiniz?")
+  Engelleme, hesap SAYISINA değil aktif ÜRÜN varlığına bağlı.
+
+  • Onay penceresi: role="alertdialog", aria-modal="true", açılışta odak
+    "Hayır" butonunda, gerçek Escape tuşu pencereyi kapatıyor.  ✓
+  • Engelleme paneli bir modal DEĞİL (aria-modal yok), role="alert" ile
+    duyuruluyor ve odak Delete butonunda kalıyor.
+
+  ⚠ MEVCUT TESTLERE ETKİSİ — İNCELENMESİ ÖNERİLİR
+  ------------------------------------------------
+  1) TC-005-01 ("Delete'e tıklandığında onay penceresinin görüntülenmesi")
+     müşteri 1 veya 2 gibi aktif ürünü olan bir müşteriyle çalıştırılırsa
+     onay penceresi yerine engelleme uyarısı çıkacağı için BAŞARISIZ olur.
+     Senaryonun hangi müşteriyle çalıştığı gözden geçirilmelidir.
+  2) TC-005-03 (bugsbunnyupdated.txt madde 5, kasıtlı kırmızı) "aktif
+     ürünü olan müşteri engellenmeden silinebiliyor" diyordu. Bu keşif,
+     engellemenin ÇEKİRDEK VERİDEKİ müşteriler için ÇALIŞTIĞINI gösteriyor.
+     Yani kusur "engelleme hiç yok" değil, "yeni oluşturulan ürünler için
+     engelleme tetiklenmiyor" şeklinde DARALTILABİLİR. Bu, daha önce
+     "ortam/zaman kaynaklı tutarsızlık" olarak not edilen durumu da
+     açıklıyor olabilir.
+
+................................................................................
+KESIF-DEL-01     [P]   Aktif Ürünü Olan Müşteride Silme Engelleme Uyarısının
+                       Gösterilmesi
+................................................................................
+  # Dilden bağımsız: uyarı elemanının GÖRÜNÜR ve boş olmayan bir metne
+  # sahip olması doğrulanır; metin karşılaştırılmaz.
+  Scenario: Aktif Ürünü Bulunan Bir Müşteride Silme Denendiğinde Engelleme Uyarısının Görüntülenmesi
+    Given kullanıcı, fatura hesabında aktif ürün bulunan bir müşterinin bilgi ekranındadır
+    When kullanıcı Delete butonuna tıklar
+    Then silme engellendi uyarısı boş olmayan bir metinle görüntülenir
+    And uyarı, ekran okuyucular tarafından duyurulacak şekilde işaretlenmiştir
+
+................................................................................
+KESIF-DEL-02     [N]   Engelleme Durumunda Onay Penceresinin Açılmaması
+................................................................................
+  Scenario: Silme Engellendiğinde Onay Penceresinin Hiç Açılmaması ve Müşteri Durumunun Değişmemesi
+    Given kullanıcı, fatura hesabında aktif ürün bulunan bir müşterinin bilgi ekranındadır
+    And kullanıcı müşterinin mevcut durumunu not etmiştir
+    When kullanıcı Delete butonuna tıklar
+    Then onay penceresi görüntülenmez
+    And kullanıcı Müşteri Bilgisi ekranında kalır
+    And müşteri durumu değişmeden kalır
+
+................................................................................
+KESIF-DEL-03     [P]   Engelleme Uyarısının Kapatılabilmesi
+................................................................................
+  Scenario: Silme Engelleme Uyarısının Kapatma Butonuyla Gizlenmesi
+    Given kullanıcı, aktif ürünü bulunan bir müşteride silme engelleme uyarısını görüntülemiştir
+    When kullanıcı uyarının kapatma butonuna tıklar
+    Then engelleme uyarısı görüntülenmez
+    And kullanıcı Müşteri Bilgisi ekranında kalır
+
+................................................................................
+KESIF-DEL-04     [P]   Escape Tuşuyla Müşteri Silmekten Vazgeçilmesi
+................................................................................
+  # Mevcut TC-005-04 yalnızca "Hayır" butonunu kapsıyor; klavye ile
+  # vazgeçme yolu test edilmiyor.
+  Scenario: Müşteri Silme Onay Penceresinin Escape Tuşuyla Kapatılması ve Müşterinin Silinmemesi
+    Given kullanıcı, aktif ürünü bulunmayan bir müşteri için silme onay penceresini açmıştır
+    When kullanıcı Escape tuşuna basar
+    Then onay penceresi kapanır
+    And kullanıcı aynı müşterinin bilgi ekranında kalır
+    And müşteri durumu değişmeden kalır
+
+
+################################################################################
+#                                                                              #
+#  BÖLÜM 2 — YENİ AÇILMASI GEREKEN FEATURE DOSYALARI  (15)                     #
+#  Bu iki alan için projede HİÇ feature dosyası ve HİÇ senaryo yok.            #
+#                                                                              #
+################################################################################
+
+
+################################################################################
+# 17) YENİ DOSYA: features/theme_support.feature      eklenecek: 6
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı)
+----------------------------------
+  • `theme-switcher-toggle` HEM login ekranında HEM giriş sonrasında mevcut
+  • Koyu tema <html class="dark"> ile uygulanıyor (data-theme özniteliği YOK)
+  • Tercih localStorage `etiya.theme` anahtarında ("light" / "dark")
+  • Varsayılan "light"; <html> class değeri boş
+  • aria-label duruma göre değişiyor:
+      açık temada → 'Koyu temaya geç'  (EN: 'Switch to dark theme')
+      koyu temada → 'Açık temaya geç'  (EN: 'Switch to light theme')
+  • Sayfa yenilendikten sonra korunuyor; oturum kapatınca SIFIRLANMIYOR
+
+  --- dosya başlığı önerisi ---
+  Feature: Tema Desteği (Açık / Koyu Tema)
+    Bir CRM kullanıcısı olarak,
+    çalışma ortamımın ışık koşullarına göre arayüz temasını değiştirebilmek
+    ve bu tercihimin hatırlanmasını istiyorum;
+    böylece uzun süreli kullanımda göz yorgunluğu yaşamam.
+
+................................................................................
+KESIF-THEME-01   [P]   Varsayılan Temanın Açık Tema Olması
+................................................................................
+  Scenario: Tema Tercihi Hiç Yapılmamışken Varsayılan Olarak Açık Temanın Uygulanması
+    Given kullanıcının kayıtlı bir tema tercihi bulunmamaktadır
+    And kullanıcı sisteme başarıyla giriş yapmıştır
+    Then arayüzde koyu tema uygulanmamıştır
+    And tema değiştirici butonu koyu temaya geçiş sunduğunu belirtir
+
+................................................................................
+KESIF-THEME-02   [P]   Koyu Temaya Geçilebilmesi
+................................................................................
+  Scenario: Tema Değiştirici ile Koyu Temaya Geçilmesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    And arayüzde açık tema uygulanmıştır
+    When kullanıcı tema değiştirici butonuna tıklar
+    Then arayüzde koyu tema uygulanır
+    And tema değiştirici butonu açık temaya geçiş sunduğunu belirtir
+
+................................................................................
+KESIF-THEME-03   [P]   Açık Temaya Geri Dönülebilmesi
+................................................................................
+  Scenario: Koyu Temadan Açık Temaya Geri Dönülmesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    And kullanıcı koyu temayı seçmiştir
+    When kullanıcı tema değiştirici butonuna tıklar
+    Then arayüzde koyu tema uygulanmamıştır
+
+................................................................................
+KESIF-THEME-04   [P]   Tema Tercihinin Sayfa Yenilendiğinde Korunması
+................................................................................
+  Scenario: Seçilen Tema Tercihinin Sayfa Yenilense Dahi Korunması
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    And kullanıcı koyu temayı seçmiştir
+    When kullanıcı sayfayı yeniler
+    Then arayüzde koyu tema uygulanmış olarak kalır
+
+................................................................................
+KESIF-THEME-05   [P]   Tema Tercihinin Oturum Kapatıldıktan Sonra Korunması
+................................................................................
+  # Tema tercihi localStorage'da, oturum belirteci sessionStorage'da.
+  # Çıkış yapmak temayı SIFIRLAMAMALIDIR (canlı doğrulandı: sıfırlanmıyor).
+  Scenario: Tema Tercihinin Oturum Kapatılıp Tekrar Giriş Yapıldığında Korunması
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    And kullanıcı koyu temayı seçmiştir
+    When kullanıcı oturumu kapatır
+    Then login ekranında koyu tema uygulanmış olarak kalır
+    When kullanıcı tekrar giriş yapar
+    Then arayüzde koyu tema uygulanmış olarak kalır
+
+................................................................................
+KESIF-THEME-06   [P]   Giriş Yapmadan Login Ekranında Tema Değiştirilebilmesi
+................................................................................
+  Scenario: Oturum Açılmadan Login Ekranında Temanın Değiştirilebilmesi
+    Given kullanıcı oturum açmamış olarak login ekranındadır
+    And arayüzde açık tema uygulanmıştır
+    When kullanıcı tema değiştirici butonuna tıklar
+    Then arayüzde koyu tema uygulanır
+    And login formu görünür durumda kalır
+
+
+################################################################################
+# 18) YENİ DOSYA: features/navigation.feature         eklenecek: 9
+################################################################################
+
+KEŞİF BULGULARI (canlı doğrulandı)
+----------------------------------
+  • Yan menü: `sidebar-nav` (aria-label "Ana menü")
+      nav-customer-search  → <a href="/customers">
+      nav-customer-info    → <button> (href YOK)
+      nav-customer-create  → <a href="/customers/new">
+      nav-logout           → <button>
+  • Geniş ekran (≥768px): `topbar-menu-collapse` görünür
+      (aria-label "Menüyü daralt", aria-expanded="true")
+      → menüyü daraltır; link ETİKETLERİ gizlenir (text=""), linkler
+        tıklanabilir kalır
+      → tercih localStorage `etiya.sidebar.collapsed` ("true"/"false")
+      → sayfa yenilendiğinde KORUNUYOR
+  • Dar ekran (<768px): `topbar-menu-toggle` görünür, `sidebar-nav` gizli
+      → toggle menüyü çekmece (drawer) olarak açar
+      → `sidebar-close` ile kapatılır
+  • Bilinmeyen route (giriş yapılmışken): /bilinmeyen-sayfa → /customers
+    (ayrı bir 404 sayfası YOK)
+  • Üst barda `user-menu-name` ("Demo Kullanici") ve `user-menu-role`
+    ("CRM Kullanıcısı"); menü açılınca `user-menu-panel` ve
+    `user-menu-logout` DOM'a ekleniyor.
+
+  --- dosya başlığı önerisi ---
+  Feature: Uygulama Navigasyonu ve Yan Menü
+    Bir CRM kullanıcısı olarak,
+    ekran genişliğimden bağımsız olarak ana menüye erişebilmek ve menü
+    genişlik tercihimin hatırlanmasını istiyorum;
+    böylece dar ekranlarda da içerik alanını verimli kullanabilirim.
+
+................................................................................
+KESIF-NAV-01     [P]   Yan Menüdeki Bağlantılarla Sayfalar Arasında Geçiş
+................................................................................
+  Scenario Outline: Yan Menüdeki Bağlantılarla İlgili Ekrana Geçilmesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    And kullanıcı müşteri arama ekranındadır
+    When kullanıcı yan menüdeki "<menu_ogesi>" bağlantısına tıklar
+    Then kullanıcı "<beklenen_adres>" adresine yönlendirilir
+
+    Examples:
+      | menu_ogesi      | beklenen_adres |
+      | Müşteri Oluştur | /customers/new |
+      | Müşteri Arama   | /customers     |
+
+................................................................................
+KESIF-NAV-02     [P]   Geniş Ekranda Menünün Daraltılabilmesi
+................................................................................
+  Scenario: Geniş Ekranda Yan Menünün Daraltılması
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    And kullanıcı geniş bir ekran genişliğinde çalışmaktadır
+    And yan menü genişletilmiş durumdadır
+    When kullanıcı menü daraltma butonuna tıklar
+    Then yan menü daraltılmış olarak işaretlenir
+    And menü bağlantılarının metin etiketleri görüntülenmez
+
+................................................................................
+KESIF-NAV-03     [P]   Menü Daraltılmışken Bağlantıların Kullanılabilir Kalması
+................................................................................
+  Scenario: Yan Menü Daraltılmışken Menü Bağlantılarının Hâlâ Kullanılabilmesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    And kullanıcı yan menüyü daraltmıştır
+    Then menü bağlantıları görünür durumdadır
+    When kullanıcı yan menüdeki müşteri oluşturma bağlantısına tıklar
+    Then kullanıcı müşteri oluşturma ekranına yönlendirilir
+
+................................................................................
+KESIF-NAV-04     [P]   Menü Daraltma Tercihinin Kalıcı Olması
+................................................................................
+  Scenario: Menü Daraltma Tercihinin Sayfa Yenilense Dahi Korunması
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    And kullanıcı yan menüyü daraltmıştır
+    When kullanıcı sayfayı yeniler
+    Then yan menü daraltılmış olarak kalır
+
+................................................................................
+KESIF-NAV-05     [P]   Menünün Tekrar Genişletilebilmesi
+................................................................................
+  Scenario: Daraltılmış Yan Menünün Tekrar Genişletilmesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    And kullanıcı yan menüyü daraltmıştır
+    When kullanıcı menü daraltma butonuna tekrar tıklar
+    Then yan menü genişletilmiş olarak işaretlenir
+    And menü bağlantılarının metin etiketleri tekrar görüntülenir
+
+................................................................................
+KESIF-NAV-06     [P]   Dar Ekranda Menünün Çekmece Olarak Açılması
+................................................................................
+  Scenario: Dar Ekran Genişliğinde Yan Menünün Varsayılan Olarak Gizli Olması ve Açılabilmesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    And kullanıcı dar bir ekran genişliğinde çalışmaktadır
+    Then yan menü görüntülenmez
+    And menü açma butonu görüntülenir
+    When kullanıcı menü açma butonuna tıklar
+    Then yan menü görüntülenir
+
+................................................................................
+KESIF-NAV-07     [P]   Dar Ekranda Menünün Kapatılabilmesi
+................................................................................
+  Scenario: Dar Ekran Genişliğinde Açılan Yan Menünün Kapatma Butonuyla Gizlenmesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    And kullanıcı dar bir ekran genişliğinde çalışmaktadır
+    And kullanıcı yan menüyü açmıştır
+    When kullanıcı menü kapatma butonuna tıklar
+    Then yan menü görüntülenmez
+
+................................................................................
+KESIF-NAV-08     [N]   Tanımsız Bir Adreste Varsayılan Ekrana Yönlendirme
+................................................................................
+  Scenario: Tanımlı Olmayan Bir Adrese Gidildiğinde Kullanıcının Müşteri Arama Ekranına Yönlendirilmesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    When kullanıcı tanımlı olmayan bir adrese gitmeye çalışır
+    Then kullanıcı müşteri arama ekranına yönlendirilir
+    And arama filtreleri formu görüntülenir
+
+................................................................................
+KESIF-NAV-09     [P]   Kullanıcı Menüsünde Ad ve Rol Bilgisinin Görüntülenmesi
+................................................................................
+  Scenario: Üst Barda Oturum Açan Kullanıcının Adının ve Rolünün Görüntülenmesi
+    Given kullanıcı sisteme başarıyla giriş yapmıştır
+    Then kullanıcı menüsünde kullanıcı adı boş olmayan bir değerle görüntülenir
+    And kullanıcı menüsünde kullanıcı rolü boş olmayan bir değerle görüntülenir
+    When kullanıcı, kullanıcı menüsünü açar
+    Then kullanıcı menüsü paneli görüntülenir
+    And kullanıcı menüsü genişletilmiş olarak işaretlenir
+
+
+################################################################################
+#                            ÖZET VE ÖNCELİKLENDİRME                           #
+################################################################################
+
+DAĞILIM
+-------
+  Dosya                                       Mevcut  Yeni   Toplam
+  ------------------------------------------- ------  -----  ------
+  features/login.feature                          20     11      31
+  features/search_customers.feature               26     19      45
+  features/update_customer.feature                13      8      21
+  features/billing_account_products.feature        8      5      13
+  features/contact_update.feature                 14      3      17
+  features/address_update.feature                 11      2      13
+  features/language_support.feature                8      3      11
+  features/offer_selection.feature                12      9      21
+  features/product_configuration.feature           6      5      11
+  features/order_submission.feature                7      6      13
+  features/address_add.feature                     8      3      11
+  features/billing_account_create.feature         13      3      16
+  features/billing_account_update.feature          5      3       8
+  features/billing_account_delete.feature          6      2       8
+  features/create_customer.feature                17      5      22
+  features/delete_customer.feature                 7      4      11
+  features/theme_support.feature      (YENİ)       0      6       6
+  features/navigation.feature         (YENİ)       0      9       9
+  ------------------------------------------- ------  -----  ------
+  Değişen dosyalar toplamı                       181    106     287
+  Dokunulmayan 1 feature dosyası                   6      0       6
+  ------------------------------------------- ------  -----  ------
+  GENEL TOPLAM                                   187    106     293
+
+  Dokunulmayan tek dosya: address_delete (6 senaryo).
+  Adres kartı menüsü canlı olarak açıldı ve incelendi (address-card-edit
+  "Düzenle" / address-card-delete "Sil"); silme akışının onay penceresiz
+  çalışması ve tek adresli müşteride Sil'in pasif olması mevcut TC-008-01
+  … TC-008-06 senaryolarıyla zaten kapsandığından yeni senaryo
+  yazılmamıştır.
+
+TÜRE GÖRE
+---------
+  [P]   Pozitif ................... 60
+  [N]   Negatif ................... 20
+  [SDA] Sınır değer analizi ....... 16
+  [G]   Güvenlik ..................  3   (LOGIN-03, -04, -08)
+  [E]   Erişilebilirlik ...........  8   (LANG-01, PROD-04, PROD-05,
+                                          ADDR-02, CONFIG-03, CONFIG-04,
+                                          ADDADD-03, BADEL-01)
+  [!]   Kasıtlı kırmızı adayı ..... 14
+  (Bazı senaryolar birden fazla türe girdiği için toplamlar örtüşür; bu
+   nedenle tür toplamları 106'dan fazladır. Aşağıdaki kusur listesi 14 madde
+   içerir çünkü PROD-01/02 mevcut davranışı kilitler, kırmızı iddia etmez.)
+
+EN DEĞERLİ TEK BULGU — SIFIR KAPSAMLI GÜVENLİK AĞI
+---------------------------------------------------
+  KESIF-DEL-01/02/03: Aktif ürünü olan müşterilerde silmeyi engelleyen
+  uyarı paneli (`customer-info-delete-blocked`) features/, steps/ ve
+  pages/ genelinde HİÇ GEÇMİYOR. Bu, veri kaybını önleyen kritik bir
+  güvenlik ağının tamamen test edilmemiş olması demektir — bir regresyon
+  fark edilmeden üretime çıkabilir. Kapsama alınacak İLK senaryo bu
+  olmalıdır.
+
+TESPİT EDİLEN 14 KUSUR / ŞÜPHELİ DAVRANIŞ — ÖNCELİK SIRASIYLA
+--------------------------------------------------------------
+  1. KESIF-SEARCH-06  Account Number araması, ekranda GÖRÜNEN gerçek hesap
+                      numaralarıyla ("0000000001", "0000000002") hiçbir
+                      sonuç döndürmüyor. Filtre fiilen çalışmıyor.
+                      → İşlevsel kusur.
+
+  2. KESIF-OFFER-04   Sepet sunucu tarafında kalıcı ve yeni satış
+                      başlatılırken sıfırlanmıyor. Taze tarayıcı
+                      oturumunda dahi önceki satıştan kalan 6 satır /
+                      1.899,40 TL bulundu.
+                      → YANLIŞ SİPARİŞ RİSKİ. En yüksek iş etkisi.
+
+  3. KESIF-OFFER-01   Teklif adı filtresinde 'FIBER' → 0 sonuç, 'Fiber' /
+                      'fiber' / 'FiBeR' → 4 sonuç. Türkçe yerel ayarında
+                      I → ı küçültme hatası.
+                      → İşlevsel kusur; içinde "I" geçen tüm teklif
+                        adlarını etkiler.
+
+  4. KESIF-ORDER-05   Var olmayan sayısal bir fatura hesabı numarasıyla
+                      ("999999") satış akışı normal açılıyor. Geçersiz
+                      FORMAT ("abc") ise doğru şekilde engelleniyor.
+                      → Veri bütünlüğü riski.
+
+  5. KESIF-LOGIN-09   Hesap kilitliyken doğru şifre girildiğinde "kullanıcı
+                      adı veya şifre hatalı" deniyor.
+                      → Kullanıcı gereksiz yere şifre sıfırlamaya
+                        yönleniyor; destek maliyeti.
+
+  6. KESIF-ORDER-04   Sipariş Gönder adımındayken sayfa yenilenince
+                      kullanıcı Teklif Seçimi'ne düşüyor; tüm konfigürasyon
+                      değerleri ve adres seçimi kayboluyor.
+                      → Emek kaybı.
+
+  7. KESIF-CUST-07    Müşteri detayında sekme seçimi URL'ye yansımıyor;
+                      yenilemede aktif sekme kaybediliyor, sekme bağlantısı
+                      paylaşılamıyor.
+
+  8. KESIF-LOGIN-02   Derin route'larda yönlendirme parametresi
+                      üretilmiyor; giriş sonrası kullanıcı istediği sayfaya
+                      dönemiyor (sığ route'larda çalışıyor).
+
+  9. KESIF-OFFER-08   Kampanya satırında kampanyanın kendi adı hiç
+                      görüntülenmiyor; buna rağmen kampanya adıyla
+                      filtreleme yapılabiliyor.
+                      → Kullanıcı göremediği bir alana göre arıyor.
+
+ 10. KESIF-CONFIG-02  Konfigürasyon karakteristik alanlarında maxlength yok;
+      KESIF-ADDADD-02 300 karakterlik giriş kısaltılmadan kabul ediliyor.
+      KESIF-BACRE-03  Aynı eksiklik adres formundaki Sokak / Bina No /
+                      Açıklama ve fatura hesabı Açıklaması alanlarında da
+                      var. Buna karşılık Ad/Soyad (50), İkinci Ad (100) ve
+                      Kimlik No (11) sınırlı → uygulama genelinde TUTARSIZ.
+
+ 11. KESIF-ADDADD-03  81 öğelik şehir listesinde ne arama alanı ne de
+                      klavyeyle hızlı erişim (type-ahead) var; kullanıcı
+                      son illere ulaşmak için tüm listeyi kaydırmak
+                      zorunda.
+                      → Kullanılabilirlik + erişilebilirlik.
+
+ 12. KESIF-SEARCH-19  GSM ülke kodu seçicisi aria-expanded ile açılır
+                      kontrol olduğunu beyan ediyor ama hiçbir panel
+                      açmıyor.
+                      → Yanıltıcı arayüz + erişilebilirlik sorunu.
+
+ 13. KESIF-CREATE-04  Cinsiyet seçicisi varsayılan olarak "Erkek" seçili
+                      geliyor; kullanıcı hiç dokunmazsa tüm müşteriler
+                      erkek olarak kaydediliyor.
+                      → Veri kalitesi. Ürün sahibinin kararına bağlı;
+                        senaryo mevcut davranışı kilitler.
+
+ 14. KESIF-PROD-01/02 "Devret" ve "Hizmet Adresi Değişikliği" butonları
+                      aktif görünüyor ama hiçbir şey yapmıyor.
+                      → Prototip yer tutucusu. Senaryolar MEVCUT durumu
+                        kilitler (TC-013-04 ile aynı çerçeve); aksiyonlar
+                        işlevsel hale gelince bilinçli olarak kırmızıya
+                        döner ve kapsam güncellemesini tetikler.
+
+KEŞİFTE DOĞRULANIP KUSUR OLMADIĞI ANLAŞILAN NOKTALAR
+-----------------------------------------------------
+  Aşağıdakiler ilk gözlemde şüpheli görünmüş, hedefli sondajla DOĞRU
+  çalıştıkları teyit edilmiştir; senaryolar bu doğru davranışı regresyona
+  karşı kilitler:
+  • Account/Order Number alanlarında eksik haneli girişte doğrulama VAR;
+    uyarı `empty-state-message` içinde gösteriliyor (form hata alanında
+    değil). → KESIF-SEARCH-04/10/12
+  • Kampanya adı filtresi çalışıyor ve büyük/küçük harf duyarsız.
+    → KESIF-OFFER-07
+  • `address-card-primary` iki kartta birden bulunuyor çünkü bu bir ROZET
+    değil, `name="primaryAddress"` radio grubunun üyesi. → KESIF-CONFIG-04
+  • Kilit sunucu tarafında da uygulanıyor; localStorage'daki sayacı silmek
+    erişim sağlamıyor. → KESIF-LOGIN-08
+  • Clear, sonuçları varsayılan listeye ve ilk sayfaya döndürüyor.
+    → KESIF-SEARCH-17
+  • "Geri" ile dönüldüğünde sepet, konfigürasyon değerleri ve adres seçimi
+    korunuyor (mevcut TC-015-05 / TC-016-04 kapsıyor).
+  • Fatura hesabı DÜZENLEME formunda zorunlu alan boşaltılınca hata
+    çıkıyor ve Kaydet pasifleşiyor. İlk turda ".clear()" kullanıldığı için
+    Angular'ın "touched" durumu tetiklenmemiş ve kusur sanılmıştı; doğru
+    ölçüm (Ctrl+A → Backspace → Tab) ile davranış DOĞRU çıktı.
+    → Mevcut TC-011-03 geçerlidir. → KESIF-BAUPD-02
+  • Silme onay pencereleri GERÇEK Escape tuşuyla kapanıyor. İlk turda
+    Escape sentetik bir KeyboardEvent olarak gönderildiği için pencere
+    kapanmamış ve kusur sanılmıştı. → KESIF-BADEL-02, KESIF-DEL-04
+  • Onay pencerelerinde açılışta odak "Hayır" butonunda — güvenli
+    varsayılan. → KESIF-BADEL-01
+
+  METODOLOJİK NOT: Yukarıdaki beş maddenin tamamı, ilk gözlemde KUSUR
+  sanılıp hedefli bir doğrulama turuyla ÇÜRÜTÜLMÜŞTÜR. Keşif testinde ilk
+  gözlem çoğu zaman ölçüm yönteminin kendisinden kaynaklanan bir yanılgı
+  taşır; her şüpheli bulgu, kusur olarak raporlanmadan önce farklı bir
+  yöntemle tekrar ölçülmelidir.
+
+UYGULAMA SIRASI ÖNERİSİ
+-----------------------
+  1. Müşteri silme engelleme uyarısı (KESIF-DEL-01/02/03) — 3 senaryo.
+     Sıfır kapsamlı KRİTİK güvenlik ağı. En küçük iş, en yüksek risk
+     azaltımı. Ayrıca TC-005-01'in hangi müşteriyle çalıştığı bu vesileyle
+     gözden geçirilmelidir.
+  2. Satış akışı senaryoları (OFFER + CONFIG + ORDER) — 20 senaryo.
+     En yüksek iş etkisi taşıyan 5 kusurun 4'ü burada.
+  3. Bölüm 2'deki iki yeni dosya (theme_support, navigation) — 15 senaryo.
+     Tamamen boş alanlar; en yüksek kapsam kazancı, en düşük çakışma riski.
+  4. search_customers'a Account/Order Number senaryoları — 12 senaryo.
+     Hiç test edilmemiş iki alan + bir işlevsel kusur.
+  5. login.feature oturum/güvenlik senaryoları — 11 senaryo.
+  6. Form senaryoları (ADDADD, BACRE, BAUPD, BADEL, CREATE) — 16 senaryo.
+     Karakter sınırı eksikliği tek bir Scenario Outline deseniyle tüm
+     formlarda paylaşılabilir.
+  7. Kalan detay ekranı senaryoları (CUST, PROD, CONTACT, ADDR, LANG).
+
+NOT — KEŞİF SIRASINDA YAPILAN ORTAM DEĞİŞİKLİKLERİ
+--------------------------------------------------
+  • Kilit davranışını doğrulamak için `demo` hesabı bilinçli olarak 5 kez
+    hatalı şifreyle denendi ve 15 dakika kilitlendi. Kilit süresi dolmuş,
+    `etiya.loginAttempts` sayacı temizlenmiş ve hesapla tekrar başarıyla
+    giriş yapılmıştır. Ortamda kalıcı bir değişiklik BIRAKILMAMIŞTIR.
+  • Hiçbir müşteri, adres veya fatura hesabı kaydı oluşturulmamış /
+    değiştirilmemiş / silinmemiştir. Veri giriş formları için izlenen
+    yöntem:
+      - "Yeni Adres Ekle"      → açıldı, incelendi, İPTAL ile kapatıldı
+                                 (adres kartı sayısı 2 → 2)
+      - "Yeni Hesap Oluştur"   → açıldı, incelendi, İPTAL ile kapatıldı
+                                 (hesap satırı sayısı 2 → 2)
+      - "Hesabı Düzenle"       → açıldı, incelendi, İPTAL ile kapatıldı
+                                 (hesap adları değişmedi)
+      - Hesap silme onayı      → açıldı, "Hayır" ile kapatıldı
+      - Müşteri silme          → müşteri 1 ve 2'de engelleme uyarısı çıktı
+                                 (kapatıldı); müşteri 3'te onay penceresi
+                                 açıldı ve "Hayır" ile kapatıldı
+      - Müşteri oluşturma      → 1. ve 2. adım gezildi, "Oluştur" adımına
+                                 hiç gidilmedi, akış terk edildi
+  • Satış akışı uçtan uca gezilmiş, ancak "Gönder" butonuna BİLEREK
+    basılmamıştır → ortamda GERÇEK SİPARİŞ OLUŞTURULMAMIŞTIR. Butonun
+    aktif olduğu ve o anda hata alanı bulunmadığı doğrulanmıştır.
+  • Keşif sırasında sepete teklif eklenmiş, son turda sepet "Temizle" ile
+    boşaltılmıştır. Ancak KESIF-OFFER-04'te belgelenen kalıcı sepet
+    davranışı nedeniyle, satış akışı ilk açıldığında sepette artık kayıt
+    görülürse kaynağı bu keşif turları olabilir — akışa girip "Temizle"
+    ile boşaltmak yeterlidir.

@@ -56,3 +56,35 @@ Feature: Kontakt Bilgilerinin Güncellenmesi
     Given kullanıcı düzenleme formundadır
     When telefon numarası değiştirilir
     Then Mobile/Home Phone/Fax alanlarının önünde sabit "+90" ülke kodu değişmeden görüntülenmeye devam eder
+
+  Scenario: TC-EACRML-009-11 - Mobile Phone Alanına 9 Haneli (Bir Eksik) Değer Girildiğinde Doğrulama Hatasının Gösterilmesi
+    Given kullanıcı düzenleme formundadır
+    When Mobile Phone alanına 9 haneli geçerli formatta bir değer girilir
+    Then hata gösterilir ve Kaydet butonu pasif kalır
+
+  Scenario: TC-EACRML-009-12 - Mobile Phone Alanına Tam 10 Haneli Değer Girildiğinde Doğrulamanın Başarıyla Geçmesi
+    Given kullanıcı düzenleme formundadır
+    When Mobile Phone alanına tam 10 haneli geçerli bir değer girilir
+    Then herhangi bir doğrulama hatası gösterilmez ve Kaydet butonu aktif hale gelir
+
+  # DİNAMİK + DİLDEN BAĞIMSIZ: 3 farklı telefon alanı (Mobile Phone
+  # zorunlu, Home Phone/Fax opsiyonel) AYNI "en fazla 10 hane" input-
+  # seviyesi kısıtlamasını paylaşıyor - tek bir Scenario Outline'da
+  # konsolide edildi (TC-009-13 + TC-009-15, INVEST/DRY - üç ayrı, neredeyse
+  # birebir aynı senaryo yazmak yerine). Kontrol tamamen yapısal (girilen
+  # değerin uzunluğu), literal metin/mesaj karşılaştırmıyor.
+  Scenario Outline: TC-EACRML-009-13/009-15 - Telefon Alanlarına 10 Haneden Fazla Rakam Girilmeye Çalışıldığında Fazla Hanelerin Kabul Edilmemesi
+    Given kullanıcı düzenleme formundadır
+    When "<alan>" alanına 11 haneli bir değer girilmeye çalışılır
+    Then alan yalnızca ilk 10 haneyi kabul eder
+
+    Examples:
+      | alan         |
+      | Mobile Phone |
+      | Home Phone   |
+      | Fax          |
+
+  Scenario: TC-EACRML-009-14 - Email Alanının Çok Uzun Bir Değeri HTML Seviyesinde Bir Üst Karakter Sınırı Olmadan Kabul Etmesi
+    Given kullanıcı düzenleme formundadır
+    When Email alanına formatça geçerli ama çok uzun (150+ karakter) bir değer girilir
+    Then alan girilen değerin tamamını kabul eder, herhangi bir HTML seviyesi kısıtlama uygulanmaz

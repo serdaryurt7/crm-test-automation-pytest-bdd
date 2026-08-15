@@ -109,6 +109,16 @@ def field_rejects_text_beyond_limit(typed_description_value):
     assert len(typed_description_value) < 3000
 
 
+@when(parsers.parse('"{alan}" alanına {uzunluk:d} karakterlik bir metin girilir'), target_fixture="typed_field_value")
+def user_types_long_value_in_text_field(address_page, alan, uzunluk):
+    return address_page.attempt_to_type_long_value_in_text_field(alan, uzunluk)
+
+
+@then("alan girilen 500 karakterlik değerin tamamını kabul eder")
+def field_accepts_full_500_char_value(typed_field_value):
+    assert len(typed_field_value) == 500
+
+
 @given("müşterinin birden fazla adresi vardır")
 def customer_has_multiple_addresses(address_page):
     address_page.click_add_address()

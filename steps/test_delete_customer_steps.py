@@ -99,16 +99,13 @@ def deleted_customer_not_in_search_results(delete_customer_page, driver):
     customer_id = delete_customer_page.get_customer_id()
     delete_customer_page.wait_for_redirect_to_search()
     customers_page = CustomersPage(driver)
-    customers_page.enter_customer_id(customer_id)
-    customers_page.submit_search()
-    customers_page.wait_for_no_results_state()
+    assert customers_page.wait_for_customer_id_search_to_show_no_results(customer_id)
 
 
 @then('silinen müşterinin eski detay ekranına doğrudan gidildiğinde bir "bulunamadı" durumu görüntülenir')
 def deleted_customer_direct_url_shows_error(delete_customer_page):
     delete_customer_page.wait_for_redirect_to_search()
-    delete_customer_page.reload_detail_url()
-    assert delete_customer_page.is_empty_state_message_displayed()
+    assert delete_customer_page.wait_for_deleted_customer_not_found_after_reload()
 
 
 @given(

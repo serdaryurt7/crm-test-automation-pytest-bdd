@@ -41,6 +41,16 @@ class ContactUpdatePage:
         "Mobile Phone": MOBILE_PHONE_ERROR,
     }
 
+    # TC-009-13/009-15 için: 3 telefon alanı (Mobile Phone zorunlu,
+    # Home Phone/Fax opsiyonel) AYNI "en fazla 10 hane" input-seviyesi
+    # kısıtlamasını paylaşıyor - REQUIRED_FIELD_LOCATORS ile AYNI dinamik
+    # eşleme deseni, ama üçüncü (opsiyonel) alanları da kapsıyor.
+    ALL_PHONE_FIELD_LOCATORS = {
+        "Mobile Phone": MOBILE_PHONE_INPUT,
+        "Home Phone": HOME_PHONE_INPUT,
+        "Fax": FAX_INPUT,
+    }
+
     def __init__(self, driver):
         self.driver = driver
         self.wait = WebDriverWait(driver, 10)
@@ -153,6 +163,57 @@ class ContactUpdatePage:
         invalid_value = "05551234"
         self.update_mobile_phone(invalid_value)
         return invalid_value
+
+    def enter_mobile_phone_nine_digits(self):
+        # TC-009-04'teki (8 hane) ile AYNI desen - "bir eksik" sınır
+        # değerin 9 hanelik karşılığı. Türkiye GSM formatı "5 ile başlayan
+        # 10 hane" olduğundan (create_customer_page.py ile aynı kural),
+        # 9 hane de tanımlı formatın DIŞINDA - hata beklenmesi doğru.
+        invalid_value = "555123456"
+        self.update_mobile_phone(invalid_value)
+        return invalid_value
+
+    def enter_mobile_phone_ten_digits(self):
+        valid_value = "5551234567"
+        self.update_mobile_phone(valid_value)
+        return valid_value
+
+    def wait_for_no_mobile_phone_error_and_save_enabled(self):
+        # "herhangi bir doğrulama hatası gösterilmez" negatif bir durumu
+        # doğrudan/erken kanıtlamaya çalışmak yerine (TC-004-11'de
+        # kaçınılan AYNI tuzak) - önce POZİTİF/nihai durumu (Kaydet
+        # butonunun GERÇEKTEN enabled olması, ki bu zaten Angular'ın form
+        # geçerlilik hesaplamasının hata bulmadığını kanıtlar) bekliyoruz,
+        # sonra o ANDAKİ hata elementinin durumunu ek bir doğrulama olarak
+        # okuyoruz.
+        self.wait.until(lambda d: not self.is_save_button_disabled())
+        errors = self.driver.find_elements(*self.MOBILE_PHONE_ERROR)
+        assert not errors or not errors[0].is_displayed() or not errors[0].text.strip(), (
+            "Kaydet butonu aktif olmasına rağmen Mobile Phone hata mesajı hâlâ görünür"
+        )
+
+    def attempt_to_type_eleven_digits_in_phone_field(self, field_label):
+        # ALL_PHONE_FIELD_LOCATORS ile dinamik eşleme - Mobile Phone/Home
+        # Phone/Fax'ın ÜÇÜ de aynı mekanizmayı (native <input> maxlength)
+        # paylaştığından tek bir metotla test edilebiliyor.
+        locator = self.ALL_PHONE_FIELD_LOCATORS[field_label]
+        field = self.driver.find_element(*locator)
+        field.click()
+        field.send_keys(Keys.CONTROL + "a")
+        field.send_keys(Keys.BACK_SPACE)
+        field.send_keys("55512345678")  # 11 hane
+        return field.get_attribute("value")
+
+    def attempt_to_type_long_valid_email(self, total_length=150):
+        # Uzun ama FORMATÇA GEÇERLİ bir email (geçerli bir domain ile
+        # bitiyor, "@" öncesi karakter sayısı uzatılarak toplam uzunluk
+        # ayarlanıyor) - HTML seviyesinde bir maxlength olup olmadığını
+        # test etmek için; alanın kendi format doğrulamasını (nokta/@
+        # kuralı) TETİKLEMEDEN yalnızca uzunluk sınırını izole ediyor.
+        domain = "@example.com"
+        long_email = ("a" * (total_length - len(domain))) + domain
+        self.update_email(long_email)
+        return long_email
 
     def clear_required_field(self, field_label):
         locator = self.REQUIRED_FIELD_LOCATORS[field_label]

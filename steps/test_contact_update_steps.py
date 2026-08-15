@@ -237,3 +237,38 @@ def phone_number_is_changed(contact_page):
 @then('Mobile/Home Phone/Fax alanlarının önünde sabit "+90" ülke kodu değişmeden görüntülenmeye devam eder')
 def country_code_remains_fixed(contact_page):
     assert contact_page.is_country_code_fixed_at_plus_90()
+
+
+@when("Mobile Phone alanına 9 haneli geçerli formatta bir değer girilir")
+def user_enters_nine_digit_mobile_phone(contact_page):
+    contact_page.enter_mobile_phone_nine_digits()
+
+
+@when("Mobile Phone alanına tam 10 haneli geçerli bir değer girilir")
+def user_enters_ten_digit_mobile_phone(contact_page):
+    contact_page.enter_mobile_phone_ten_digits()
+
+
+@then("herhangi bir doğrulama hatası gösterilmez ve Kaydet butonu aktif hale gelir")
+def no_error_and_save_enabled(contact_page):
+    contact_page.wait_for_no_mobile_phone_error_and_save_enabled()
+
+
+@when(parsers.parse('"{alan}" alanına 11 haneli bir değer girilmeye çalışılır'), target_fixture="typed_phone_value")
+def user_attempts_eleven_digits_in_phone_field(contact_page, alan):
+    return contact_page.attempt_to_type_eleven_digits_in_phone_field(alan)
+
+
+@then("alan yalnızca ilk 10 haneyi kabul eder")
+def phone_field_capped_at_ten_digits(typed_phone_value):
+    assert len(typed_phone_value) == 10, f"Beklenen 10 hane, gelen: {typed_phone_value!r} ({len(typed_phone_value)} hane)"
+
+
+@when("Email alanına formatça geçerli ama çok uzun (150+ karakter) bir değer girilir", target_fixture="typed_long_email")
+def user_enters_long_valid_email(contact_page):
+    return contact_page.attempt_to_type_long_valid_email(150)
+
+
+@then("alan girilen değerin tamamını kabul eder, herhangi bir HTML seviyesi kısıtlama uygulanmaz")
+def email_field_accepts_full_long_value(contact_page, typed_long_email):
+    assert contact_page.driver.find_element(*contact_page.EMAIL_INPUT).get_attribute("value") == typed_long_email

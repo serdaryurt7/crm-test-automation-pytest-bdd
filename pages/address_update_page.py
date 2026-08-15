@@ -148,6 +148,28 @@ class AddressUpdatePage:
         )
         return field.get_attribute("value")
 
+    def attempt_to_type_long_value_in_text_field(self, field_label, length):
+        # attempt_to_type_long_description() ile AYNI JS native value-setter
+        # tekniği (klavye ile binlerce karakter yazmak yerine performans
+        # için) - ama STREET_INPUT/BUILDING_INPUT birer <input>
+        # (DESCRIPTION_INPUT'un <textarea> olmasının aksine), bu yüzden
+        # HTMLInputElement prototype kullanılıyor
+        # (billing_account_create_page.py'deki type_long_account_name() ile
+        # AYNI desen). REQUIRED_TEXT_FIELD_LOCATORS dict'i yeniden
+        # kullanılıyor - Sokak/Bina No/Açıklama etiketleri zaten orada
+        # tanımlı (DRY, TC-EACRML-006-03 ile AYNI dinamik eşleme).
+        locator = self.REQUIRED_TEXT_FIELD_LOCATORS[field_label]
+        field = self.driver.find_element(*locator)
+        self.driver.execute_script(
+            "const el = arguments[0];"
+            "const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;"
+            "setter.call(el, arguments[1]);"
+            "el.dispatchEvent(new Event('input', {bubbles: true}));",
+            field,
+            "a" * length,
+        )
+        return field.get_attribute("value")
+
     def click_add_address(self):
         self.wait.until(EC.element_to_be_clickable(self.ADD_ADDRESS_BUTTON)).click()
         self.wait.until(EC.visibility_of_element_located(self.STREET_INPUT))

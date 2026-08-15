@@ -1,0 +1,149 @@
+FAILED TEST LİSTESİ - GÜNCEL DURUM [2026-08-14, bu oturumun sonu]
+Kaynak: 2 ayrı tam suite çalıştırması + tüm yeni/şüpheli failure'ların izole
+triyajı. bugsbunny.txt'nin devamı/güncel anlık görüntüsü - o dosyaya
+DOKUNULMADI, bu YENİ ve bağımsız bir özet dosyası.
+
+===========================================================
+KOŞUM #1 (düzeltmelerden ÖNCE): 203 passed, 11 failed, 1sa 1dk 4sn
+KOŞUM #2 (düzeltmelerden SONRA): 204 passed, 10 failed, 50dk 21sn
+===========================================================
+
+Bu oturumda eklenen ~30+ yeni test (search_customers, create_customer,
+update_customer, delete_customer, address_update, contact_update) dahil,
+suite artık 214 test içeriyor (166→187→214, önceki oturumlardan bu yana).
+
+===========================================================
+BÖLÜM A: BU OTURUMDA DÜZELTİLEN GERÇEK HATALAR (2 adet)
+===========================================================
+
+1. steps/test_delete_customer_steps.py
+   test_tceacrml00505__silinen_müşterinin_arama_sonuçlarında_artık_görüntülenmemesi
+   test_tceacrml00506__silinen_müşterinin_detay_ekranına_doğrudan_erişilmeye_çalışılması
+   Durum: DÜZELTİLDİ (koşum #1'de FAILED, koşum #2'de PASSED).
+   Kök neden (canlı doğrulandı): Müşteri silme işlemi HER müşteri için
+   (aktif ürünü olmasa dahi) ASENKRON tamamlanıyor - yönlendirme HEMEN
+   oluyor ama backend'deki gerçek silme birkaç saniye sürebiliyor (TC-005-
+   03'teki "fatura hesapları kontrol edildikten sonra tamamlanacak"
+   toast'ı ile AYNI kök neden - aktif ürünü olmayan müşteriler için de
+   geçerli). TEK BİR reload/arama denemesi bu gecikmeyi kaçırıp henüz
+   silinmemiş müşteriyi normal şekilde gösterebiliyordu.
+   İLK DÜZELTME DENEMESİ BAŞARISIZ OLDU: WebDriverWait'in kendi ~0.5sn'lik
+   polling'i İÇİNDE driver.get() ile SIKI/hızlı ardışık reload denemek
+   BEKLENMEYEN bir yan etkiye yol açtı - hızlı ardışık reload'lar oturumu
+   düşürdü (login ekranına ?redirectTo=... ile yönlendirildik, ekran
+   görüntüsüyle kanıtlandı). NİHAİ düzeltme: DAHA SEYREK (2sn arayla, en
+   fazla 6 deneme) ve WebDriverWait yerine açık bir döngü kullanıldı -
+   hem asenkron gecikmeyi tolere ediyor hem sıkı-reload yan etkisinden
+   kaçınıyor. Değişen dosyalar: pages/delete_customer_page.py
+   (wait_for_deleted_customer_not_found_after_reload),
+   pages/search_customers_page.py
+   (wait_for_customer_id_search_to_show_no_results).
+   Doğrulama: delete_customer.feature'ın TAMAMI izole olarak 2 kez daha
+   çalıştırıldı, ikisinde de 6/7 PASSED (yalnızca kasıtlı kırmızı TC-005-
+   03 FAILED kaldı - beklenen).
+
+===========================================================
+BÖLÜM B: BİLİNEN / KASITLI KIRMIZI TESTLER (bugsbunny.txt ile TUTARLI,
+her iki koşumda da tutarlı şekilde FAILED - devam ediyor, aksiyon
+gerekmiyor)
+===========================================================
+
+2. steps/test_address_update_steps.py :: test_tceacrml00605b (TC-006-05b)
+   Açıklama alanı için tanımlı bir üst karakter sınırı YOK (3000+ karakter
+   sorunsuz kabul ediliyor) - manuel case'in "sınır var" varsayımı yanlış.
+   bugsbunny.txt madde 6 ile aynı.
+
+3. steps/test_billing_account_create_steps.py :: test_tceacrml01009b (TC-010-09b)
+   Hesap Adı alanı için de aynı şekilde üst karakter sınırı YOK.
+   bugsbunny.txt madde 7 ile aynı.
+
+4. steps/test_billing_account_update_steps.py :: test_tceacrml01102 (TC-011-02)
+   steps/test_billing_account_update_steps.py :: test_tceacrml01104 (TC-011-04)
+   Hesap düzenleme formunda hizmet adresi değişikliği kaydedilmiyor (Hesap
+   Adı değişikliği kaydediliyor, adres değişikliği sessizce kayboluyor).
+   Gerçek, canlı doğrulanmış bug. bugsbunny.txt madde 1-2 ile aynı.
+
+5. steps/test_delete_customer_steps.py :: test_tceacrml00503 (TC-005-03)
+   [BU OTURUMDA YENİ İMPLEMENTE EDİLDİ] Aktif ürünü olan bir MÜŞTERİ,
+   hiçbir engelleme olmadan silinebiliyor. Kasıtlı kırmızı - spesifikasyonun
+   doğru davranışını assert ediyor, bilinen defekt düzelene kadar FAILED
+   kalması BEKLENEN/İSTENEN sonuç. Her iki koşumda da tutarlı FAILED.
+   bugsbunny.txt madde 17 ile aynı - TC-012-03 (madde 3, aşağıda) ile aynı
+   kök nedene işaret ediyor olabilir (sistemik: "aktif ürünü olan varlık
+   silinemez" kuralı müşteri VE fatura hesabı seviyesinde tutarsız).
+
+6. steps/test_login_steps.py :: test_tanımsız_kullanıcı_için_5_başarısız...[admin-123]
+   Tanımsız/var olmayan bir kullanıcı adıyla 5 hatalı denemeden sonra
+   sistem yanlışlıkla "hesabınız 15 dakika kilitlendi" mesajı gösteriyor
+   (olmayan bir hesap kilitlenemez). bugsbunny.txt madde 5 ile aynı.
+
+7. steps/test_offer_selection_steps.py :: test_tceacrml01413 (TC-014-13)
+   Sepete mükerrer ekleme ŞU AN engellenmiyor (aynı ürün 2. kez eklenince
+   ayrı satır oluşuyor, toplam 2 katına çıkıyor). bugsbunny.txt madde 4 ile
+   aynı.
+
+===========================================================
+BÖLÜM C: FLAKY (ORTAM/ZAMAN KAYNAKLI, İZOLE ÇALIŞTIRMADA PASSED) -
+kalıcı bir regresyon DEĞİL, aksiyon gerekmiyor, izlenmeye devam edilmeli
+===========================================================
+
+8. steps/test_address_add_steps.py :: test_tceacrml00705 (koşum #2'de FAILED)
+   steps/test_address_update_steps.py :: test_tceacrml00604 (koşum #2'de FAILED)
+   bugsbunny.txt madde 8-9 ile aynı, o dosyada da "flake ihtimali daha
+   güçlü" olarak zaten not edilmişti - bu oturumda TEKRAR gözlendi (koşum
+   #1'de PASSED, koşum #2'de FAILED), tutarsız davranış flaky teşhisini
+   pekiştiriyor.
+
+9. steps/test_billing_account_delete_steps.py :: test_tceacrml01203 (TC-012-03)
+   Koşum #1'de FAILED, koşum #2'de PASSED. bugsbunny.txt madde 3 ile aynı
+   ("ortam/zaman kaynaklı tutarsızlık" olarak zaten belgeliydi) - bu
+   oturum bunu YENİDEN doğruladı, iki koşum arasındaki tutarsızlık
+   flaky/inconsistent teşhisini teyit ediyor.
+
+10. steps/test_offer_selection_steps.py :: test_tceacrml01412 (TC-014-12)
+    Koşum #1'de FAILED (StaleElementReferenceException), izole triyajda
+    PASSED. Kök neden: pages/offer_selection_page.py'deki self.wait =
+    WebDriverWait(driver, 10) diğer bazı page object'lerin (ör.
+    search_customers_page.py) aksine ignored_exceptions=(StaleElement
+    ReferenceException,) KULLANMIYOR - bu, DOM yeniden render edilirken
+    (yoğun/uzun suite koşumlarında daha olası) ara sıra stale referans
+    yakalayabiliyor. Kalıcı bir davranış bozukluğu değil, ama page
+    object'in kendisi diğerleriyle TUTARSIZ bir wait yapılandırmasına
+    sahip - küçük bir iyileştirme fırsatı olarak not ediliyor (bu turda
+    DÜZELTİLMEDİ, sadece belgelendi).
+
+11. steps/test_login_steps.py :: test_giriş_işlemi_sırasında_login_butonunun_pasifleşmesi
+    Koşum #2'de FAILED, izole triyajda PASSED (4/4). Kök neden zaten
+    pages/login_page.py'nin kendi kod yorumunda belgeli: Login butonunun
+    disabled kaldığı pencere ÇOK KISA (~60-200ms, canlı ölçülmüş) - bu
+    pencere WebDriverWait'in varsayılan polling aralığından DAHA DAR,
+    yani DIŞARIDAN periyodik yoklamaya dayalı HER ÇÖZÜM bu geçişi şansa
+    bağlı olarak kaçırabilir (MutationObserver tabanlı bir çözüm zaten
+    var ama yine de ara sıra kaçırabiliyor). Kalıcı bir regresyon değil,
+    testin kendi doğasında var olan bir zamanlama hassasiyeti.
+
+===========================================================
+BÖLÜM D: BU OTURUMDA EKLENEN YENİ TESTLERİN TAMAMI - PASSED
+===========================================================
+
+Bu oturumda search_customers, create_customer, update_customer,
+delete_customer (TC-005-03 hariç, bkz. Bölüm B madde 5),
+address_update ve contact_update feature'larına eklenen ~30 yeni test
+case'in tamamı (Türkçe alfabe normalizasyonu düzeltmesi dahil) hem
+kendi izole doğrulamalarında hem de bu 2 tam suite koşumunda tutarlı
+şekilde PASSED verdi. Detaylar için bkz. test-design/final-test-set/*.md
+ve bugsbunny.txt madde 18-20.
+
+===========================================================
+ÖZET
+===========================================================
+
+- Toplam: 214 test, 204 passed / 10 failed (en güncel koşum #2).
+- 10 failure'ın 7'si kasıtlı kırmızı (spesifikasyonun doğru davranışını
+  izleyen, bilinen uygulama defektlerini yakalayan testler - kod hatası
+  DEĞİL).
+- 4'ü (bazıları aynı test'in farklı koşumlarda farklı sonuç vermesi
+  dahil) ortam/zaman kaynaklı flaky - izole çalıştırmalarda PASSED.
+- Bu oturumda 2 GERÇEK test-mantığı hatası (TC-005-05/06, asenkron silme
+  yarış durumu) bulunup düzeltildi.
+- Sıfır yeni, açıklanamayan/triyaj edilmemiş failure kalmadı.
