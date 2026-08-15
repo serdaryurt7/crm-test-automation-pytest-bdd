@@ -26,7 +26,9 @@
 | **Faz A+B** | `utils/config.py` + `steps/conftest.py::authenticated_driver` | ✅ Tamam (`fc697f3`) |
 | **Faz C** | `new_customer` / `disposable_customer` factory fixture'ları | ✅ Tamam (`92404f3`) |
 | **Faz D** | `utils/test_data.py` (11 ayrı Faker örneği) | ✅ Tamam (`3e49afd`) |
-| Faz E | Step'lerdeki ham `By`/`WebDriverWait` (opsiyonel) | ⏳ Risk/getiri zayıf |
+| **Faz G** | Repo hijyeni (K1/K2/K3/K5) + CI iş akışı | ✅ Tamam (`5625720`, `12f9a93`) |
+| Faz E | Step'lerdeki ham `By`/`WebDriverWait` (24 + 23) | ⏳ Risk/getiri zayıf |
+| Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Önerilen sıradaki adım |
 
 ### Faz 0 — Yapılanlar
 
@@ -1621,54 +1623,58 @@ def user_on_address_tab(driver, disposable_customer):
 
 ## 8. Yol Haritası
 
-### Sprint 1 — Hijyen ve Temel (½ gün, düşük risk)
+### Sprint 1 — Hijyen ve Temel
 
-| # | İş | Süre |
+| # | İş | Durum |
 |---|---|---|
-| 1 | `README.md` merge conflict'ini çöz | 10 dk |
-| 2 | `git restore test-design/` (silme kasıtlı değilse) | 2 dk |
-| 3 | `requirements.txt` sürümlerini sabitle + `requirements.lock.txt` | 20 dk |
-| 4 | `.env.example` oluştur | 10 dk |
-| 5 | `reports/allure-results-*` artık klasörlerini temizle | 5 dk |
-| 6 | `project_brain.txt`'i `docs/`'a taşı veya `.gitignore`'a al | 5 dk |
-| 7 | `pytest.ini`'ye `--strict-markers -ra --tb=short` + yeni marker'lar ekle | 20 dk |
+| 1 | `README.md` merge conflict'ini çöz | ✅ Faz G |
+| 2 | `test-design/` geri al | ✅ Faz G — kod yorumları bu dosyalara atıf yapıyordu |
+| 3 | `requirements.txt` sürümlerini sabitle | ✅ Faz G (8/8) |
+| 4 | `.env.example` oluştur | ⏳ Ortam değişkenleri README'de tablolandı; ayrı dosya hâlâ yok |
+| 5 | `reports/allure-results-*` artık klasörlerini temizle | ✅ Faz G (15→6 MB) |
+| 6 | ~~`project_brain.txt`'i taşı veya gitignore'a al~~ | ❌ **Geri çekildi** — bkz. K6 |
+| 7 | `pytest.ini`'ye `--strict-markers -ra --tb=short` ekle | ⏳ 20 dk, düşük risk |
 
-### Sprint 2 — Ortak Altyapı (2 gün, orta risk)
+### Sprint 2 — Ortak Altyapı
 
-| # | İş | Etki | Durum |
-|---|---|---|---|
-| 8 | `utils/config.py` + `.env` kimlik bilgileri | 18 sabit kodlanmış şifre yok olur | ⏳ |
-| 9 | `pages/base_page.py` + 13 sınıfı ona bağla | Timeout tek yerden; stale koruması her yerde | ✅ `ecf6251` |
-| 10 | `utils/text.py` (Türkçe katlama dışarı çıkar) | Dil bağımsızlığı tüm projede kullanılabilir | ⏳ |
-| 11 | `utils/logger.py` | CI'da hata ayıklama mümkün olur | ⏳ |
-| 12 | `conftest.py`'ye `logged_in` fixture'ı | 17 dosyadaki login tekrarı biter | ⏳ |
-
-### Sprint 3 — Tekrarın Ortadan Kaldırılması (2 gün, orta risk)
-
-| # | İş | Etki | Durum |
-|---|---|---|---|
-| 13 | `conftest.py`'ye `disposable_customer` fixture'ı | 14 dosyada 20 satır → 2 satır | ⏳ |
-| 14 | `utils/test_data.py` + `FIELD_LIMITS` | SDA senaryoları tek kaynaktan beslenir | ⏳ |
-| 15 | `utils/waits.py`; poll döngülerini `poll_until`'e taşı | Niyet kodda görünür olur | ✅ Faz 2 |
-| 15b | `create_customer`'daki 3 sabit beklemeyi `wait_for_dom_settled`'a taşı | CI'da 300ms varsayımı kırılmaz | ⏳ CI öncesi |
-| 16 | Step'lerdeki ~48 çıplak `WebDriverWait`'i page metotlarına taşı | Katman ihlali biter | ⏳ |
-| 17 | `create_customer_page.py`'yi 3 sınıfa böl | 735 satırlık dosya biter | ⏳ |
-
-### Sprint 4 — CI/CD ve Ölçek (2 gün, yüksek değer)
-
-| # | İş | Etki |
+| # | İş | Durum |
 |---|---|---|
-| 18 | `.github/workflows/tests.yml` — her PR'da smoke, gecelik full | Framework gerçek bir kalite kapısı olur |
-| 19 | `pytest-rerunfailures` ekle (`--reruns 2`) | Flaky ile gerçek hata ayrışır |
-| 20 | Allure'a `@allure.severity`, `epic`, `story` etiketleri | Rapor gruplanabilir hale gelir |
-| 21 | `utils/api_client.py` ile kurulumu API'ye taşı | Koşum süresi **~%60 azalır** |
-| 22 | Test izolasyonu (sepet temizleme) → sonra `pytest-xdist` | Paralel koşum güvenli hale gelir |
+| 8 | `utils/config.py` + ortam değişkeninden kimlik bilgileri | ✅ Faz A |
+| 9 | `pages/base_page.py` + 13 sınıfı ona bağla | ✅ Faz 1 |
+| 10 | `utils/text.py` (Türkçe katlama dışarı çıkar) | ⏳ Şu an yalnızca `search_customers_page.py` içinde |
+| 11 | `utils/logger.py` | ⏳ CI'da hata ayıklama için |
+| 12 | `conftest.py`'ye login fixture'ı | ✅ Faz B (`authenticated_driver`) |
+
+### Sprint 3 — Tekrarın Ortadan Kaldırılması
+
+| # | İş | Durum |
+|---|---|---|
+| 13 | `disposable_customer` fixture'ı | ✅ Faz C (+ `new_customer` fabrikası) |
+| 14 | `utils/test_data.py` | ✅ Faz D — `FIELD_LIMITS` **bilinçli olarak yazılmadı** (YAGNI, kullanan yok) |
+| 15 | `utils/waits.py`; poll döngülerini taşı | ✅ Faz 2 |
+| 15b | `create_customer`'daki sabit beklemeleri `wait_for_dom_settled`'a taşı | ⏳ **CI öncesi** — 4 adet (3 değil) |
+| 16 | Step'lerdeki çıplak `WebDriverWait` + ham `By`'ı page'e taşı | ⏳ Faz E (23 + 24) |
+| 16b | Step'ten page `_private` erişimini accessor'a çevir | ⏳ **Faz F — önerilen sıradaki adım** (24 yer, 8'i yazma) |
+| 17 | `create_customer_page.py`'yi 3 sınıfa böl | ⏳ Faz 4 (735 satır, 14 step dosyası bağlı) |
+
+### Sprint 4 — CI/CD ve Ölçek
+
+| # | İş | Durum |
+|---|---|---|
+| 18 | CI iş akışı | 🟡 Faz G — **statik job kuruldu**, UI job elle tetikleniyor |
+| 18b | Uygulama yığını için `docker-compose` | ⏳ **CI'ı 4 → 8 yapacak tek şey**; uygulama tarafında iş |
+| 19 | `pytest-rerunfailures` (`--reruns 2`) | ⏳ Flaky ile gerçek hatayı ayırır |
+| 20 | Allure'a `severity`/`epic`/`story` etiketleri | ⏳ |
+| 21 | `utils/api_client.py` ile kurulumu API'ye taşı | ⏳ Koşum süresini ~%60 azaltır |
+| 22 | Test izolasyonu → `pytest-xdist` | ⏳ Gateway rate limit'i (~15 istek/dk) kısıt |
 
 ### Sprint 5 — Kapsam
 
-| # | İş |
-|---|---|
-| 23 | `kesif_testi.txt`'teki 106 senaryoyu implemente et (o dosyadaki öncelik sırasıyla) |
+| # | İş | Durum |
+|---|---|---|
+| 23 | `kesif_testi.txt`'teki 106 senaryoyu implemente et | ⏳ |
+| 24 | `login.feature` için test tasarım dokümanı | ⏳ 16 tasarım / 17 feature — tek eksik |
+| 25 | `bugsbunny.txt` madde 20'nin beklemesiz sayımını `poll_until`'e sar | ⏳ Gerçek bir flaky'yi kapatır |
 
 ---
 
@@ -1737,23 +1743,32 @@ Bu yol haritası tamamlandığında beklenen durum:
 | `ignored_exceptions` korumalı sayfa | 2 / 13 | ✅ **13 / 13** | 13 / 13 |
 | Zaman aşımı yönetim noktası | 11 dosya | ✅ **1 env** | 1 |
 | Page içinde elle yazılmış poll döngüsü | 2 | ✅ **0** | 0 |
-| Page içinde sabit `time.sleep` | 3 | 3 | **0** (CI öncesi) |
-| `utils/` modül sayısı (ayrıca aşağıda) | 1 | ✅ **2** | 8 |
 | Page içinde `assert` | 11 | ✅ **6** | 6 (3 guard + 3 tanısal) |
-| En büyük page dosyası (satır) | 735 | 735 | **~250** (Faz 4) |
-| Sabit kodlanmış şifre sayısı | 18 | 18 | **0** |
-| Login kodunun tekrarlandığı dosya | 17 | 17 | **1** (conftest) |
-| Disposable müşteri bloğunun tekrarı | 14 | 14 | **1** (fixture) |
-| Step katmanında çıplak `WebDriverWait` | ~48 | ~48 | **0** |
-| `test_data/` içerik | boş | boş | Alan sınırları + veri fabrikası |
-| Sürümü sabitlenmiş bağımlılık | 0 / 8 | 0 / 8 | **8 / 8** |
-| CI koşumu | yok | yok | Her PR + gecelik |
-| Tam regresyon süresi | ~50 dk | ~53 dk | **~20 dk** (API kurulum + paralel) |
-| Bilinen kırmızı test | 10 | **8** | 6 (yalnızca kasıtlı) |
+| Sabit kodlanmış şifre satırı | 18 | ✅ **1** | 1 (lockout senaryosunun kendi verisi) |
+| Login kodunun tekrarlandığı dosya | 17 | ✅ **1 fixture + 2 bilinçli** | 1 |
+| Disposable müşteri bloğunun tekrarı | 14 | ✅ **0** (fixture) | 0 |
+| `Faker` örneği (step + page) | 11 | ✅ **0** (tek paylaşılan) | 0 |
+| `steps/` satır sayısı | 3879 | ✅ **3442** | — |
+| `utils/` modül sayısı | 1 | 🟡 **4** | 8 |
+| Sürümü sabitlenmiş bağımlılık | 0 / 8 | ✅ **8 / 8** | 8 / 8 |
+| CI koşumu | yok | 🟡 **statik: her PR** | Her PR + gecelik UI |
+| Bilinen kırmızı test | 10 | ✅ **8** | 6 (yalnızca kasıtlı) |
+| Page içinde sabit `time.sleep` | 3 | 🔴 **4** | **0** (CI öncesi) |
+| Step katmanında çıplak `WebDriverWait` | 48 | 🔴 **23** | **0** (Faz E) |
+| Step'ten page `_private` erişimi | 24 | 🔴 **24** | **0** (Faz F) |
+| En büyük page dosyası (satır) | 735 | 🔴 **735** | **~250** (Faz 4) |
+| `test_data/` içerik | boş | 🔴 **boş** | Alan sınırları kataloğu |
+| Tam regresyon süresi | ~50 dk | 🔴 **~55 dk** | **~20 dk** (API kurulum + paralel) |
 
-> Tam regresyon süresi Faz 1'de düşmedi — düşmesi de beklenmiyordu.
-> `BasePage` bir **yapı** iyileştirmesidir; süre kazancı API tabanlı
-> kurulum ve paralelleştirmeden (Sprint 4) gelecek.
+> **Süre hiç düşmedi ve düşmesi de beklenmiyordu.** Yapılan altı fazın
+> tamamı **yapı** iyileştirmesiydi; her senaryo hâlâ gerçek sihirbazla
+> müşteri oluşturuyor. Süre kazancı yalnızca API tabanlı kurulum ve
+> paralelleştirmeden (Sprint 4) gelir. Fixture'ı modül kapsamına almak
+> süreyi düşürürdü ama senaryo izolasyonunu kırardı — bilinçli olarak
+> yapılmadı.
+>
+> **`time.sleep` 3 → 4 arttı:** `address_update_page.py`'de daha önce
+> sayılmamış bir tane bulundu. Sayı büyümedi, ölçüm düzeldi.
 
 ---
 
@@ -1761,37 +1776,69 @@ Bu yol haritası tamamlandığında beklenen durum:
 
 Bu framework'ün **temel mühendislik kararları doğru.** POM anlaşılmış, locator stratejisi
 sağlam, dil bağımsızlığı bilinçli, dinamik bekleme disiplini var, kusur triyajı olgun.
-Bunlar öğretilmesi zor şeylerdir ve zaten mevcut.
+Bunlar öğretilmesi zor şeylerdir ve zaten mevcuttu.
 
-Eksik olan şey **soyutlama katmanı** — ve bu, öğretilmesi kolay ama fark edilmesi zor bir
-boşluktur, çünkü framework onsuz da çalışır. Sadece her yeni feature'da biraz daha yavaş,
-biraz daha kırılgan çalışır.
+Eksik olan şey **soyutlama katmanıydı** — öğretilmesi kolay ama fark edilmesi zor bir
+boşluk, çünkü framework onsuz da çalışır. Sadece her yeni feature'da biraz daha yavaş,
+biraz daha kırılgan çalışır. Yedi fazda bu boşluk büyük ölçüde kapandı:
+**3.8 → 6.1 / 10.**
 
-Eğer bu listeden **yalnızca üç şey** yapılacaksa:
+### Yapılanların özeti
 
-1. ~~**`pages/base_page.py`** — 11 kez tekrarlanan wait kurulumunu bitirir.~~
-   ✅ **Faz 1'de yapıldı** (`ecf6251`). POM 6 → 8, kararlılık 5 → 6.
-2. **`utils/config.py` + `conftest.py`'ye `logged_in` ve `disposable_customer`
-   fixture'ları** — 18 sabit kodlanmış şifreyi, 17 dosyadaki login tekrarını ve
-   14 dosyadaki müşteri oluşturma bloğunu tek yerde toplar. (~1.5 gün)
-3. **CI iş akışı** — framework'ü kişisel bir araçtan takım kalite kapısına
-   dönüştürür. (~yarım gün)
+| Faz | Ne yaptı | Skor etkisi |
+|---|---|---|
+| 1 | `BasePage` + 18 sınıf | POM 6 → 8 |
+| 2 | `utils/waits.py` | utils 1 → 2 |
+| 3 | Page içi assert 11 → 6 | POM 8 → 9 |
+| A+B | `config.py` + `authenticated_driver` | Step 3 → 5 |
+| C | `new_customer` / `disposable_customer` | Step 5 → 6.5 |
+| D | `utils/test_data.py` | Step 6.5 → 7 |
+| G | Repo hijyeni + CI | Hijyen 2 → 7, CI 0 → 4 |
 
-Kalan iki madde, toplam iki günlük iş karşılığında olgunluğu
-**4.1/10'dan yaklaşık 7/10'a** taşır.
+Ölçülebilir toplam: `steps/` **3879 → 3442** satır, 11 `Faker` örneği → 0,
+16 dosyadaki login tekrarı → 0, 14 dosyadaki sihirbaz tekrarı → 0,
+17 sabit kimlik bilgisi → 0, `utils/` 1 → 4 modül, 5 kritik bulgudan 4'ü kapandı.
+**Yedi fazın hiçbirinde regresyon tespit edilmedi.**
 
-### Faz 1'den çıkan ders
+### Buradan sonra en yüksek getirili üç iş
 
-Refactor'un başarısı tek bir karara dayandı: **önce baseline'ı doğrulamak.**
-`bugsbunnyupdated.txt`'teki bilinen-kırmızı listesi olmasaydı, koşumlardaki
-8 kırmızının "zaten kırmızıydı" mı yoksa "ben mi kırdım" mı olduğunu ayırt
-etmek imkansız olurdu ve refactor ya geri alınır ya da körlemesine kabul
-edilirdi.
+1. **Uygulama yığını için `docker-compose`** — CI'ı 4 → 8 yapar. UI suite
+   otomatik koşar, gecelik regresyon ve Allure yayımlama açılır. Tek
+   engel: bu, test reposunda değil uygulama tarafında bir iş.
+2. **`utils/api_client.py` ile kurulumu API'ye taşımak** — koşum süresini
+   ~%60 azaltır. Süre, bugün framework'ün en zayıf pratik özelliği:
+   55 dakikalık bir suite geliştirici döngüsüne giremez.
+3. **Faz F (kapsülleme)** — step'ten page `_private` erişimini bitirir.
+   Step'i 7 → 8'e taşır ve Faz E'den belirgin şekilde düşük riskli.
 
-Aynı şekilde, `poll_frequency`'yi "biraz daha iyi olur" diye değiştirmemek
-de bilinçli bir karardı. Bir refactor'da **aynı anda hem yapıyı hem
-davranışı değiştirmek**, bir sorun çıktığında hangisinin sebep olduğunu
-bulmayı imkansız hale getirir.
+### Yedi fazdan çıkan dersler
 
-Bu iki alışkanlık — baseline'ı önce sabitlemek ve tek seferde tek tür
-değişiklik yapmak — sonraki fazlarda da korunmalıdır.
+**1. Önce baseline'ı sabitle.** `bugsbunnyupdated.txt`'teki bilinen-kırmızı
+listesi olmasaydı, koşumlardaki kırmızıların "zaten kırmızıydı" mı yoksa
+"ben mi kırdım" mı olduğunu ayırt etmek imkânsızdı.
+
+**2. Tek seferde tek tür değişiklik.** `poll_frequency`'yi "biraz daha iyi
+olur" diye değiştirmemek bilinçliydi. Yapı ve davranışı aynı anda
+değiştirmek, sorun çıktığında sebebi bulmayı imkânsızlaştırır. Aynı
+gerekçeyle Faz C, TC-016-03'ün beklemesiz sayımını düzeltmedi.
+
+**3. Statik denetim bazı hata sınıflarına kördür — kanarya şart.**
+Faz A+B'de AST taraması iki gerçek hatayı yakaladı. Ama Faz C'de 18
+fonksiyonun yanlış fixture istemesi hem AST'yi hem `--collect-only`'yi
+geçti: kod sözdizimsel olarak geçerliydi, isimler tanımlıydı, yalnızca
+yanlış fixture isteniyordu. **Yalnızca canlı kanarya gördü.**
+
+**4. Varsayımı test et, belgeleme.** CI'ın ana değer iddiası
+"`--collect-only` eksik step tanımını yakalar" idi. Denendi: pytest
+sahte senaryoyu topladı ve exit 0 verdi — pytest-bdd step'leri koşum
+anında çözüyor. Bu deney olmasaydı CI, hiçbir şey doğrulamayan yeşil
+bir rozet olacaktı.
+
+**5. Kendi analizini de gözden geçir.** Bu belgedeki bulguların
+birkaçı yanlış ya da abartılıydı ve düzeltildi: K5 (`reports/` zaten
+gitignore'daydı, repo sorunu değildi), K6 (`project_brain.txt` için
+aksiyon gereksiz), §6.5'teki `FIELD_LIMITS` (kullanan yok, YAGNI),
+§9'daki ilk CI YAML'ı (dört ölümcül hata, ilk koşumda kırılırdı),
+Faz 2'deki `time.sleep` sayımı (6 değil 5), Faz 3'teki assert
+kategorizasyonu (11 değil 5 gerçek ihlal). Bir mimari değerlendirme,
+kendi iddialarını da doğrulanabilir tutmalıdır.
