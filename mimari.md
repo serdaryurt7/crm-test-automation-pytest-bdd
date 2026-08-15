@@ -25,7 +25,7 @@
 | Faz 4 | `create_customer_page.py` bölünmesi (735 satır) | ⏳ Ayrı karar |
 | **Faz A+B** | `utils/config.py` + `steps/conftest.py::authenticated_driver` | ✅ Tamam (`fc697f3`) |
 | **Faz C** | `new_customer` / `disposable_customer` factory fixture'ları | ✅ Tamam (`92404f3`) |
-| **Faz D** | `utils/test_data.py` (11 ayrı Faker örneği) | ✅ Tamam (`FAZ_D_COMMIT`) |
+| **Faz D** | `utils/test_data.py` (11 ayrı Faker örneği) | ✅ Tamam (`3e49afd`) |
 | Faz E | Step'lerdeki ham `By`/`WebDriverWait` (opsiyonel) | ⏳ Risk/getiri zayıf |
 
 ### Faz 0 — Yapılanlar
