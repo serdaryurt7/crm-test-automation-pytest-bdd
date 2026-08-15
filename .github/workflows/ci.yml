@@ -1,0 +1,158 @@
+name: CI
+
+# TASARIM NOTU
+# ------------
+# UI suite'i GitHub'ın barındırdığı runner'da ÇALIŞTIRILAMAZ: testler
+# localhost:4200 (frontend), :8080 (gateway), :8180 (Keycloak) üzerinde
+# ayakta bir uygulama yığını gerektiriyor ve bu yığın bu repoda yok.
+# Her PR'da UI suite'i koşturmaya çalışan bir job KALICI OLARAK KIRMIZI
+# olurdu - bu, CI'ı olmamasından daha kötüdür, çünkü ekibi kırmızıyı
+# yok saymaya alıştırır.
+#
+# Bu yüzden iki job var:
+#   1) static    - uygulama GEREKTİRMEZ, her PR'da çalışır, bugün yeşil.
+#   2) ui-tests  - yalnızca ELLE tetiklenir, uygulamaya erişebilen bir
+#                  runner ister (self-hosted ya da app'in deploy edildiği
+#                  bir ortam).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_ui_tests:
+        description: "UI suite'ini de çalıştır (uygulamaya erişebilen bir runner gerekir)"
+        type: boolean
+        default: false
+      runner:
+        description: "UI suite'inin çalışacağı runner etiketi"
+        type: string
+        default: self-hosted
+
+jobs:
+  static:
+    name: Statik doğrulama
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Bağımlılıkları kur
+        run: pip install -r requirements.txt
+
+      - name: Derleme kontrolü
+        run: python -m compileall -q conftest.py pages steps utils
+
+      - name: Step tanımı eksik mi?
+        # pytest-bdd step'leri KOŞUM anında çözer; --collect-only eksik bir
+        # step tanımını YAKALAMAZ (canlı doğrulandı: sahte bir Given ekleyip
+        # denendi, collect exit 0 verdi). --generate-missing bunu yakalar ama
+        # kendisi de exit 0 döndüğü için çıktıyı burada denetliyoruz.
+        run: |
+          python -m pytest --generate-missing --feature features/ -p no:cacheprovider > missing.txt 2>&1 || true
+          if grep -q "NotImplementedError" missing.txt; then
+            echo "::error::Bir veya daha fazla Gherkin adımının step tanımı yok:"
+            cat missing.txt
+            exit 1
+          fi
+          echo "Tüm Gherkin adımlarının karşılığı var."
+
+      - name: Senaryolar toplanabiliyor mu?
+        # Sözdizimi hatalarını, import hatalarını ve feature <-> step modülü
+        # bağlantısını doğrular.
+        run: python -m pytest --collect-only -q -p no:cacheprovider
+
+      - name: Ölü / eksik import taraması
+        run: |
+          python - <<'PY'
+          import ast, pathlib, sys
+          problems = []
+          for p in sorted(list(pathlib.Path("steps").glob("*.py"))
+                          + list(pathlib.Path("pages").glob("*.py"))
+                          + list(pathlib.Path("utils").glob("*.py"))):
+              tree = ast.parse(p.read_text(encoding="utf-8"))
+              used = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+              used |= {n.value.id for n in ast.walk(tree)
+                       if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name)}
+              for node in tree.body:
+                  if isinstance(node, (ast.Import, ast.ImportFrom)):
+                      for a in node.names:
+                          name = (a.asname or a.name).split(".")[0]
+                          if name not in used:
+                              problems.append(f"{p}:{node.lineno} kullanilmayan import: {name}")
+          print("\n".join(problems) if problems else "Olu import yok.")
+          sys.exit(1 if problems else 0)
+          PY
+
+  ui-tests:
+    name: UI suite (elle)
+    needs: static
+    if: github.event_name == 'workflow_dispatch' && inputs.run_ui_tests
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Bağımlılıkları kur
+        run: pip install -r requirements.txt
+
+      - name: Uygulama ayakta mı?
+        # Testleri 55 dakika boyunca boşuna koşturmak yerine erkenden ve
+        # ANLAŞILIR bir mesajla düşmek için. Faz 0'da canlı yaşandı:
+        # gateway /actuator/health UP dönerken bff-service devre kesici
+        # fallback'i veriyordu ve 5 senaryo bu yüzden başarısız oluyordu.
+        env:
+          APP_ORIGIN: ${{ vars.APP_ORIGIN || 'http://localhost:4200' }}
+          GATEWAY_URL: ${{ vars.GATEWAY_URL || 'http://localhost:8080' }}
+          CRM_USERNAME: ${{ secrets.CRM_USERNAME }}
+          CRM_PASSWORD: ${{ secrets.CRM_PASSWORD }}
+        run: |
+          curl -fsS -o /dev/null "$APP_ORIGIN" \
+            || { echo "::error::Frontend erisilemiyor: $APP_ORIGIN"; exit 1; }
+          code=$(curl -s -o resp.json -w '%{http_code}' -X POST \
+            "$GATEWAY_URL/bff-service/api/v1/auth/login" \
+            -H 'Content-Type: application/json' \
+            -d "{\"username\":\"$CRM_USERNAME\",\"password\":\"$CRM_PASSWORD\"}")
+          if [ "$code" != "200" ]; then
+            echo "::error::BFF login basarisiz (HTTP $code). Devre kesici fallback olabilir:"
+            cat resp.json
+            exit 1
+          fi
+          echo "Uygulama yigini saglikli."
+
+      - name: Testleri çalıştır
+        env:
+          BASE_URL: ${{ vars.BASE_URL || 'http://localhost:4200/login' }}
+          CRM_USERNAME: ${{ secrets.CRM_USERNAME }}
+          CRM_PASSWORD: ${{ secrets.CRM_PASSWORD }}
+          HEADLESS: "true"
+        # pytest.ini zaten -m "not lockout" uyguluyor (o senaryo bir hesabi
+        # gercekten 15 dakika kilitliyor).
+        run: python -m pytest -v -ra
+
+      - name: Allure sonuçlarını sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: reports/allure-results
+          retention-days: 14
+
+      - name: HTML raporu sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report
+          path: reports/report.html
+          retention-days: 14

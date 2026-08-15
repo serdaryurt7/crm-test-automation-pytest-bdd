@@ -1,8 +1,13 @@
-selenium
-pytest
-pytest-bdd
-python-dotenv
-pytest-html
-allure-pytest-bdd
-allure-python-commons
-Faker
+# Sürümler, testlerin yeşil olduğu doğrulanmış kurulumdan sabitlendi
+# (2026-08-16, Python 3.12.10). Sabitleme olmadan bir bağımlılığın yeni
+# sürümü, kodda hiçbir değişiklik olmadan suite'i kırabilir - ve bu,
+# gerçek bir uygulama hatasından ayırt edilmesi en zor başarısızlık
+# türüdür.
+selenium==4.46.0
+pytest==9.1.1
+pytest-bdd==8.1.0
+python-dotenv==1.2.2
+pytest-html==4.2.0
+allure-pytest-bdd==2.16.0
+allure-python-commons==2.16.0
+Faker==40.36.0
