@@ -13,7 +13,7 @@
 
 ## 0. İlerleme Durumu
 
-**Genel olgunluk: 3.8 → 5.2 / 10**
+**Genel olgunluk: 3.8 → 6.0 / 10**
 **Page Object Model: 6 → 9 / 10** ✅ &nbsp;·&nbsp; **Step katmanı: 3 → 7 / 10** ✅
 
 | Faz | Kapsam | Durum |
@@ -351,11 +351,11 @@ tek sebebi bu.
 | Test verisi yönetimi | 1 | 🔴 **3**/10 | ✅ Faz D: üretilen veri tek kaynakta (`utils/test_data.py`). Kalan: `test_data/` dizini hâlâ boş, sınır değer kataloğu yok, literaller Gherkin Examples'ta dağınık |
 | Konfigürasyon | 5 | 🟡 **6**/10 | ✅ Faz A: tek kaynak `utils/config.py`, origin semantiği düzeltildi. Kalan: `requirements.txt`'te sürüm sabitleme yok (K3) |
 | Raporlama | 7 | 🟢 **7**/10 | Allure + pytest-html iyi kurulmuş, ekran görüntüsü ekleniyor |
-| Repo hijyeni | 2 | 🔴 **2**/10 | README'de çözülmemiş merge conflict, 321KB dosya, 25 artık klasör |
-| CI/CD | 0 | 🔴 **0**/10 | Hiç yok |
+| Repo hijyeni | 2 | 🟡 **6**/10 | ✅ Faz G: README merge conflict'i çözüldü, 8 bağımlılık sabitlendi, 28 artık rapor klasörü silindi (15→6 MB). Kalan: `project_brain.txt` (316KB) izleniyor, `test-design/` silinmiş (K2) |
+| CI/CD | 0 | 🟡 **4**/10 | ✅ Faz G: her PR'da çalışan statik doğrulama (derleme, eksik step tanımı, toplama, ölü import) + elle tetiklenen UI job. Kalan: UI suite otomatik koşmuyor (runner yok), gecelik regresyon ve rapor yayımlama yok |
 | Kararlılık (flaky yönetimi) | 5 | 🟡 **6**/10 | ✅ Faz 1: `ignored_exceptions` kapsamı 2/13 → 13/13. Hâlâ retry/paralel/izolasyon mekanizması yok |
 
-**Genel: 3.8 → 5.2 / 10**
+**Genel: 3.8 → 6.0 / 10**
 
 > **Neden genel skor yavaş artıyor?** Skor 10 boyutun ortalamasıdır; POM
 > 3, step katmanı 3.5 puan yükseldi ama bu ortalamaya yalnızca 0.65
@@ -400,7 +400,7 @@ Bunları korumak, düzeltmeler kadar önemli:
 
 ## 3. Kritik Bulgular — Hemen Müdahale Gerektiren
 
-### 🔴 K1 — README.md içinde çözülmemiş merge conflict, repoya commit edilmiş
+### ✅ K1 — README.md içinde çözülmemiş merge conflict — **ÇÖZÜLDÜ (Faz G)**
 
 ```
 <<<<<<< HEAD
@@ -436,7 +436,7 @@ belleğini oluşturuyordu, kaybı geri döndürülemez olmasa da maliyetlidir.
 
 ---
 
-### 🔴 K3 — `requirements.txt`'te hiçbir sürüm sabitlenmemiş
+### ✅ K3 — `requirements.txt`'te hiçbir sürüm sabitlenmemiş — **ÇÖZÜLDÜ (Faz G)**
 
 ```
 selenium
@@ -494,7 +494,7 @@ sunuluyor. Step dosyalarında **0** sabit kimlik bilgisi kaldı.
 
 ---
 
-### 🟠 K5 — `reports/` altında 22 adet artık `allure-results-*` klasörü, toplam 14 MB
+### ✅ K5 — `reports/` altında artık `allure-results-*` klasörleri — **ÇÖZÜLDÜ + DÜZELTME (Faz G)**
 
 ```
 allure-results-005-06-fix-verify        allure-results-search-fix-verify
@@ -507,15 +507,35 @@ Bunlar geçmiş hata ayıklama koşumlarından kalma. `.gitignore`'da `reports/`
 repoya girmemişler (iyi), ama diskte birikiyorlar ve `allure serve` çağrılarında hangisinin
 güncel olduğu karışıyor.
 
-**Yapılacak:** Temizle ve isimlendirme yerine tek bir `reports/allure-results` + arşiv
-klasörü kullan (§6.7).
+**Yapıldı (Faz G):** 28 artık klasör ve 6 artık `report-faz*.html` / `*_run.log`
+dosyası silindi; `reports/` 15 MB → 6 MB. Geriye yalnızca güncel
+`allure-report`, `allure-results` ve `report.html` kaldı.
+
+> **Kendi analizimde düzeltme:** bu bulgu "Repo hijyeni" başlığı altında
+> listelenmişti ve skor gerekçesinde "25 artık klasör" repo sorunu gibi
+> okunuyordu. Doğrusu: `reports/` `.gitignore`'da ve git'te **0 dosya**
+> izleniyor. Yani bu klasörler repoyu, klonlama süresini veya geçmişi
+> hiç etkilemiyordu — yalnızca yerel disk ve `allure serve` karışıklığı
+> sorunuydu. Temizlik yine de değerliydi ama önem derecesi abartılmıştı.
 
 ---
 
-### 🟠 K6 — `project_brain.txt` (321 KB) repoda izleniyor
+### 🟢 K6 — `project_brain.txt` (316 KB) repoda izleniyor — **ÖNEM DERECESİ DÜŞÜRÜLDÜ**
 
-Tek başına repo boyutunun büyük kısmını oluşturuyor. İçeriği geliştirme notu ise
-`docs/` altına taşınmalı veya `.gitignore`'a alınmalı.
+İlk değerlendirmede "repo boyutunun büyük kısmı" diye işaretlenmişti.
+Yeniden bakıldığında bu bulgu **abartılıydı** ve aksiyon önerilmiyor:
+
+- Dosya **düz metin**. Git metni çok iyi sıkıştırır ve delta'lar; 316 KB'lik
+  bir metin dosyası pratikte sorun değildir. Asıl sorun binary/üretilmiş
+  dosyalardır — burada öyle bir şey yok.
+- İçeriği "geliştirme notu" değil, projedeki **kararların kronolojik
+  kaydı** (neden BDD, neden `core/` eklenmedi, hangi bug ne zaman
+  bulundu). Bu, yeni katılan biri için repodaki en değerli belgelerden
+  biri; `.gitignore`'a almak onu diğer klonlardan tamamen silerdi.
+- `docs/` altına taşımak yalnızca kozmetik; dosya sayısını değiştirmez.
+
+**Karar: olduğu yerde bırakılıyor.** README'nin "Mimari ve Yol Haritası"
+bölümüne ne olduğu açıklanarak eklendi.
 
 ---
 
@@ -1650,61 +1670,57 @@ def user_on_address_tab(driver, disposable_customer):
 
 ---
 
-## 9. Örnek CI İş Akışı
+## 9. CI İş Akışı — `.github/workflows/ci.yml` ✅ KURULDU
 
-`.github/workflows/tests.yml`:
+> **Bu bölümün önceki hâli hatalıydı.** Aşağıdaki "neden" açıklaması,
+> önerdiğim ilk YAML'ın neden ilk koşumda kırılacağını belgeliyor.
 
-```yaml
-name: UI Tests
+### İlk önerimin dört ölümcül hatası
 
-on:
-  pull_request:
-  schedule:
-    - cron: "0 2 * * *"       # her gece 02:00 - tam regresyon
-  workflow_dispatch:
+| Sorun | Sonuç |
+|---|---|
+| `runs-on: ubuntu-latest` ile UI suite | GitHub runner'ı `localhost:4200`'e **erişemez** — uygulama yığını bu repoda yok |
+| `-m "smoke"` | `smoke` diye bir marker **tanımlı değil** (`pytest.ini`'de yalnızca `lockout` var) → 0 test seçilir |
+| `--reruns 2` | `pytest-rerunfailures` **requirements'ta yok** → pytest anında hata verir |
+| `path: reports/logs/` | Böyle bir dizin **yok** |
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
+Her PR'da UI suite'i koşturmaya çalışan bir job kalıcı olarak kırmızı
+kalırdı; bu, CI'ın olmamasından **daha kötüdür**, çünkü ekibi kırmızıyı
+yok saymaya alıştırır.
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
+### Kurulan yapı: iki job
 
-      - name: Bağımlılıkları kur
-        run: pip install -r requirements.txt
+**`static`** — uygulama gerektirmez, her push/PR'da çalışır, **bugün yeşil**:
 
-      - name: Testleri çalıştır
-        env:
-          BASE_URL: ${{ secrets.BASE_URL }}
-          CRM_USERNAME: ${{ secrets.CRM_USERNAME }}
-          CRM_PASSWORD: ${{ secrets.CRM_PASSWORD }}
-          HEADLESS: "true"
-        run: |
-          # PR'da yalnızca smoke, gecelik koşumda tam regresyon
-          MARKS=$([ "${{ github.event_name }}" = "pull_request" ] && echo "smoke" || echo "not lockout")
-          pytest -m "$MARKS" --reruns 2 --reruns-delay 1 -ra
+1. `compileall` — sözdizimi
+2. **Eksik step tanımı** — `pytest --generate-missing --feature features/`
+3. `pytest --collect-only` — import hataları, feature ↔ step modülü bağlantısı
+4. Ölü import taraması (AST)
 
-      - name: Allure sonuçlarını sakla
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-results
-          path: reports/allure-results
+> **2. adım deneyle tasarlandı.** Önce `--collect-only`'nin eksik step
+> tanımını yakalayacağını varsaymıştım. `features/login.feature`'a tanımı
+> olmayan sahte bir `Given` ekleyip denedim: pytest senaryoyu **topladı
+> (215 test) ve exit 0 verdi** — pytest-bdd step'leri koşum anında
+> çözüyor. Yani `--collect-only` bu hata sınıfına kördür.
+> `--generate-missing` yakalıyor, ama o da exit 0 döndüğü için CI
+> çıktıyı `NotImplementedError` için denetliyor. Dört adım da yerelde
+> doğrulandı.
 
-      - name: Başarısızlık kanıtlarını sakla
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: failure-evidence
-          path: |
-            reports/report.html
-            reports/logs/
-```
+**`ui-tests`** — yalnızca `workflow_dispatch` ile elle tetiklenir,
+uygulamaya erişebilen bir runner ister (varsayılan `self-hosted`).
+Testlerden **önce** yığın sağlık kontrolü yapar: frontend erişimi +
+gerçek bir BFF login isteği. Bu kontrol Faz 0'da canlı yaşanan bir
+duruma karşı: gateway `/actuator/health` `UP` dönerken `bff-service`
+devre kesici fallback'i veriyordu ve testler 5 senaryo boyunca anlamsız
+şekilde düşüyordu.
+
+### Bundan sonrası (CI 4 → 8 için)
+
+- Uygulama yığını için `docker-compose` → GitHub runner'ında ayağa kalkabilir,
+  UI suite otomatikleşir
+- Gecelik tam regresyon (`schedule`)
+- Allure raporunu GitHub Pages'e yayımlama
+- `smoke` marker'ı tanımlanıp PR'larda hızlı alt küme koşulması
 
 ---
 
