@@ -242,3 +242,43 @@ hipotezi YERİNE, bkz. aşağıda).
     (5 önceden failed + 7 dokunulan ama önceden failed olmayan, regresyon
     yok). Veri değiştirilmedi/eklenmedi - karşılaştırma mantığı uygulamanın
     kendi davranışıyla eşleşecek şekilde düzeltildi.
+
+===========================================================
+[2026-08-15] FAZ A+B (step katmanı refactor) TAM SUITE KOŞUMU
+203 passed / 11 failed (58dk 02sn)
+===========================================================
+
+Dağılım: 7 bilinen kasıtlı kırmızı + 2 bilinen flaky + 2 YENİ flaky.
+Bilinen 7 kırmızının tamamı beklendiği gibi FAILED kaldı. Önceden flaky
+olarak belgelenmiş 3 test (address_update TC-006-04, offer_selection
+TC-014-12, login butonu pasifleşmesi) bu koşumda PASSED - düzeldiklerinin
+KANITI DEĞİL, flaky doğalarıyla tutarlı.
+
+Aşağıdaki 2 test hiçbir önceki kayıtta yoktu, bu koşumda ilk kez görüldü:
+
+18. steps/test_address_update_steps.py :: test_tceacrml00606b
+    (Primary adres değişikliğinin sayfa yenilense dahi korunması)
+    Hata: assert [True, False] == [False, True] - yenileme sonrası Primary
+    bayrağı ikinci adrese GEÇMEMİŞ, ilk adreste kalmış.
+    İzole koşum: PASSED. Flaky olarak sınıflandırıldı.
+    Faz A+B ile İLGİSİZ: bu doğrulama tamamen page object içindeki
+    wait_for_primary_states_to_persist() üzerinden yürüyor, değiştirilen
+    login/origin kodundan bağımsız. Asenkron Primary güncellemesinin
+    yenileme ile yarışması muhtemel kök neden - TC-005-05/06 ve TC-012-03
+    ile AYNI aile (backend mutasyonu asenkron tamamlanıyor).
+
+19. steps/test_update_customer_steps.py :: test_tceacrml00407[Soyad]
+    (Ad/Soyad alanlarının 50 karakter sınırı)
+    Hata: TimeoutException, steps/conftest.py:28 -> login_page.open()
+    login formunun 10sn içinde görünmemesi. Testin KENDİ konusuyla
+    (karakter sınırı) hiç ilgisi yok, kurulum aşamasında düştü.
+    İzole koşum: PASSED. Flaky olarak sınıflandırıldı.
+    NOT (dürüstlük payı): yığın izi Faz A+B'de eklenen authenticated_driver
+    fixture'ını gösteriyor. Ancak fixture, eskiden 16 dosyada satır satır
+    tekrarlanan AYNI çağrıyı (login_page.open(base_url), AYNI 10sn
+    DEFAULT_TIMEOUT ile) yapıyor - refactor çağrının YERİNİ değiştirdi,
+    içeriğini veya zaman aşımını DEĞİL. Aynı [Ad] parametreli kardeş test
+    aynı koşumda PASSED. 58 dakikalık koşumun %97'sinde, makine yükü
+    altında gerçekleşti.
+    İZLENMELİ: bu hata tekrarlarsa DEFAULT_TIMEOUT'un yükseltilmesi
+    (tek ortam değişkeni, Faz 1 sayesinde) ilk müdahale olmalı.

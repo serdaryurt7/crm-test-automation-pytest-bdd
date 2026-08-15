@@ -2,18 +2,13 @@ from pytest_bdd import given, parsers, scenarios, then, when
 from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.search_customers_page import CustomersPage
-from pages.login_page import LoginPage
 
 scenarios("search_customers.feature")
 
 
 @given("kullanıcı müşteri arama sayfasındadır", target_fixture="customers_page")
-def user_on_customers_page(driver, base_url):
-    login_page = LoginPage(driver)
-    login_page.open(base_url)
-    login_page.login("demo", "Password123")
-    WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
-    return CustomersPage(driver)
+def user_on_customers_page(authenticated_driver):
+    return CustomersPage(authenticated_driver)
 
 
 @when("kullanıcı arama kriteri girmez")

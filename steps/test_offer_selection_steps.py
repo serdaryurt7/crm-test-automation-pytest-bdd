@@ -1,5 +1,4 @@
 import random
-from urllib.parse import urlparse
 
 from pytest_bdd import given, scenarios, then, when
 from selenium.common.exceptions import TimeoutException
@@ -9,15 +8,14 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.billing_account_delete_page import BillingAccountDeletePage
 from pages.create_customer_page import CreateCustomerPage
-from pages.login_page import LoginPage
 from pages.offer_selection_page import OfferSelectionPage
+from utils import config
 
 scenarios("offer_selection.feature")
 
 
 def _create_fresh_customer(driver):
-    origin = urlparse(driver.current_url)
-    driver.get(f"{origin.scheme}://{origin.netloc}/customers/new")
+    driver.get(config.url("/customers/new"))
     create_page = CreateCustomerPage(driver)
     create_page.fill_demographic_step_with_faker(gender="Erkek")
     create_page.click_demographic_next()
@@ -32,16 +30,12 @@ def _create_fresh_customer(driver):
     return BillingAccountDeletePage(driver)
 
 
-def _create_fresh_customer_and_open_account_tab(driver, base_url):
-    login_page = LoginPage(driver)
-    login_page.open(base_url)
-    login_page.login("demo", "Password123")
-    WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
+def _create_fresh_customer_and_open_account_tab(driver):
     return _create_fresh_customer(driver)
 
 
-def _open_offer_selection_screen(driver, base_url):
-    account_page = _create_fresh_customer_and_open_account_tab(driver, base_url)
+def _open_offer_selection_screen(driver):
+    account_page = _create_fresh_customer_and_open_account_tab(driver)
     account_page.create_account_and_wait()
     account_page.click_new_sale_on_row()
     return OfferSelectionPage(driver)
@@ -68,8 +62,8 @@ def _fill_config_fields_and_proceed_to_summary(driver):
 
 
 @given("kullanıcı bir fatura hesabının Müşteri Hesabı ekranındadır", target_fixture="account_page")
-def user_on_account_screen(driver, base_url):
-    account_page = _create_fresh_customer_and_open_account_tab(driver, base_url)
+def user_on_account_screen(authenticated_driver):
+    account_page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
     account_page.create_account_and_wait()
     return account_page
 
@@ -86,8 +80,8 @@ def offer_selection_screen_shown_with_default_catalog(offer_page):
 
 
 @given("kullanıcı Teklif Seçimi ekranındadır", target_fixture="offer_page")
-def user_on_offer_selection_screen(driver, base_url):
-    return _open_offer_selection_screen(driver, base_url)
+def user_on_offer_selection_screen(authenticated_driver):
+    return _open_offer_selection_screen(authenticated_driver)
 
 
 @when('kullanıcı katalog dropdown\'ından "Mobil" seçeneğini seçer')
@@ -133,8 +127,8 @@ def no_results_state_shown(offer_page):
 
 
 @given("kullanıcı bir teklif satırı seçmiştir", target_fixture="offer_selection_context")
-def user_selected_an_offer_row(driver, base_url):
-    offer_page = _open_offer_selection_screen(driver, base_url)
+def user_selected_an_offer_row(authenticated_driver):
+    offer_page = _open_offer_selection_screen(authenticated_driver)
     selected_name = offer_page.get_offer_names()[0]
     price = offer_page.get_offer_price_value_by_name(selected_name)
     offer_page.select_offer_by_name(selected_name)
@@ -160,8 +154,8 @@ def total_increases_by_offer_price(offer_selection_context):
 
 
 @given('kullanıcı sepete "Ev İnterneti Fiber 100" teklifini YALNIZCA BİR KEZ eklemiştir', target_fixture="offer_page")
-def offer_added_exactly_once(driver, base_url):
-    offer_page = _open_offer_selection_screen(driver, base_url)
+def offer_added_exactly_once(authenticated_driver):
+    offer_page = _open_offer_selection_screen(authenticated_driver)
     offer_page.select_offer_by_name("Ev İnterneti Fiber 100")
     offer_page.click_add_to_cart_and_wait()
     return offer_page
@@ -183,8 +177,8 @@ def offer_appears_exactly_once_in_summary(driver):
 
 
 @given("sepette en az bir teklif vardır", target_fixture="offer_page")
-def cart_has_at_least_one_offer(driver, base_url):
-    offer_page = _open_offer_selection_screen(driver, base_url)
+def cart_has_at_least_one_offer(authenticated_driver):
+    offer_page = _open_offer_selection_screen(authenticated_driver)
     offer_page.select_offer_by_name(offer_page.get_offer_names()[0])
     offer_page.click_add_to_cart_and_wait()
     return offer_page
@@ -202,8 +196,8 @@ def cart_emptied_and_total_zero(offer_page):
 
 
 @given("sepet boştur", target_fixture="offer_page")
-def cart_is_empty(driver, base_url):
-    return _open_offer_selection_screen(driver, base_url)
+def cart_is_empty(authenticated_driver):
+    return _open_offer_selection_screen(authenticated_driver)
 
 
 @then('"İleri" butonu pasif durumdadır')
@@ -222,8 +216,8 @@ def campaign_offers_shown_separately(offer_page):
 
 
 @given("sepette (Basket) en az bir ürün vardır", target_fixture="duplicate_add_context")
-def cart_has_one_product_for_duplicate_test(driver, base_url):
-    offer_page = _open_offer_selection_screen(driver, base_url)
+def cart_has_one_product_for_duplicate_test(authenticated_driver):
+    offer_page = _open_offer_selection_screen(authenticated_driver)
     name = offer_page.get_offer_names()[0]
     offer_page.select_offer_by_name(name)
     offer_page.click_add_to_cart_and_wait()
@@ -264,8 +258,8 @@ def basket_and_total_unchanged(duplicate_add_context):
 
 
 @given("kullanıcı Campaign sekmesindedir", target_fixture="offer_page")
-def user_on_campaign_tab(driver, base_url):
-    offer_page = _open_offer_selection_screen(driver, base_url)
+def user_on_campaign_tab(authenticated_driver):
+    offer_page = _open_offer_selection_screen(authenticated_driver)
     offer_page.switch_to_campaign_tab()
     return offer_page
 

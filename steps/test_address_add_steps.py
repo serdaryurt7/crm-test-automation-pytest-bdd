@@ -1,30 +1,22 @@
-from urllib.parse import urlparse
-
 from faker import Faker
 from pytest_bdd import given, parsers, scenarios, then, when
-from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.address_add_page import AddressAddPage
 from pages.create_customer_page import CreateCustomerPage
-from pages.login_page import LoginPage
+from utils import config
 
 scenarios("address_add.feature")
 
 fake = Faker("tr_TR")
 
 
-def _create_fresh_customer_and_open_address_tab(driver, base_url):
+def _create_fresh_customer_and_open_address_tab(driver):
     # Adres ekleme mutasyonlar barındırdığından (yeni kart oluşturma)
     # HER SENARYO için fresh, tek kullanımlık bir disposable müşteri
     # create_customer akışıyla oluşturuluyor - address_update.feature'da
     # kurulan desenle tutarlı, tam bağımsızlık ve tekrarlanabilirlik için.
-    login_page = LoginPage(driver)
-    login_page.open(base_url)
-    login_page.login("demo", "Password123")
-    WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
-
-    origin = urlparse(driver.current_url)
-    driver.get(f"{origin.scheme}://{origin.netloc}/customers/new")
+    # Giriş, authenticated_driver fixture'ı tarafından yapılmış olarak gelir.
+    driver.get(config.url("/customers/new"))
     create_page = CreateCustomerPage(driver)
     create_page.fill_demographic_step_with_faker(gender="Erkek")
     create_page.click_demographic_next()
@@ -41,27 +33,27 @@ def _create_fresh_customer_and_open_address_tab(driver, base_url):
 
 
 @given("kullanıcı bir müşterinin Adres sekmesindedir", target_fixture="address_page")
-def user_on_address_tab(driver, base_url):
-    return _create_fresh_customer_and_open_address_tab(driver, base_url)
+def user_on_address_tab(authenticated_driver):
+    return _create_fresh_customer_and_open_address_tab(authenticated_driver)
 
 
 @given("müşterinin zaten kayıtlı bir adresi vardır", target_fixture="address_page")
-def customer_already_has_one_address(driver, base_url):
+def customer_already_has_one_address(authenticated_driver):
     # Fresh müşteri create_customer wizard'ı sırasında zaten TAM OLARAK
     # 1 adresle oluşturuluyor - ek bir adım gerekmiyor.
-    return _create_fresh_customer_and_open_address_tab(driver, base_url)
+    return _create_fresh_customer_and_open_address_tab(authenticated_driver)
 
 
 @given("kullanıcı yeni adres formundadır", target_fixture="address_page")
-def user_on_new_address_form(driver, base_url):
-    page = _create_fresh_customer_and_open_address_tab(driver, base_url)
+def user_on_new_address_form(authenticated_driver):
+    page = _create_fresh_customer_and_open_address_tab(authenticated_driver)
     page.click_add_address()
     return page
 
 
 @given("kullanıcı yeni adres formunu doldurmuştur", target_fixture="address_page")
-def user_filled_new_address_form(driver, base_url):
-    page = _create_fresh_customer_and_open_address_tab(driver, base_url)
+def user_filled_new_address_form(authenticated_driver):
+    page = _create_fresh_customer_and_open_address_tab(authenticated_driver)
     page.snapshot_card_count()
     page.click_add_address()
     page.fill_new_address_form(fake.street_name(), fake.building_number(), fake.sentence(nb_words=4))
@@ -69,15 +61,15 @@ def user_filled_new_address_form(driver, base_url):
 
 
 @given("müşterinin 2 kayıtlı adresi vardır", target_fixture="address_page")
-def customer_has_two_addresses(driver, base_url):
-    page = _create_fresh_customer_and_open_address_tab(driver, base_url)
+def customer_has_two_addresses(authenticated_driver):
+    page = _create_fresh_customer_and_open_address_tab(authenticated_driver)
     page.add_new_address_and_wait_for_card(fake.street_name(), fake.building_number(), fake.sentence(nb_words=4))
     return page
 
 
 @given("kullanıcı yeni bir adres eklemiştir", target_fixture="address_page")
-def user_added_new_address(driver, base_url):
-    page = _create_fresh_customer_and_open_address_tab(driver, base_url)
+def user_added_new_address(authenticated_driver):
+    page = _create_fresh_customer_and_open_address_tab(authenticated_driver)
     page.add_new_address_and_wait_for_card(fake.street_name(), fake.building_number(), fake.sentence(nb_words=4))
     return page
 

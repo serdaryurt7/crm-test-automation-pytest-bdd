@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from pytest_html import extras
 from selenium import webdriver
 
+from utils import config
+
 load_dotenv()
 
 
@@ -92,4 +94,7 @@ def driver(request):
 
 @pytest.fixture
 def base_url():
-    return os.getenv("BASE_URL", "https://example.com")
+    # Tek kaynak: utils/config.py. Eski "https://example.com" varsayilani
+    # yalnizca .env yokken devreye giriyordu ve calisan bir hedef degildi -
+    # artik varsayilan da gercek yerel adres.
+    return config.BASE_URL

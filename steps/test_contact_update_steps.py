@@ -1,11 +1,8 @@
-from urllib.parse import urlparse
-
 from pytest_bdd import given, parsers, scenarios, then, when
-from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.contact_update_page import ContactUpdatePage
 from pages.create_customer_page import CreateCustomerPage
-from pages.login_page import LoginPage
+from utils import config
 
 scenarios("contact_update.feature")
 
@@ -20,8 +17,7 @@ def _create_fresh_customer(driver):
     # zaten authenticated bir session'da /login'e tekrar gitmek uygulamanın
     # kendi auth guard'ı yüzünden anında /customers'a yönlendirip login
     # formunun hiç görünmemesine ve zaman aşımına yol açıyor).
-    origin = urlparse(driver.current_url)
-    driver.get(f"{origin.scheme}://{origin.netloc}/customers/new")
+    driver.get(config.url("/customers/new"))
     create_page = CreateCustomerPage(driver)
     create_page.fill_demographic_step_with_faker(gender="Erkek")
     create_page.click_demographic_next()
@@ -37,22 +33,17 @@ def _create_fresh_customer(driver):
     return ContactUpdatePage(driver)
 
 
-def _create_fresh_customer_and_open_contact_tab(driver, base_url):
+def _create_fresh_customer_and_open_contact_tab(driver):
     # İletişim bilgisi güncelleme mutasyonlar barındırdığından (email/
     # telefon değişikliği) HER SENARYO için fresh, tek kullanımlık bir
     # disposable müşteri create_customer akışıyla oluşturuluyor -
     # projedeki diğer *_update.feature'larla tutarlı, tam bağımsızlık için.
-    login_page = LoginPage(driver)
-    login_page.open(base_url)
-    login_page.login("demo", "Password123")
-    WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
-
     return _create_fresh_customer(driver)
 
 
 @given("kullanıcı bir müşterinin İletişim Kanalı sekmesindedir", target_fixture="contact_page")
-def user_on_contact_tab(driver, base_url):
-    return _create_fresh_customer_and_open_contact_tab(driver, base_url)
+def user_on_contact_tab(authenticated_driver):
+    return _create_fresh_customer_and_open_contact_tab(authenticated_driver)
 
 
 @when("Edit ile Email/Mobile Phone alanları güncellenip Kaydet'e tıklanır")
@@ -68,8 +59,8 @@ def update_saved_and_reflected(contact_page):
 
 
 @given("kullanıcı düzenleme formundadır", target_fixture="contact_page")
-def user_on_edit_form(driver, base_url):
-    page = _create_fresh_customer_and_open_contact_tab(driver, base_url)
+def user_on_edit_form(authenticated_driver):
+    page = _create_fresh_customer_and_open_contact_tab(authenticated_driver)
     page.click_edit()
     return page
 
@@ -123,8 +114,8 @@ def error_shown_and_save_disabled(contact_page):
 
 
 @given("müşterinin kayıtlı iletişim bilgileri mevcuttur", target_fixture="contact_page")
-def customer_has_registered_contact_info(driver, base_url):
-    return _create_fresh_customer_and_open_contact_tab(driver, base_url)
+def customer_has_registered_contact_info(authenticated_driver):
+    return _create_fresh_customer_and_open_contact_tab(authenticated_driver)
 
 
 @when("kullanıcı İletişim Kanalı sekmesini açar")
@@ -145,8 +136,8 @@ def edit_icon_present(contact_page):
 
 
 @given('"İletişim Kanalı" sekmesi açıktır ve Edit ikonu görünmektedir', target_fixture="contact_page")
-def contact_tab_open_with_edit_icon_visible(driver, base_url):
-    return _create_fresh_customer_and_open_contact_tab(driver, base_url)
+def contact_tab_open_with_edit_icon_visible(authenticated_driver):
+    return _create_fresh_customer_and_open_contact_tab(authenticated_driver)
 
 
 @when("kullanıcı Edit ikonuna tıklar")
@@ -166,8 +157,8 @@ def system_opens_edit_form(contact_page):
 
 
 @given("kullanıcı formda değişiklik yapmıştır", target_fixture="contact_page")
-def user_made_changes_in_form(driver, base_url):
-    page = _create_fresh_customer_and_open_contact_tab(driver, base_url)
+def user_made_changes_in_form(authenticated_driver):
+    page = _create_fresh_customer_and_open_contact_tab(authenticated_driver)
     page.click_edit()
     page.update_email_and_mobile_with_faker()
     return page
@@ -202,16 +193,16 @@ def changes_discarded_original_preserved(contact_page):
 
 
 @given("müşterinin dışında (başka bir müşteride) zaten kayıtlı bir email vardır", target_fixture="duplicate_email_context")
-def another_customer_has_this_email(driver, base_url):
+def another_customer_has_this_email(authenticated_driver):
     # İki AYRI disposable müşteri: biri email'in "zaten kayıtlı" olduğu
     # taraf (other_page), diğeri bu email'i KENDİ formuna girmeyi
     # deneyecek olan taraf (contact_page) - update_customer.feature'daki
     # Nationality ID çakışma senaryosunda kurulan "ikinci disposable
     # müşteri" deseniyle tutarlı.
-    other_page = _create_fresh_customer_and_open_contact_tab(driver, base_url)
+    other_page = _create_fresh_customer_and_open_contact_tab(authenticated_driver)
     taken_email = other_page.get_displayed_email()
 
-    contact_page = _create_fresh_customer(driver)
+    contact_page = _create_fresh_customer(authenticated_driver)
     contact_page.click_edit()
     return contact_page, taken_email
 

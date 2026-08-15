@@ -1,5 +1,3 @@
-from urllib.parse import urlparse
-
 from faker import Faker
 from pytest_bdd import given, scenarios, then, when
 from selenium.webdriver.common.by import By
@@ -8,23 +6,17 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.billing_account_delete_page import BillingAccountDeletePage
 from pages.create_customer_page import CreateCustomerPage
-from pages.login_page import LoginPage
 from pages.offer_selection_page import OfferSelectionPage
 from pages.product_configuration_page import ProductConfigurationPage
+from utils import config
 
 scenarios("product_configuration.feature")
 
 fake = Faker("tr_TR")
 
 
-def _create_fresh_customer_and_open_account_tab(driver, base_url, extra_addresses=0):
-    login_page = LoginPage(driver)
-    login_page.open(base_url)
-    login_page.login("demo", "Password123")
-    WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
-
-    origin = urlparse(driver.current_url)
-    driver.get(f"{origin.scheme}://{origin.netloc}/customers/new")
+def _create_fresh_customer_and_open_account_tab(driver, extra_addresses=0):
+    driver.get(config.url("/customers/new"))
     create_page = CreateCustomerPage(driver)
     create_page.fill_demographic_step_with_faker(gender="Erkek")
     create_page.click_demographic_next()
@@ -42,13 +34,13 @@ def _create_fresh_customer_and_open_account_tab(driver, base_url, extra_addresse
     return BillingAccountDeletePage(driver)
 
 
-def _open_config_screen_with_offers(driver, base_url, offer_names, extra_addresses=0):
+def _open_config_screen_with_offers(driver, offer_names, extra_addresses=0):
     # "Mobil 20GB Paket" / "Superbox 50GB" gibi yalnızca <input> alanları
     # içeren (dropdown/select alanı OLMAYAN) basit şablonlu teklifler
     # kasıtlı seçiliyor - canlı doğrulandı (bkz. project_brain.txt UC-015
     # keşfi): "Ev İnterneti Fiber 1000" gibi tekliflerde ek bir <app-select>
     # bant genişliği alanı var, bu senaryoların kapsamı dışında (YAGNI).
-    account_page = _create_fresh_customer_and_open_account_tab(driver, base_url, extra_addresses)
+    account_page = _create_fresh_customer_and_open_account_tab(driver, extra_addresses)
     account_page.create_account_and_wait()
     account_page.click_new_sale_on_row()
     offer_page = OfferSelectionPage(driver)
@@ -60,8 +52,8 @@ def _open_config_screen_with_offers(driver, base_url, offer_names, extra_address
 
 
 @given("kullanıcı sepete birden fazla teklif ekleyip İleri ile Ürün Konfigürasyonu ekranına geçmiştir", target_fixture="config_page")
-def cart_has_multiple_offers_on_config_screen(driver, base_url):
-    return _open_config_screen_with_offers(driver, base_url, ["Mobil 20GB Paket", "Superbox 50GB"])
+def cart_has_multiple_offers_on_config_screen(authenticated_driver):
+    return _open_config_screen_with_offers(authenticated_driver, ["Mobil 20GB Paket", "Superbox 50GB"])
 
 
 @then("sepetteki her teklif için ayrı bir konfigürasyon kartı (Ürün Teklif ID/Adı ile) görüntülenir")
@@ -73,8 +65,8 @@ def each_cart_offer_has_own_config_card(config_page):
 
 
 @given("kullanıcı Ürün Konfigürasyonu ekranındadır", target_fixture="config_page")
-def user_on_product_configuration_screen(driver, base_url):
-    return _open_config_screen_with_offers(driver, base_url, ["Mobil 20GB Paket"])
+def user_on_product_configuration_screen(authenticated_driver):
+    return _open_config_screen_with_offers(authenticated_driver, ["Mobil 20GB Paket"])
 
 
 @when("zorunlu konfigürasyon alanları boş bırakılır")
@@ -89,8 +81,8 @@ def next_button_stays_disabled(config_page):
 
 
 @given("kullanıcının birden fazla kayıtlı adresi olduğu Ürün Konfigürasyonu ekranındadır", target_fixture="config_page")
-def user_on_config_screen_with_multiple_addresses(driver, base_url):
-    return _open_config_screen_with_offers(driver, base_url, ["Mobil 20GB Paket"], extra_addresses=1)
+def user_on_config_screen_with_multiple_addresses(authenticated_driver):
+    return _open_config_screen_with_offers(authenticated_driver, ["Mobil 20GB Paket"], extra_addresses=1)
 
 
 @when("müşterinin kayıtlı adreslerinden biri hizmet adresi olarak seçilir")
@@ -116,8 +108,8 @@ def new_address_added_and_selected(config_page):
 
 
 @given("kullanıcı Ürün Konfigürasyonu ekranında konfigürasyon alanlarını doldurmuştur", target_fixture="config_page")
-def user_filled_config_fields(driver, base_url):
-    config_page = _open_config_screen_with_offers(driver, base_url, ["Mobil 20GB Paket"])
+def user_filled_config_fields(authenticated_driver):
+    config_page = _open_config_screen_with_offers(authenticated_driver, ["Mobil 20GB Paket"])
     config_page.fill_all_required_text_fields_with_dummy_values()
     return config_page
 
@@ -148,8 +140,8 @@ def previously_entered_values_preserved(driver):
 
 
 @given("tüm zorunlu konfigürasyon alanları doldurulmuştur", target_fixture="config_page")
-def all_required_config_fields_filled(driver, base_url):
-    config_page = _open_config_screen_with_offers(driver, base_url, ["Mobil 20GB Paket"])
+def all_required_config_fields_filled(authenticated_driver):
+    config_page = _open_config_screen_with_offers(authenticated_driver, ["Mobil 20GB Paket"])
     config_page.fill_all_required_text_fields_with_dummy_values()
     assert config_page.is_next_button_enabled()
     return config_page

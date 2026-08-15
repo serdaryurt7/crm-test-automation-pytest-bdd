@@ -1,31 +1,22 @@
-from urllib.parse import urlparse
-
 from pytest_bdd import given, parsers, scenarios, then, when
-from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.create_customer_page import CreateCustomerPage
-from pages.login_page import LoginPage
 from pages.update_customer_page import UpdateCustomerPage
+from utils import config
 
 scenarios("update_customer.feature")
 
 
 @given("kullanıcı bir müşterinin Müşteri Bilgisi ekranındadır", target_fixture="update_customer_page")
-def user_on_customer_info_screen(driver, base_url):
-    login_page = LoginPage(driver)
-    login_page.open(base_url)
-    login_page.login("demo", "Password123")
-    WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
-
+def user_on_customer_info_screen(authenticated_driver):
     # Sabit bir müşteri ID'sine (paylaşılan, kalıcı bir disposable kayıt)
     # bağımlı olmak yerine - delete_customer.feature'da uygulanan desenle
     # tutarlı olarak - her senaryo için HER SEFERİNDE fresh bir disposable
     # müşteri create_customer akışıyla oluşturuluyor. Bu, testleri
     # birbirinden ve önceki çalıştırmalarda oluşabilecek herhangi bir
     # yan etkiden tamamen bağımsız kılıyor.
-    origin = urlparse(driver.current_url)
-    driver.get(f"{origin.scheme}://{origin.netloc}/customers/new")
-    create_page = CreateCustomerPage(driver)
+    authenticated_driver.get(config.url("/customers/new"))
+    create_page = CreateCustomerPage(authenticated_driver)
     create_page.fill_demographic_step_with_faker(gender="Erkek")
     create_page.click_demographic_next()
     create_page.wait_for_address_step()
@@ -37,7 +28,7 @@ def user_on_customer_info_screen(driver, base_url):
     create_page.click_submit()
     create_page.wait_for_navigated_to_customer_info()
 
-    return UpdateCustomerPage(driver)
+    return UpdateCustomerPage(authenticated_driver)
 
 
 @when("kullanıcı Edit ikonuna tıklar")
@@ -89,8 +80,7 @@ def user_sets_conflicting_nationality_id(update_customer_page, driver):
     # birbirini çağırmaması için.
     original_url = update_customer_page.get_detail_url()
 
-    origin = urlparse(driver.current_url)
-    driver.get(f"{origin.scheme}://{origin.netloc}/customers/new")
+    driver.get(config.url("/customers/new"))
     create_page = CreateCustomerPage(driver)
     _, _, _, other_identity_number = create_page.fill_demographic_step_with_faker(gender="Kadın")
     create_page.click_demographic_next()

@@ -1,31 +1,22 @@
-from urllib.parse import urlparse
-
 from faker import Faker
 from pytest_bdd import given, scenarios, then, when
-from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.address_delete_page import AddressDeletePage
 from pages.billing_account_create_page import BillingAccountCreatePage
 from pages.create_customer_page import CreateCustomerPage
-from pages.login_page import LoginPage
+from utils import config
 
 scenarios("address_delete.feature")
 
 fake = Faker("tr_TR")
 
 
-def _create_fresh_customer_and_open_address_tab(driver, base_url):
+def _create_fresh_customer_and_open_address_tab(driver):
     # Adres silme GERİ DÖNÜŞÜ OLMAYAN bir mutasyon olduğundan HER SENARYO
     # için fresh, tek kullanımlık bir disposable müşteri create_customer
     # akışıyla oluşturuluyor - address_update/address_add.feature'da
     # kurulan desenle tutarlı, tam bağımsızlık ve tekrarlanabilirlik için.
-    login_page = LoginPage(driver)
-    login_page.open(base_url)
-    login_page.login("demo", "Password123")
-    WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
-
-    origin = urlparse(driver.current_url)
-    driver.get(f"{origin.scheme}://{origin.netloc}/customers/new")
+    driver.get(config.url("/customers/new"))
     create_page = CreateCustomerPage(driver)
     create_page.fill_demographic_step_with_faker(gender="Erkek")
     create_page.click_demographic_next()
@@ -46,8 +37,8 @@ def _new_address_args():
 
 
 @given("kullanıcı, birden fazla adresi olan bir müşterinin adres kartını görüntülemektedir", target_fixture="address_page")
-def user_on_multi_address_customer(driver, base_url):
-    page = _create_fresh_customer_and_open_address_tab(driver, base_url)
+def user_on_multi_address_customer(authenticated_driver):
+    page = _create_fresh_customer_and_open_address_tab(authenticated_driver)
     page.add_new_address_and_wait_for_card(*_new_address_args())
     return page
 
@@ -63,8 +54,8 @@ def system_permanently_deletes_address(address_page):
 
 
 @given('kullanıcı "Sil" seçeneğine tıklamıştır', target_fixture="address_page")
-def user_has_clicked_delete_option(driver, base_url):
-    page = _create_fresh_customer_and_open_address_tab(driver, base_url)
+def user_has_clicked_delete_option(authenticated_driver):
+    page = _create_fresh_customer_and_open_address_tab(authenticated_driver)
     page.add_new_address_and_wait_for_card(*_new_address_args())
     page._count_before_delete = page.get_card_count()
     page.delete_last_added_card()
@@ -82,10 +73,10 @@ def card_removed_instantly(address_page):
 
 
 @given("müşterinin yalnızca 1 kayıtlı adresi vardır", target_fixture="address_page")
-def customer_has_single_address(driver, base_url):
+def customer_has_single_address(authenticated_driver):
     # Fresh müşteri create_customer wizard'ı sırasında zaten TAM OLARAK
     # 1 adresle oluşturuluyor - ek bir adım gerekmiyor.
-    return _create_fresh_customer_and_open_address_tab(driver, base_url)
+    return _create_fresh_customer_and_open_address_tab(authenticated_driver)
 
 
 @when("kullanıcı adres kartı menüsünü açar")
@@ -107,8 +98,8 @@ def address_not_deleted_even_if_clicked(address_page):
 
 
 @given("müşterinin birden fazla adresi ve Primary işaretli biri vardır", target_fixture="address_page")
-def customer_has_multiple_addresses_with_primary(driver, base_url):
-    page = _create_fresh_customer_and_open_address_tab(driver, base_url)
+def customer_has_multiple_addresses_with_primary(authenticated_driver):
+    page = _create_fresh_customer_and_open_address_tab(authenticated_driver)
     page.add_new_address_and_wait_for_card(*_new_address_args())
     return page
 
@@ -124,8 +115,8 @@ def verify_remaining_address_auto_primary(address_page):
 
 
 @given("bir adres silinmiştir", target_fixture="stale_delete_context")
-def an_address_has_been_deleted(driver, base_url):
-    page = _create_fresh_customer_and_open_address_tab(driver, base_url)
+def an_address_has_been_deleted(authenticated_driver):
+    page = _create_fresh_customer_and_open_address_tab(authenticated_driver)
     page.add_new_address_and_wait_for_card(*_new_address_args())
     stale_button = page.delete_last_added_card()
     return page, stale_button
@@ -145,7 +136,7 @@ def second_attempt_safely_rejected(duplicate_delete_result):
 
 
 @given("bir adres, aktif bir Fatura Hesabının hizmet adresi olarak kullanılmaktadır", target_fixture="service_address_context")
-def address_used_as_active_billing_account_service_address(driver, base_url):
+def address_used_as_active_billing_account_service_address(authenticated_driver):
     # ÖNEMLİ: hizmet adresi olarak billing-account formunun KENDİ "Yeni
     # Adres Ekle" alt-formuyla eklenen bir adres KULLANILMIYOR - canlı
     # keşifte bulundu ki O YOL üzerinden eklenen adres, sayfa tamamen
@@ -154,11 +145,11 @@ def address_used_as_active_billing_account_service_address(driver, base_url):
     # sekmesinin KENDİ (address_add.feature'da doğrulanmış) "Yeni Adres
     # Ekle" akışıyla GERÇEK, kalıcı bir 2. adres oluşturulup, fatura
     # hesabı formunda BU adres hizmet adresi olarak seçiliyor.
-    page = _create_fresh_customer_and_open_address_tab(driver, base_url)
+    page = _create_fresh_customer_and_open_address_tab(authenticated_driver)
     page.add_new_address_and_wait_for_card(*_new_address_args())
     service_address_title = page.get_all_card_titles()[-1]
 
-    account_page = BillingAccountCreatePage(driver)
+    account_page = BillingAccountCreatePage(authenticated_driver)
     account_page.click_create_account()
     titles_in_form = account_page.get_address_card_titles()
     target_index = titles_in_form.index(service_address_title)
@@ -168,7 +159,7 @@ def address_used_as_active_billing_account_service_address(driver, base_url):
     account_page.click_save()
     account_page.wait.until(lambda d: len(d.find_elements(*account_page.ACCOUNT_ROW)) > 0)
 
-    delete_page = AddressDeletePage(driver)
+    delete_page = AddressDeletePage(authenticated_driver)
     return delete_page, service_address_title
 
 

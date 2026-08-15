@@ -3,7 +3,6 @@ from pytest_bdd import given, parsers, scenarios, then, when
 from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.create_customer_page import CreateCustomerPage
-from pages.login_page import LoginPage
 from pages.search_customers_page import CustomersPage as SearchCustomersPage
 
 scenarios("create_customer.feature")
@@ -12,24 +11,19 @@ fake = Faker("tr_TR")
 
 
 @given("kullanıcı müşteri oluşturma sayfasındadır", target_fixture="create_customer_page")
-def user_on_create_customer_page(driver, base_url):
-    login_page = LoginPage(driver)
-    login_page.open(base_url)
-    login_page.login("demo", "Password123")
-    WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
-
+def user_on_create_customer_page(authenticated_driver):
     # Manuel test case'in 1. adımıyla birebir: "No customer found" mesajının
     # altındaki Create Customer butonuna tıklanarak gerçek kullanıcı yolculuğu
     # ile ulaşılıyor (var olan search_customers.feature'daki "No Customer
     # Found" senaryosuyla aynı, doğrulanmış page object metotları tekrar
     # kullanılıyor).
-    search_page = SearchCustomersPage(driver)
+    search_page = SearchCustomersPage(authenticated_driver)
     search_page.enter_identity_number("00000000000")
     search_page.submit_search()
     search_page.wait_for_no_results_state()
     search_page.click_create_customer_button()
-    WebDriverWait(driver, 10).until(lambda d: "/customers/new" in d.current_url)
-    return CreateCustomerPage(driver)
+    WebDriverWait(authenticated_driver, 10).until(lambda d: "/customers/new" in d.current_url)
+    return CreateCustomerPage(authenticated_driver)
 
 
 @then("girilen değerler ilgili alanlarda görüntülenir")

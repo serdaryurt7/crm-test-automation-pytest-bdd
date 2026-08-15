@@ -1,12 +1,9 @@
-from urllib.parse import urlparse
-
 from faker import Faker
 from pytest_bdd import given, parsers, scenarios, then, when
-from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.address_update_page import AddressUpdatePage
 from pages.create_customer_page import CreateCustomerPage
-from pages.login_page import LoginPage
+from utils import config
 
 scenarios("address_update.feature")
 
@@ -14,20 +11,14 @@ fake = Faker("tr_TR")
 
 
 @given("kullanıcı bir müşterinin Adres sekmesinde kayıtlı bir adres kartı görüntülemektedir", target_fixture="address_page")
-def user_on_customer_address_tab(driver, base_url):
-    login_page = LoginPage(driver)
-    login_page.open(base_url)
-    login_page.login("demo", "Password123")
-    WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
-
+def user_on_customer_address_tab(authenticated_driver):
     # Adres güncelleme/silme geri dönüşü zor mutasyonlar barındırdığından
     # (Primary değişikliği, silme vb.) HER SENARYO için fresh, tek
     # kullanımlık bir disposable müşteri create_customer akışıyla
     # oluşturuluyor - update_customer.feature/delete_customer.feature'da
     # kurulan desenle tutarlı, tam bağımsızlık ve tekrarlanabilirlik için.
-    origin = urlparse(driver.current_url)
-    driver.get(f"{origin.scheme}://{origin.netloc}/customers/new")
-    create_page = CreateCustomerPage(driver)
+    authenticated_driver.get(config.url("/customers/new"))
+    create_page = CreateCustomerPage(authenticated_driver)
     create_page.fill_demographic_step_with_faker(gender="Erkek")
     create_page.click_demographic_next()
     create_page.wait_for_address_step()
@@ -39,7 +30,7 @@ def user_on_customer_address_tab(driver, base_url):
     create_page.click_submit()
     create_page.wait_for_navigated_to_customer_info()
 
-    return AddressUpdatePage(driver)
+    return AddressUpdatePage(authenticated_driver)
 
 
 @when('kullanıcı kart menüsünden "düzenle" seçeneğini seçer')

@@ -13,8 +13,8 @@
 
 ## 0. İlerleme Durumu
 
-**Genel olgunluk: 3.8 → 4.3 / 10**
-**Page Object Model: 6 → 9 / 10** ✅
+**Genel olgunluk: 3.8 → 4.7 / 10**
+**Page Object Model: 6 → 9 / 10** ✅ &nbsp;·&nbsp; **Step katmanı: 3 → 5 / 10** ✅
 
 | Faz | Kapsam | Durum |
 |---|---|---|
@@ -23,6 +23,10 @@
 | **Faz 2** | `utils/waits.py` + poll döngülerinin taşınması | ✅ Tamam (`96a9a65`, kapsam daraltıldı) |
 | **Faz 3** | Page içindeki assert'lerin ayıklanması (11 → 6) | ✅ Tamam (`e7d260c`) |
 | Faz 4 | `create_customer_page.py` bölünmesi (735 satır) | ⏳ Ayrı karar |
+| **Faz A+B** | `utils/config.py` + `steps/conftest.py::authenticated_driver` | ✅ Tamam (`FAZ_AB_COMMIT`) |
+| Faz C | `new_customer` factory fixture (sihirbaz tekrarı, ~210 satır) | ⏳ Sırada |
+| Faz D | `utils/test_data.py` (7 ayrı Faker örneği) | ⏳ Bekliyor |
+| Faz E | Step'lerdeki ham `By`/`WebDriverWait` (opsiyonel) | ⏳ Risk/getiri zayıf |
 
 ### Faz 0 — Yapılanlar
 
@@ -134,6 +138,71 @@ Sıfır regresyon.
 **Sonuç: page içinde assert 11 → 6.** Kalan 6 POM ihlali değil:
 3'ü ayrıştırma guard'ı, 3'ü beklemenin kapsamadığı ikinci bir doğrulama.
 
+### Faz A+B — Yapılanlar (step katmanı, 1. dalga)
+
+Skor gerekçesindeki üç şikâyetten ikisi kapatıldı: *sabit kodlanmış veri*
+ve *sıfır paylaşılan fixture*. Üçüncüsü (*ağır tekrar*) kısmen — sihirbaz
+tekrarı Faz C'ye kaldı.
+
+**Yeni dosyalar**
+
+| Dosya | Satır | İçerik |
+|---|---|---|
+| `utils/config.py` | 40 | `USERNAME`, `PASSWORD`, `APP_ORIGIN`, `url()` |
+| `steps/conftest.py` | 34 | `credentials`, `authenticated_driver` fixture'ları |
+
+`steps/conftest.py`'nin varlığı başlı başına bir dönüm noktası: pytest-bdd
+step tanımlarını ve fixture'ları normal pytest kurallarıyla çözer, yani bu
+mekanizma en baştan mevcuttu ama proje hiç kullanmamıştı.
+
+**Ölçülen sonuç**
+
+| Ölçüt | Önce | Sonra |
+|---|---|---|
+| `steps/` satır sayısı | 3879 | **3756** (−123) |
+| Kopyalanmış login bloğu | 16 dosya | **0** |
+| `urlparse` ile origin hesabı | 14 dosya | **0** |
+| Sabit kodlanmış `demo`/`Password123` | 17 satır | **0** |
+| Ölü import | — | 28 silindi |
+| Paylaşılan fixture kullanan dosya | 0 | **16** |
+
+**Doğrulama:** `--collect-only` → **214 test** (temel çizgiyle birebir,
+senaryo kaybı yok). Kanarya 4/4 (50sn). Tam suite → **203 passed /
+11 failed** (58dk 02sn).
+
+11 başarısızlığın dağılımı: **7 bilinen kasıtlı kırmızı + 2 bilinen flaky
++ 2 YENİ flaky**. Yeni ikisi izole koşumda PASSED verdi ve
+`bugsbunny.txt` madde 18-19 olarak kayda geçti. **Regresyon tespit
+edilmedi.**
+
+> **Dürüstlük payı:** yeni flaky'lerden biri (`update_customer` TC-004-07
+> [Soyad]) yığın izinde `steps/conftest.py:28`'i, yani bu fazda eklenen
+> fixture'ı gösteriyor. Hata, login formunun 10sn içinde görünmemesi —
+> fixture, eskiden 16 dosyada tekrarlanan **aynı çağrıyı aynı zaman
+> aşımıyla** yapıyor; refactor çağrının yerini değiştirdi, içeriğini
+> değil. Aynı senaryonun `[Ad]` parametreli kardeşi aynı koşumda geçti ve
+> izole koşumda ikisi de geçiyor. Yine de, "fixture'la ilgisi yok" demek
+> yerine bunu açıkça izleme listesine aldım: tekrarlarsa ilk müdahale
+> `DEFAULT_TIMEOUT`'u yükseltmek olmalı (Faz 1 sayesinde tek ortam
+> değişkeni).
+
+**Bilinçli davranış değişikliği:** uygulama origin'i artık canlı
+`driver.current_url` yerine yapılandırmadan deterministik olarak
+türetiliyor. Eski davranış bir tasarım tercihi değildi — `.env`'deki
+`BASE_URL`'in login yolunu da içermesinin (`…:4200/login`) yan etkisiydi
+ve 14 dosyayı `urlparse` yapmaya zorluyordu. `utils/config.py` içinde
+gerekçesiyle belgelendi.
+
+**Bilinçli olarak DOKUNULMAYANLAR**
+
+- `test_login_steps.py` — giriş akışının **kendisini** test ediyor,
+  adımların açık kalması gerekir.
+- `language_support`'taki logout → yeniden giriş adımı — senaryonun konusu
+  bu; yalnızca kimlik bilgileri `config`'e bağlandı.
+- `lockout` senaryosundaki `admin-crm` / `Password123` literalleri —
+  bunlar paylaşılan yapılandırma değil, **`demo` hesabı kilitlenmesin diye
+  kasten seçilmiş ayrı bir hesabın** test verisi.
+
 ### Faz 1 — Bilinçli olarak YAPILMAYAN
 
 `BasePage`'in 20 yardımcı metodu (`find`, `click`, `type`, `text_of`,
@@ -181,22 +250,25 @@ tek sebebi bu.
 |---|---|---|---|
 | Senaryo kapsamı | 8 | 🟢 **8**/10 | 187 senaryo, iyi Gherkin disiplini, INVEST'e uyum |
 | Page Object Model | 6 | 🟢 **9**/10 | ✅ Faz 1: BasePage, 18/18 sınıf bağlı. ✅ Faz 3: assert 11 → 6 (kalanlar gerekçeli). Kalan tek eksik: 735 satırlık god class |
-| Step katmanı | 3 | 🔴 **3**/10 | Ağır tekrar, sıfır paylaşılan fixture, sabit kodlanmış veri |
-| Ortak altyapı (`utils/`) | 1 | 🔴 **2**/10 | ✅ Faz 2: `utils/waits.py` eklendi (1 → 2 modül). Hedef 8 modül; `config`, `text`, `test_data`, `logger` hâlâ yok |
+| Step katmanı | 3 | 🟡 **5**/10 | ✅ Faz A+B: login tekrarı 16 → 0, sabit kimlik bilgisi 17 → 0, ilk paylaşılan fixture. Kalan: 14 dosyadaki sihirbaz tekrarı (Faz C), ham `By` kullanımı |
+| Ortak altyapı (`utils/`) | 1 | 🔴 **3**/10 | ✅ Faz 2: `waits.py`. ✅ Faz A: `config.py` (3 modül). Hedef 8; `text`, `test_data`, `logger`, `api_client` hâlâ yok |
 | Test verisi yönetimi | 1 | 🔴 **1**/10 | `test_data/` boş, veri koda gömülü |
-| Konfigürasyon | 5 | 🟡 **5**/10 | `.env` var ama sürüm sabitleme yok, `base_url` yanlış semantik |
+| Konfigürasyon | 5 | 🟡 **6**/10 | ✅ Faz A: tek kaynak `utils/config.py`, origin semantiği düzeltildi. Kalan: `requirements.txt`'te sürüm sabitleme yok (K3) |
 | Raporlama | 7 | 🟢 **7**/10 | Allure + pytest-html iyi kurulmuş, ekran görüntüsü ekleniyor |
 | Repo hijyeni | 2 | 🔴 **2**/10 | README'de çözülmemiş merge conflict, 321KB dosya, 25 artık klasör |
 | CI/CD | 0 | 🔴 **0**/10 | Hiç yok |
 | Kararlılık (flaky yönetimi) | 5 | 🟡 **6**/10 | ✅ Faz 1: `ignored_exceptions` kapsamı 2/13 → 13/13. Hâlâ retry/paralel/izolasyon mekanizması yok |
 
-**Genel: 3.8 → 4.3 / 10**
+**Genel: 3.8 → 4.7 / 10**
 
-> **Neden genel skor az arttı?** Skor 10 boyutun ortalamasıdır; POM
-> boyutu 2 puan yükseldi ama bu ortalamaya 0.2 olarak yansıyor. Bu
-> yanıltıcı değil, **gerçekçi**: framework'ün olgunluğu tek bir katmanın
-> düzelmesiyle sıçramaz. Asıl sıçrama, en düşük üç boyutun (step katmanı,
-> `utils/`, CI) birlikte ele alınmasıyla gelecek — bkz. §11.
+> **Neden genel skor yavaş artıyor?** Skor 10 boyutun ortalamasıdır; POM
+> 3, step katmanı 2 puan yükseldi ama bu ortalamaya yalnızca 0.5 olarak
+> yansıyor. Bu yanıltıcı değil, **gerçekçi**: framework'ün olgunluğu tek
+> bir katmanın düzelmesiyle sıçramaz. Kalan üç sıfıra yakın boyut
+> (CI/CD 0, test verisi 1, repo hijyeni 2) tek başına ortalamayı 0.3
+> aşağı çekiyor — ve üçü de **düşük riskli**, çünkü hiçbiri mevcut test
+> mantığına dokunmuyor. Faz C+D step katmanını 7'ye, `utils/`'i 4'e
+> taşır (≈ **5.1**); asıl sıçrama CI + test verisi ile gelir.
 
 ---
 
@@ -300,17 +372,29 @@ pytest-bdd>=7.0,<8.0
 
 ---
 
-### 🔴 K4 — Kimlik bilgileri 17 step dosyasına gömülü
+### ✅ K4 — Kimlik bilgileri 17 step dosyasına gömülü — **ÇÖZÜLDÜ (Faz A)**
 
 ```python
-login_page.login("demo", "Password123")   # 18 kez tekrarlanıyor
+login_page.login("demo", "Password123")   # 17 satırda tekrarlanıyordu
 ```
 
-İki ayrı problem:
+İki ayrı problem vardı:
 1. **Güvenlik:** Şifre versiyon kontrolünde düz metin. Bugün demo ortamı, yarın staging.
-2. **Bakım:** Şifre değişirse 17 dosyaya dokunmanız gerekiyor.
+2. **Bakım:** Şifre değişirse 17 dosyaya dokunmak gerekiyordu.
 
-**Yapılacak:** `.env`'e taşı, `conftest.py`'de fixture ile sun (§6.1'de kod var).
+**Yapıldı:** `utils/config.py` `CRM_USERNAME`/`CRM_PASSWORD` ortam
+değişkenlerinden okuyor, `steps/conftest.py::credentials` fixture'ı ile
+sunuluyor. Step dosyalarında **0** sabit kimlik bilgisi kaldı.
+
+> Varsayılan değerler (`demo` / `Password123`) hâlâ `config.py` içinde
+> düz metin duruyor — bu **bilinçli**: yerel geliştirmede `.env` olmadan
+> çalışabilmek için. Gerçek bir ortama (staging/CI) geçerken bunlar
+> secret olarak enjekte edilmeli, varsayılanlar da kaldırılmalı. Şu anki
+> hâli tek dosyada olduğu için bu artık **tek satırlık** bir iş.
+>
+> `test_login_steps.py`'deki `admin-crm` / `Password123` literalleri
+> bilerek bırakıldı: bunlar paylaşılan yapılandırma değil, `demo` hesabı
+> kilitlenmesin diye ayrı seçilmiş bir hesabın senaryo verisidir.
 
 ---
 
@@ -493,14 +577,15 @@ Sihirbaz adımı başına ayrı sınıflara bölünmeli.
 
 ---
 
-### 4.3 `steps/` — En Zayıf Katman
+### 4.3 `steps/` — En Zayıf Katman *(Faz A+B ile kısmen düzeltildi)*
 
-**Mevcut durum:** 17 dosya, 3.866 satır. **Sıfır `@pytest.fixture` tanımı.**
+**Faz A+B öncesi:** 17 dosya, 3.879 satır. **Sıfır `@pytest.fixture` tanımı.**
+**Faz A+B sonrası:** 3.756 satır + `steps/conftest.py` (2 fixture).
 
-Tüm kurulum, `@given(..., target_fixture="...")` içinde yapılıyor. Bu pytest-bdd'de geçerli
-bir desendir; ancak burada kurulum kodu **paylaşılmadığı için** her dosyaya kopyalanmış.
+Tüm kurulum, `@given(..., target_fixture="...")` içinde yapılıyordu. Bu pytest-bdd'de geçerli
+bir desendir; ancak burada kurulum kodu **paylaşılmadığı için** her dosyaya kopyalanmıştı.
 
-Tipik bir step dosyasının açılışı:
+Tipik bir step dosyasının açılışı **(Faz A+B ÖNCESİ)**:
 
 ```python
 @given("kullanıcı ... görüntülemektedir", target_fixture="address_page")
@@ -527,16 +612,32 @@ def user_on_customer_address_tab(driver, base_url):
     return AddressUpdatePage(driver)
 ```
 
-Bu bloğun **14 dosyada** tekrarlanması şu anlama geliyor: müşteri oluşturma akışında bir
-alan eklenirse, 14 dosya düzenlenecek. Bu, framework'ün ölçeklenmesini engelleyen
-**bir numaralı** faktör.
+**Faz A+B SONRASI aynı fonksiyon** — ilk 6 satır (login + origin) tamamen
+gitti, `authenticated_driver` fixture'ı devraldı:
 
-**Ayrıca:** Step katmanında **~48 çıplak `WebDriverWait`** var. Bekleme mantığı page
-katmanına ait; step'te olması katman ihlali.
+```python
+@given("kullanıcı ... görüntülemektedir", target_fixture="address_page")
+def user_on_customer_address_tab(authenticated_driver):
+    authenticated_driver.get(config.url("/customers/new"))
+    create_page = CreateCustomerPage(authenticated_driver)
+    ...                                               # ← 12 satırlık sihirbaz
+    return AddressUpdatePage(authenticated_driver)    #    HÂLÂ 14 dosyada
+```
+
+**Kalan bir numaralı sorun:** o 12 satırlık sihirbaz bloğu hâlâ **14
+dosyada**. Müşteri oluşturma akışına bir alan eklenirse 14 dosya
+düzenlenecek. Faz C'nin (`new_customer` factory fixture) hedefi tam olarak
+bu.
+
+**Ayrıca:** Step katmanında **56 çıplak `WebDriverWait`** ve 7 dosyada
+**24 ham `By.*` locator'ı** var. Bekleme ve locator mantığı page
+katmanına ait; step'te olması katman ihlali (Faz E).
 
 ---
 
 ### 4.4 `utils/` — Fiilen Yok (En Kritik Eksik)
+
+Başlangıç durumu:
 
 ```
 utils/
@@ -544,8 +645,19 @@ utils/
 └── session.py    (40 satır — JWT exp claim'ini geçmişe çekiyor)
 ```
 
-`session.py` iyi yazılmış, amacı net ve yorumlanmış. Ama tek başına.
-Framework'ün ihtiyaç duyduğu ortak altyapının **%95'i eksik.**
+Güncel durum (Faz 2 + Faz A):
+
+```
+utils/
+├── .gitkeep
+├── session.py    (40 satır  — JWT exp claim'ini geçmişe çekiyor)
+├── waits.py      (100 satır — poll_until, wait_for_dom_settled)   ✅ Faz 2
+└── config.py     (40 satır  — kimlik bilgileri, origin, url())    ✅ Faz A
+```
+
+`session.py` iyi yazılmış, amacı net ve yorumlanmış. Artık tek başına
+değil, ama hedef 8 modüle göre hâlâ **3/8**: `text`, `test_data`,
+`logger`, `driver_factory`, `api_client` eksik.
 
 Ne eklenmesi gerektiği **§6**'da kodla birlikte.
 

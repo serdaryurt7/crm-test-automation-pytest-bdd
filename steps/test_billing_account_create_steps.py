@@ -1,11 +1,8 @@
-from urllib.parse import urlparse
-
 from pytest_bdd import given, parsers, scenarios, then, when
-from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.billing_account_create_page import BillingAccountCreatePage
 from pages.create_customer_page import CreateCustomerPage
-from pages.login_page import LoginPage
+from utils import config
 
 scenarios("billing_account_create.feature")
 
@@ -19,8 +16,7 @@ def _create_fresh_customer(driver):
     # içinde ikinci bir disposable müşteri gerektiğinde kullanılıyor
     # (contact_update.feature'da kurulan "2. müşteri için re-login YOK"
     # deseniyle tutarlı).
-    origin = urlparse(driver.current_url)
-    driver.get(f"{origin.scheme}://{origin.netloc}/customers/new")
+    driver.get(config.url("/customers/new"))
     create_page = CreateCustomerPage(driver)
     create_page.fill_demographic_step_with_faker(gender="Erkek")
     create_page.click_demographic_next()
@@ -35,21 +31,17 @@ def _create_fresh_customer(driver):
     return BillingAccountCreatePage(driver)
 
 
-def _create_fresh_customer_and_open_account_tab(driver, base_url):
+def _create_fresh_customer_and_open_account_tab(driver):
     # Fatura hesabı oluşturma mutasyonlar barındırdığından HER SENARYO
     # için fresh, tek kullanımlık bir disposable müşteri create_customer
     # akışıyla oluşturuluyor - projedeki diğer *_create/*_update
     # feature'larıyla tutarlı, tam bağımsızlık için.
-    login_page = LoginPage(driver)
-    login_page.open(base_url)
-    login_page.login("demo", "Password123")
-    WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
     return _create_fresh_customer(driver)
 
 
 @given("kullanıcı bir müşterinin Müşteri Hesabı sekmesindedir", target_fixture="account_page")
-def user_on_account_tab(driver, base_url):
-    return _create_fresh_customer_and_open_account_tab(driver, base_url)
+def user_on_account_tab(authenticated_driver):
+    return _create_fresh_customer_and_open_account_tab(authenticated_driver)
 
 
 @when('kullanıcı "Yeni Hesap Oluştur" butonuna tıklayıp Hesap Adı ve Adres (hizmet adresi) alanlarını doldurup Oluştur\'a tıklar', target_fixture="created_account_name")
@@ -63,10 +55,10 @@ def system_persists_account(account_page, created_account_name):
 
 
 @given("müşterinin hiç kayıtlı fatura hesabı yoktur", target_fixture="account_page")
-def customer_has_no_billing_accounts(driver, base_url):
+def customer_has_no_billing_accounts(authenticated_driver):
     # Fresh müşteri hiçbir fatura hesabı OLMADAN oluşturuluyor - ek bir
     # adım gerekmiyor.
-    return _create_fresh_customer_and_open_account_tab(driver, base_url)
+    return _create_fresh_customer_and_open_account_tab(authenticated_driver)
 
 
 @when("Müşteri Hesabı sekmesi açılır")
@@ -86,8 +78,8 @@ def not_found_message_displayed(account_page):
 
 
 @given("kullanıcı hesap oluşturma formundadır", target_fixture="account_page")
-def user_on_account_creation_form(driver, base_url):
-    page = _create_fresh_customer_and_open_account_tab(driver, base_url)
+def user_on_account_creation_form(authenticated_driver):
+    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
     page.click_create_account()
     return page
 
@@ -110,8 +102,8 @@ def save_disabled_and_no_account_created(account_page):
 
 
 @given("müşterinin birden fazla kayıtlı adresi vardır", target_fixture="account_page")
-def customer_has_multiple_addresses(driver, base_url):
-    page = _create_fresh_customer_and_open_account_tab(driver, base_url)
+def customer_has_multiple_addresses(authenticated_driver):
+    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
     page.click_create_account()
     if len(page.get_address_card_titles()) < 2:
         page.add_new_service_address("İkinci Sokak", "2", "ikinci adres açıklaması")
@@ -139,8 +131,8 @@ def new_address_shown_as_selected(account_page):
 
 
 @given("kullanıcı bir fatura hesabı oluşturmuştur", target_fixture="account_context")
-def user_has_created_a_billing_account(driver, base_url):
-    page = _create_fresh_customer_and_open_account_tab(driver, base_url)
+def user_has_created_a_billing_account(authenticated_driver):
+    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
     name = page.create_account_and_wait()
     return page, name
 
@@ -165,8 +157,8 @@ def account_status_displayed(account_context):
 
 
 @given("müşterinin zaten bir fatura hesabı vardır", target_fixture="account_context")
-def customer_already_has_one_billing_account(driver, base_url):
-    page = _create_fresh_customer_and_open_account_tab(driver, base_url)
+def customer_already_has_one_billing_account(authenticated_driver):
+    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
     first_name = page.create_account_and_wait()
     return page, first_name
 
@@ -184,8 +176,8 @@ def both_accounts_listed_independently(account_page):
 
 
 @given("kullanıcı formu doldurmuştur", target_fixture="account_page")
-def user_filled_the_form(driver, base_url):
-    page = _create_fresh_customer_and_open_account_tab(driver, base_url)
+def user_filled_the_form(authenticated_driver):
+    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
     page.click_create_account()
     page.fill_required_fields_with_faker()
     return page
@@ -218,8 +210,8 @@ def field_rejects_text_beyond_limit(typed_account_name_value):
 
 
 @given("müşteriye ait en az bir fatura hesabı vardır", target_fixture="account_context")
-def customer_has_at_least_one_billing_account(driver, base_url):
-    page = _create_fresh_customer_and_open_account_tab(driver, base_url)
+def customer_has_at_least_one_billing_account(authenticated_driver):
+    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
     name = page.create_account_and_wait()
     return page, name
 
@@ -231,8 +223,8 @@ def table_shows_defined_columns(account_context):
 
 
 @given("müşteriye ait sayfa başına limiti aşan sayıda fatura hesabı vardır", target_fixture="account_page")
-def customer_has_more_accounts_than_page_size(driver, base_url):
-    page = _create_fresh_customer_and_open_account_tab(driver, base_url)
+def customer_has_more_accounts_than_page_size(authenticated_driver):
+    page = _create_fresh_customer_and_open_account_tab(authenticated_driver)
     for _ in range(PAGE_SIZE + 1):
         page.create_account_and_wait()
     return page

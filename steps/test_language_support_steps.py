@@ -1,5 +1,3 @@
-from urllib.parse import urlparse
-
 from pytest_bdd import given, scenarios, then, when
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.by import By
@@ -9,19 +7,15 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.language_switcher_page import LanguageSwitcherPage
 from pages.login_page import LoginPage
+from utils import config
 
 scenarios("language_support.feature")
 
-
-def _login_fresh(driver, base_url):
-    # Her test YENİ bir tarayıcı profiliyle başladığından (conftest.py'deki
-    # driver fixture'ı) localStorage HER ZAMAN boş - dil varsayılan olarak
-    # TR ile başlıyor (canlı doğrulandı, testler arası kirlenme riski yok).
-    login_page = LoginPage(driver)
-    login_page.open(base_url)
-    login_page.login("demo", "Password123")
-    WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
-    return LanguageSwitcherPage(driver)
+# DİL BAŞLANGIÇ DURUMU: her test YENİ bir tarayıcı profiliyle başladığından
+# (conftest.py'deki driver fixture'ı) localStorage HER ZAMAN boş - dil
+# varsayılan olarak TR ile başlıyor (canlı doğrulandı, testler arası
+# kirlenme riski yok). authenticated_driver bu garantiyi değiştirmez:
+# yalnızca giriş yapar, profil yine testin kendi profilidir.
 
 
 def _get_testid_set(driver, attempts=5):
@@ -42,8 +36,7 @@ def _get_testid_set(driver, attempts=5):
 
 
 def _trigger_identity_number_validation_error(driver):
-    origin = urlparse(driver.current_url)
-    driver.get(f"{origin.scheme}://{origin.netloc}/customers/new")
+    driver.get(config.url("/customers/new"))
     WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.ID, "firstName")))
     id_field = driver.find_element(By.ID, "identityNumber")
     id_field.click()
@@ -55,8 +48,8 @@ def _trigger_identity_number_validation_error(driver):
 
 
 @given("kullanıcı uygulamada herhangi bir ekrandadır", target_fixture="lang_page")
-def user_on_any_screen(driver, base_url):
-    return _login_fresh(driver, base_url)
+def user_on_any_screen(authenticated_driver):
+    return LanguageSwitcherPage(authenticated_driver)
 
 
 @when("dil değiştirici butonuna tıklanır")
@@ -81,8 +74,8 @@ def panel_closes(lang_page):
 
 
 @given("dil değiştirici panel açıktır", target_fixture="lang_page")
-def language_switcher_panel_open(driver, base_url):
-    lang_page = _login_fresh(driver, base_url)
+def language_switcher_panel_open(authenticated_driver):
+    lang_page = LanguageSwitcherPage(authenticated_driver)
     lang_page.open_panel()
     return lang_page
 
@@ -106,8 +99,8 @@ def preference_persists_across_screens(driver, lang_page):
 
 
 @given('kullanıcı dili "EN" yapmıştır', target_fixture="lang_page")
-def user_set_language_to_en(driver, base_url):
-    lang_page = _login_fresh(driver, base_url)
+def user_set_language_to_en(authenticated_driver):
+    lang_page = LanguageSwitcherPage(authenticated_driver)
     lang_page.open_panel()
     lang_page.select_language("en")
     return lang_page
@@ -125,8 +118,8 @@ def ui_stays_english_after_reload(lang_page):
 
 
 @given("kullanıcı arayüz dilini EN olarak ayarlamıştır", target_fixture="lang_page")
-def user_configured_language_to_en(driver, base_url):
-    lang_page = _login_fresh(driver, base_url)
+def user_configured_language_to_en(authenticated_driver):
+    lang_page = LanguageSwitcherPage(authenticated_driver)
     lang_page.open_panel()
     lang_page.select_language("en")
     return lang_page
@@ -138,7 +131,7 @@ def user_logs_out_and_logs_back_in(driver):
     WebDriverWait(driver, 10).until(lambda d: "/login" in d.current_url)
     login_page = LoginPage(driver)
     login_page.wait.until(EC.visibility_of_element_located(login_page.USERNAME_INPUT))
-    login_page.login("demo", "Password123")
+    login_page.login(config.USERNAME, config.PASSWORD)
     WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
 
 
@@ -152,9 +145,9 @@ def ui_stays_english_after_relogin(lang_page):
 
 
 @given("otomasyon testleri data-testid tabanlı locator kullanmaktadır", target_fixture="testid_snapshot_context")
-def automation_relies_on_testid_locators(driver, base_url):
-    lang_page = _login_fresh(driver, base_url)
-    testids_before = _get_testid_set(driver)
+def automation_relies_on_testid_locators(authenticated_driver):
+    lang_page = LanguageSwitcherPage(authenticated_driver)
+    testids_before = _get_testid_set(authenticated_driver)
     return lang_page, testids_before
 
 
@@ -173,12 +166,12 @@ def testid_values_remain_stable_across_languages(driver, testid_snapshot_context
 
 
 @given('dil "EN"dir', target_fixture="validation_language_context")
-def language_is_en_with_known_turkish_baseline(driver, base_url):
+def language_is_en_with_known_turkish_baseline(authenticated_driver):
     # Karşılaştırmalı (dilden bağımsız) doğrulama için TR mesajı ÖNCE,
     # EN'e geçmeden hemen önce yakalanıyor - "mesaj değişti mi" kontrolü
     # literal bir dile (ne TR ne EN) bağımlı kalmadan yapılabiliyor.
-    lang_page = _login_fresh(driver, base_url)
-    turkish_message = _trigger_identity_number_validation_error(driver)
+    lang_page = LanguageSwitcherPage(authenticated_driver)
+    turkish_message = _trigger_identity_number_validation_error(authenticated_driver)
     lang_page.open_panel()
     lang_page.select_language("en")
     return turkish_message
@@ -199,8 +192,8 @@ def message_differs_from_turkish_version(validation_messages):
 
 
 @given('aktif dil "TR"dir', target_fixture="lang_page")
-def active_language_is_tr(driver, base_url):
-    return _login_fresh(driver, base_url)
+def active_language_is_tr(authenticated_driver):
+    return LanguageSwitcherPage(authenticated_driver)
 
 
 @when("dil değiştirici panel görüntülenir")
@@ -214,8 +207,8 @@ def active_language_is_highlighted(lang_page):
 
 
 @given("kullanıcı dil değiştirici paneli açmıştır", target_fixture="lang_page")
-def user_opened_language_switcher_panel(driver, base_url):
-    lang_page = _login_fresh(driver, base_url)
+def user_opened_language_switcher_panel(authenticated_driver):
+    lang_page = LanguageSwitcherPage(authenticated_driver)
     lang_page.open_panel()
     return lang_page
 

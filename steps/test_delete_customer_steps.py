@@ -1,5 +1,3 @@
-from urllib.parse import urlparse
-
 from pytest_bdd import given, scenarios, then, when
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -9,20 +7,15 @@ from pages.billing_account_delete_page import BillingAccountDeletePage
 from pages.create_customer_page import CreateCustomerPage
 from pages.delete_customer_page import DeleteCustomerPage
 from pages.language_switcher_page import LanguageSwitcherPage
-from pages.login_page import LoginPage
 from pages.sales_setup_page import SalesSetupPage
 from pages.search_customers_page import CustomersPage
+from utils import config
 
 scenarios("delete_customer.feature")
 
 
 @given("kullanıcı silinecek müşterinin Müşteri Bilgisi ekranındadır", target_fixture="delete_customer_page")
-def user_on_customer_to_delete_info_screen(driver, base_url):
-    login_page = LoginPage(driver)
-    login_page.open(base_url)
-    login_page.login("demo", "Password123")
-    WebDriverWait(driver, 10).until(lambda d: "/customers" in d.current_url)
-
+def user_on_customer_to_delete_info_screen(authenticated_driver):
     # Silme (Evet ile onaylanan) GERİ DÖNÜŞÜ OLMAYAN bir mutasyon -
     # canlı doğrulandı: müşteri sonrasında hem arama sonuçlarından hem
     # de doğrudan URL erişiminden tamamen kayboluyor. Sabit bir müşteri
@@ -30,9 +23,8 @@ def user_on_customer_to_delete_info_screen(driver, base_url):
     # silinmiş, bulunamıyor" hatasıyla TÜM senaryoları bozardı - bu
     # yüzden her senaryo için HER SEFERİNDE fresh, tek kullanımlık bir
     # disposable müşteri create_customer akışıyla oluşturuluyor.
-    origin = urlparse(driver.current_url)
-    driver.get(f"{origin.scheme}://{origin.netloc}/customers/new")
-    create_page = CreateCustomerPage(driver)
+    authenticated_driver.get(config.url("/customers/new"))
+    create_page = CreateCustomerPage(authenticated_driver)
     create_page.fill_demographic_step_with_faker(gender="Erkek")
     create_page.click_demographic_next()
     create_page.wait_for_address_step()
@@ -44,7 +36,7 @@ def user_on_customer_to_delete_info_screen(driver, base_url):
     create_page.click_submit()
     create_page.wait_for_navigated_to_customer_info()
 
-    return DeleteCustomerPage(driver)
+    return DeleteCustomerPage(authenticated_driver)
 
 
 @when("kullanıcı Delete ikonuna tıklar")
