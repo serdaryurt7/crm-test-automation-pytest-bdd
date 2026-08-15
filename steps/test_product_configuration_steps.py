@@ -1,4 +1,3 @@
-from faker import Faker
 from pytest_bdd import given, scenarios, then, when
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -7,10 +6,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from pages.billing_account_delete_page import BillingAccountDeletePage
 from pages.offer_selection_page import OfferSelectionPage
 from pages.product_configuration_page import ProductConfigurationPage
+from utils.test_data import new_address_args
 
 scenarios("product_configuration.feature")
-
-fake = Faker("tr_TR")
 
 
 def _open_config_screen_with_offers(driver, offer_names):
@@ -85,7 +83,7 @@ def selection_is_marked(config_page):
 
 @when('"Yeni Adres Ekle" ile yeni bir hizmet adresi eklenir')
 def add_new_service_address(config_page):
-    config_page.add_new_service_address(fake.street_name(), fake.building_number(), fake.sentence(nb_words=4))
+    config_page.add_new_service_address(*new_address_args())
 
 
 @then("yeni adres seçili olarak listeye eklenir")

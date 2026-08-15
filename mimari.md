@@ -13,8 +13,8 @@
 
 ## 0. İlerleme Durumu
 
-**Genel olgunluk: 3.8 → 4.85 / 10**
-**Page Object Model: 6 → 9 / 10** ✅ &nbsp;·&nbsp; **Step katmanı: 3 → 6.5 / 10** ✅
+**Genel olgunluk: 3.8 → 5.2 / 10**
+**Page Object Model: 6 → 9 / 10** ✅ &nbsp;·&nbsp; **Step katmanı: 3 → 7 / 10** ✅
 
 | Faz | Kapsam | Durum |
 |---|---|---|
@@ -25,7 +25,7 @@
 | Faz 4 | `create_customer_page.py` bölünmesi (735 satır) | ⏳ Ayrı karar |
 | **Faz A+B** | `utils/config.py` + `steps/conftest.py::authenticated_driver` | ✅ Tamam (`fc697f3`) |
 | **Faz C** | `new_customer` / `disposable_customer` factory fixture'ları | ✅ Tamam (`92404f3`) |
-| Faz D | `utils/test_data.py` (7 ayrı Faker örneği) | ⏳ Bekliyor |
+| **Faz D** | `utils/test_data.py` (11 ayrı Faker örneği) | ✅ Tamam (`FAZ_D_COMMIT`) |
 | Faz E | Step'lerdeki ham `By`/`WebDriverWait` (opsiyonel) | ⏳ Risk/getiri zayıf |
 
 ### Faz 0 — Yapılanlar
@@ -268,6 +268,37 @@ doğruladığı yol ise müşteri oluşturulduktan **sonra** Adres sekmesinden
 eklemektir (UC-EACRML-008-05'te keşfedildiği üzere hesap formunun kendi
 alt-formuyla eklenen adresler kalıcı olmuyor). Gerekçe koda yazıldı.
 
+### Faz D — Yapılanlar (step katmanı, 3. dalga)
+
+**Yeni:** `utils/test_data.py` (33 satır) — paylaşılan `fake` örneği +
+`new_address_args(nb_words=4)`.
+
+| Ölçüt | Önce | Sonra |
+|---|---|---|
+| `Faker("tr_TR")` örneği | **11** (7 step + 4 page) | **0** |
+| `(sokak, bina no, açıklama)` üçlüsü tekrarı | 11 yer | **0** |
+| `utils/` modül sayısı | 3 | **4** |
+
+**Doğrulama:** 214 test toplandı, kanarya 4/4, tam suite **206 passed /
+8 failed** — 7 bilinen kasıtlı kırmızı + 1 bilinen flaky, **sıfır yeni
+hata**. Bu, oturumdaki en temiz koşum.
+
+**Kapsam bilinçli olarak daraltıldı — kendi planımı kestim.** Bu belgenin
+§6.5'inde bir `FIELD_LIMITS` sözlüğü öneriyordum. Uygulanmadı: kodda
+hiçbir yer onu kullanmıyor, alan sınırları Gherkin `Examples`
+tablolarında yaşıyor ve oradan okunması doğru. YAGNI gereği yalnızca
+kanıtlanmış tekrar çıkarıldı; gerekçe modül docstring'ine de yazıldı ki
+ileride "eksik kalmış" sanılmasın.
+
+**İki küçük bulgu**
+
+- `billing_account_delete_steps.py` bir `Faker` örneği kuruyor ama
+  dosyada tek bir `fake.` kullanımı yok — ölü kod, import'la silindi.
+- `address_delete_steps.py` adres üçlüsünü zaten yerel bir
+  `_new_address_args()` yardımcısına çıkarmıştı. İhtiyaç kanıtlıydı,
+  yalnızca yanlış katmandaydı; yerel yardımcı silinip çağrılar doğrudan
+  util'e bağlandı.
+
 ### Faz 1 — Bilinçli olarak YAPILMAYAN
 
 `BasePage`'in 20 yardımcı metodu (`find`, `click`, `type`, `text_of`,
@@ -315,16 +346,16 @@ tek sebebi bu.
 |---|---|---|---|
 | Senaryo kapsamı | 8 | 🟢 **8**/10 | 187 senaryo, iyi Gherkin disiplini, INVEST'e uyum |
 | Page Object Model | 6 | 🟢 **9**/10 | ✅ Faz 1: BasePage, 18/18 sınıf bağlı. ✅ Faz 3: assert 11 → 6 (kalanlar gerekçeli). Kalan tek eksik: 735 satırlık god class |
-| Step katmanı | 3 | 🟡 **6.5**/10 | ✅ Faz A+B: login tekrarı 16 → 0, sabit kimlik bilgisi 17 → 0. ✅ Faz C: sihirbaz tekrarı 14 → 0, `steps/` −418 satır. Kalan: 56 çıplak `WebDriverWait`, 24 ham `By` (Faz E) |
-| Ortak altyapı (`utils/`) | 1 | 🔴 **3**/10 | ✅ Faz 2: `waits.py`. ✅ Faz A: `config.py` (3 modül). Hedef 8; `text`, `test_data`, `logger`, `api_client` hâlâ yok |
-| Test verisi yönetimi | 1 | 🔴 **1**/10 | `test_data/` boş, veri koda gömülü |
+| Step katmanı | 3 | 🟢 **7**/10 | ✅ Faz A+B: login tekrarı 16 → 0, sabit kimlik bilgisi 17 → 0. ✅ Faz C: sihirbaz tekrarı 14 → 0. ✅ Faz D: Faker örneği 7 → 0. Kalan: 56 çıplak `WebDriverWait`, 24 ham `By` (Faz E) |
+| Ortak altyapı (`utils/`) | 1 | 🟡 **4**/10 | ✅ Faz 2: `waits.py`. ✅ Faz A: `config.py`. ✅ Faz D: `test_data.py` (4 modül). Hedef 8; `text`, `logger`, `driver_factory`, `api_client` hâlâ yok |
+| Test verisi yönetimi | 1 | 🔴 **3**/10 | ✅ Faz D: üretilen veri tek kaynakta (`utils/test_data.py`). Kalan: `test_data/` dizini hâlâ boş, sınır değer kataloğu yok, literaller Gherkin Examples'ta dağınık |
 | Konfigürasyon | 5 | 🟡 **6**/10 | ✅ Faz A: tek kaynak `utils/config.py`, origin semantiği düzeltildi. Kalan: `requirements.txt`'te sürüm sabitleme yok (K3) |
 | Raporlama | 7 | 🟢 **7**/10 | Allure + pytest-html iyi kurulmuş, ekran görüntüsü ekleniyor |
 | Repo hijyeni | 2 | 🔴 **2**/10 | README'de çözülmemiş merge conflict, 321KB dosya, 25 artık klasör |
 | CI/CD | 0 | 🔴 **0**/10 | Hiç yok |
 | Kararlılık (flaky yönetimi) | 5 | 🟡 **6**/10 | ✅ Faz 1: `ignored_exceptions` kapsamı 2/13 → 13/13. Hâlâ retry/paralel/izolasyon mekanizması yok |
 
-**Genel: 3.8 → 4.85 / 10**
+**Genel: 3.8 → 5.2 / 10**
 
 > **Neden genel skor yavaş artıyor?** Skor 10 boyutun ortalamasıdır; POM
 > 3, step katmanı 3.5 puan yükseldi ama bu ortalamaya yalnızca 0.65
@@ -332,8 +363,8 @@ tek sebebi bu.
 > bir katmanın düzelmesiyle sıçramaz. Kalan üç sıfıra yakın boyut
 > (CI/CD 0, test verisi 1, repo hijyeni 2) tek başına ortalamayı 0.3
 > aşağı çekiyor — ve üçü de **düşük riskli**, çünkü hiçbiri mevcut test
-> mantığına dokunmuyor. Faz D `utils/`'i 4'e taşır (≈ **5.0**); asıl
-> sıçrama CI + test verisi yönetimi ile gelir.
+> mantığına dokunmuyor ve üçü birlikte ortalamayı ~0.9 aşağı çekiyor.
+> Planlanan fazlar bitti; buradan sonraki her puan bu üç boyuttan gelir.
 
 ---
 

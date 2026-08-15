@@ -1,4 +1,3 @@
-from faker import Faker
 from pytest_bdd import given, scenarios, then, when
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -8,8 +7,6 @@ from pages.billing_account_delete_page import BillingAccountDeletePage
 from pages.sales_setup_page import SalesSetupPage
 
 scenarios("billing_account_delete.feature")
-
-fake = Faker("tr_TR")
 
 
 @given("kullanıcı, aktif ürünü olmayan bir hesap satırı görüntülemektedir", target_fixture="account_page")

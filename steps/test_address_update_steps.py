@@ -1,11 +1,9 @@
-from faker import Faker
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from pages.address_update_page import AddressUpdatePage
+from utils.test_data import fake, new_address_args
 
 scenarios("address_update.feature")
-
-fake = Faker("tr_TR")
 
 
 @given("kullanıcı bir müşterinin Adres sekmesinde kayıtlı bir adres kartı görüntülemektedir", target_fixture="address_page")
@@ -97,7 +95,7 @@ def field_accepts_full_500_char_value(typed_field_value):
 @given("müşterinin birden fazla adresi vardır")
 def customer_has_multiple_addresses(address_page):
     address_page.click_add_address()
-    address_page.add_address_with_faker(fake.street_name(), fake.building_number(), fake.sentence(nb_words=4))
+    address_page.add_address_with_faker(*new_address_args())
 
 
 @when("kullanıcı ikinci adresi Primary olarak işaretler")

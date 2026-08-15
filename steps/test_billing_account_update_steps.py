@@ -1,12 +1,10 @@
-from faker import Faker
 from pytest_bdd import given, scenarios, then, when
 
 from pages.address_add_page import AddressAddPage
 from pages.billing_account_update_page import BillingAccountUpdatePage
+from utils.test_data import fake, new_address_args
 
 scenarios("billing_account_update.feature")
-
-fake = Faker("tr_TR")
 
 
 @given("kullanıcı Müşteri Hesabı sekmesinde bir hesap satırı görüntülemektedir", target_fixture="account_page")
@@ -38,7 +36,7 @@ def user_on_edit_form(disposable_customer):
     # create_customer SİHİRBAZI içinde ekler; bu senaryonun doğruladığı
     # yol ise müşteri oluşturulduktan SONRA Adres sekmesinden eklemektir.
     AddressAddPage(disposable_customer).add_new_address_and_wait_for_card(
-        fake.street_name(), fake.building_number(), fake.sentence(nb_words=3)
+        *new_address_args(nb_words=3)
     )
     page = BillingAccountUpdatePage(disposable_customer)
     page.create_account_and_wait()

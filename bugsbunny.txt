@@ -323,3 +323,23 @@ TC-006-06b) yine FAILED, yani tekrar eden bir flaky.
     bekleme eklemek regresyon kanıtını bulandırırdı): sayımı
     utils/waits.py::poll_until veya projedeki wait_for_*_persisted_
     after_reload deseniyle sarmalamak.
+
+===========================================================
+[2026-08-16] FAZ D (utils/test_data.py) TAM SUITE
+206 passed / 8 failed (1sa 10dk 15sn) - YENI HATA YOK
+===========================================================
+
+8 başarısızlığın tamamı önceden kayıtlı: 7 bilinen kasıtlı kırmızı
+(address_update TC-006-05b, billing_account_create TC-010-09b,
+billing_account_update TC-011-02 ve TC-011-04, delete_customer TC-005-03,
+login hesap-kilitleme, offer_selection TC-014-13) + 1 bilinen flaky
+(billing_account_delete TC-012-03).
+
+Üç flaky maddesi (18: address_update TC-006-06b, 19: update_customer
+TC-004-07[Soyad], 20: order_submission TC-016-03) bu koşumda PASSED.
+DİKKAT: bu, düzeldiklerinin kanıtı DEĞİL - üçü de tanım gereği
+tutarsız davranıyor. Madde 20 için önerilen bekleme düzeltmesi hâlâ
+geçerli ve yapılmadı.
+
+Koşum süresi 54dk -> 70dk'ya çıktı; test sayısı ve iş aynı olduğundan
+bu makine yükü kaynaklı, kodla ilgisi yok.

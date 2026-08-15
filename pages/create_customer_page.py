@@ -1,13 +1,11 @@
 import random
 import time
-from faker import Faker
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
-
-fake = Faker("tr_TR")
+from utils.test_data import fake
 
 class CreateCustomerPage(BasePage):
     PAGE_TITLE = (By.CSS_SELECTOR, "[data-testid='page-title']")

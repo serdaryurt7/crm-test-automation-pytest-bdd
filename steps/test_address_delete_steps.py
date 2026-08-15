@@ -1,22 +1,16 @@
-from faker import Faker
 from pytest_bdd import given, scenarios, then, when
 
 from pages.address_delete_page import AddressDeletePage
 from pages.billing_account_create_page import BillingAccountCreatePage
+from utils.test_data import fake, new_address_args
 
 scenarios("address_delete.feature")
-
-fake = Faker("tr_TR")
-
-
-def _new_address_args():
-    return fake.street_name(), fake.building_number(), fake.sentence(nb_words=4)
 
 
 @given("kullanıcı, birden fazla adresi olan bir müşterinin adres kartını görüntülemektedir", target_fixture="address_page")
 def user_on_multi_address_customer(disposable_customer):
     page = AddressDeletePage(disposable_customer)
-    page.add_new_address_and_wait_for_card(*_new_address_args())
+    page.add_new_address_and_wait_for_card(*new_address_args())
     return page
 
 
@@ -33,7 +27,7 @@ def system_permanently_deletes_address(address_page):
 @given('kullanıcı "Sil" seçeneğine tıklamıştır', target_fixture="address_page")
 def user_has_clicked_delete_option(disposable_customer):
     page = AddressDeletePage(disposable_customer)
-    page.add_new_address_and_wait_for_card(*_new_address_args())
+    page.add_new_address_and_wait_for_card(*new_address_args())
     page._count_before_delete = page.get_card_count()
     page.delete_last_added_card()
     return page
@@ -77,7 +71,7 @@ def address_not_deleted_even_if_clicked(address_page):
 @given("müşterinin birden fazla adresi ve Primary işaretli biri vardır", target_fixture="address_page")
 def customer_has_multiple_addresses_with_primary(disposable_customer):
     page = AddressDeletePage(disposable_customer)
-    page.add_new_address_and_wait_for_card(*_new_address_args())
+    page.add_new_address_and_wait_for_card(*new_address_args())
     return page
 
 
@@ -94,7 +88,7 @@ def verify_remaining_address_auto_primary(address_page):
 @given("bir adres silinmiştir", target_fixture="stale_delete_context")
 def an_address_has_been_deleted(disposable_customer):
     page = AddressDeletePage(disposable_customer)
-    page.add_new_address_and_wait_for_card(*_new_address_args())
+    page.add_new_address_and_wait_for_card(*new_address_args())
     stale_button = page.delete_last_added_card()
     return page, stale_button
 
@@ -123,7 +117,7 @@ def address_used_as_active_billing_account_service_address(disposable_customer):
     # Ekle" akışıyla GERÇEK, kalıcı bir 2. adres oluşturulup, fatura
     # hesabı formunda BU adres hizmet adresi olarak seçiliyor.
     page = AddressDeletePage(disposable_customer)
-    page.add_new_address_and_wait_for_card(*_new_address_args())
+    page.add_new_address_and_wait_for_card(*new_address_args())
     service_address_title = page.get_all_card_titles()[-1]
 
     account_page = BillingAccountCreatePage(disposable_customer)

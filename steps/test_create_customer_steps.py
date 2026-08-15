@@ -1,13 +1,11 @@
-from faker import Faker
 from pytest_bdd import given, parsers, scenarios, then, when
 from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.create_customer_page import CreateCustomerPage
 from pages.search_customers_page import CustomersPage as SearchCustomersPage
+from utils.test_data import fake
 
 scenarios("create_customer.feature")
-
-fake = Faker("tr_TR")
 
 
 @given("kullanıcı müşteri oluşturma sayfasındadır", target_fixture="create_customer_page")

@@ -1,6 +1,5 @@
 import random
 
-from faker import Faker
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
     ElementNotInteractableException,
@@ -13,8 +12,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
-
-fake = Faker("tr_TR")
+from utils.test_data import fake
 
 
 class BillingAccountCreatePage(BasePage):

@@ -1,11 +1,9 @@
-from faker import Faker
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from pages.address_add_page import AddressAddPage
+from utils.test_data import new_address_args
 
 scenarios("address_add.feature")
-
-fake = Faker("tr_TR")
 
 
 @given("kullanıcı bir müşterinin Adres sekmesindedir", target_fixture="address_page")
@@ -32,27 +30,27 @@ def user_filled_new_address_form(disposable_customer):
     page = AddressAddPage(disposable_customer)
     page.snapshot_card_count()
     page.click_add_address()
-    page.fill_new_address_form(fake.street_name(), fake.building_number(), fake.sentence(nb_words=4))
+    page.fill_new_address_form(*new_address_args())
     return page
 
 
 @given("müşterinin 2 kayıtlı adresi vardır", target_fixture="address_page")
 def customer_has_two_addresses(disposable_customer):
     page = AddressAddPage(disposable_customer)
-    page.add_new_address_and_wait_for_card(fake.street_name(), fake.building_number(), fake.sentence(nb_words=4))
+    page.add_new_address_and_wait_for_card(*new_address_args())
     return page
 
 
 @given("kullanıcı yeni bir adres eklemiştir", target_fixture="address_page")
 def user_added_new_address(disposable_customer):
     page = AddressAddPage(disposable_customer)
-    page.add_new_address_and_wait_for_card(fake.street_name(), fake.building_number(), fake.sentence(nb_words=4))
+    page.add_new_address_and_wait_for_card(*new_address_args())
     return page
 
 
 @when("""kullanıcı "Yeni Adres Ekle" butonuna tıklayıp formu doldurup Save'e tıklar""")
 def user_opens_fills_and_saves_new_address(address_page):
-    address_page.add_new_address_and_wait_for_card(fake.street_name(), fake.building_number(), fake.sentence(nb_words=4))
+    address_page.add_new_address_and_wait_for_card(*new_address_args())
 
 
 @then("sistem gerçek bir POST isteğiyle (…/addresses) yeni adresi kaydeder")
@@ -62,7 +60,7 @@ def system_persists_new_address_via_real_backend_call(address_page):
 
 @when("kullanıcı yeni bir adres ekler")
 def user_adds_a_new_address(address_page):
-    address_page.add_new_address_and_wait_for_card(fake.street_name(), fake.building_number(), fake.sentence(nb_words=4))
+    address_page.add_new_address_and_wait_for_card(*new_address_args())
 
 
 @then("önceki kart silinmez, yeni adres AYRI bir kart olarak eklenir")
@@ -73,7 +71,7 @@ def previous_card_not_deleted_new_card_added_separately(address_page):
 @when(parsers.parse('"{alan}" alanı boşaltılır'))
 def user_leaves_field_empty_while_filling_others(address_page, alan):
     address_page.fill_new_address_form(
-        fake.street_name(), fake.building_number(), fake.sentence(nb_words=4), skip_field=alan
+        *new_address_args(), skip_field=alan
     )
 
 
@@ -116,7 +114,7 @@ def only_81_provinces_listed_no_free_text(address_page):
 
 @when("kullanıcı 3. bir adres daha ekler")
 def user_adds_third_address(address_page):
-    address_page.add_new_address_and_wait_for_card(fake.street_name(), fake.building_number(), fake.sentence(nb_words=4))
+    address_page.add_new_address_and_wait_for_card(*new_address_args())
 
 
 @then("herhangi bir üst sınır hatasıyla karşılaşılmadan 3 adres de listelenir")
