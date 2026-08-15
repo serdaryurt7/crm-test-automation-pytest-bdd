@@ -23,7 +23,7 @@
 | **Faz 2** | `utils/waits.py` + poll döngülerinin taşınması | ✅ Tamam (`96a9a65`, kapsam daraltıldı) |
 | **Faz 3** | Page içindeki assert'lerin ayıklanması (11 → 6) | ✅ Tamam (`e7d260c`) |
 | Faz 4 | `create_customer_page.py` bölünmesi (735 satır) | ⏳ Ayrı karar |
-| **Faz A+B** | `utils/config.py` + `steps/conftest.py::authenticated_driver` | ✅ Tamam (`FAZ_AB_COMMIT`) |
+| **Faz A+B** | `utils/config.py` + `steps/conftest.py::authenticated_driver` | ✅ Tamam (`fc697f3`) |
 | Faz C | `new_customer` factory fixture (sihirbaz tekrarı, ~210 satır) | ⏳ Sırada |
 | Faz D | `utils/test_data.py` (7 ayrı Faker örneği) | ⏳ Bekliyor |
 | Faz E | Step'lerdeki ham `By`/`WebDriverWait` (opsiyonel) | ⏳ Risk/getiri zayıf |
