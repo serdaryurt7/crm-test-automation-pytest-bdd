@@ -13,7 +13,7 @@
 
 ## 0. İlerleme Durumu
 
-**Genel olgunluk: 3.8 → 6.1 / 10**
+**Genel olgunluk: 3.8 → 6.2 / 10**
 **Page Object Model: 6 → 9 / 10** ✅ &nbsp;·&nbsp; **Step katmanı: 3 → 7 / 10** ✅
 
 | Faz | Kapsam | Durum |
@@ -30,8 +30,8 @@
 | Faz E | Step'lerdeki ham `By`/`WebDriverWait` (24 + 23) | ⏳ Risk/getiri zayıf |
 | Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Bekliyor |
 | **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`1082909`) |
-| Faz H2 | `utils/text.py` — Türkçe katlama (gizli hata, §6.4) | ⏳ Önerilen sıradaki adım |
-| Faz H1 | `wait_for_dom_settled`: benimse ya da sil (§4.2c) | ⏳ Karar bekliyor |
+| **Faz H2** | `utils/text.py` — Türkçe katlama (gizli hata, §6.4) | ✅ Tamam (`FAZ_H2_COMMIT`) |
+| Faz H1 | `wait_for_dom_settled`: benimse ya da sil (§4.2c) | ⏳ **Sıradaki karar** |
 
 ### Faz 0 — Yapılanlar
 
@@ -360,7 +360,7 @@ tek sebebi bu.
 | Senaryo kapsamı | 8 | 🟢 **8**/10 | 187 senaryo, iyi Gherkin disiplini, INVEST'e uyum |
 | Page Object Model | 6 | 🟢 **9**/10 | ✅ Faz 1: BasePage, 18/18 sınıf bağlı. ✅ Faz 3: assert 11 → 6 (kalanlar gerekçeli). Kalan tek eksik: 735 satırlık god class |
 | Step katmanı | 3 | 🟢 **7**/10 | ✅ Faz A+B: login tekrarı 16 → 0, sabit kimlik bilgisi 17 → 0. ✅ Faz C: sihirbaz tekrarı 14 → 0. ✅ Faz D: Faker örneği 7 → 0. Kalan: 56 çıplak `WebDriverWait`, 24 ham `By` (Faz E) |
-| Ortak altyapı (`utils/`) | 1 | 🟡 **4**/10 | ✅ Faz 2: `waits.py`. ✅ Faz A: `config.py`. ✅ Faz D: `test_data.py` (4 modül). Hedef **6**: `text.py` (gerekli, kanıtlandı) + `api_client.py`. `logger`/`driver_factory` gereksiz bulundu |
+| Ortak altyapı (`utils/`) | 1 | 🟡 **5**/10 | ✅ Faz 2: `waits.py`. ✅ Faz A: `config.py`. ✅ Faz D: `test_data.py` ✅ Faz H2: `text.py` (**5/6 modül**). Kalan tek hedef `api_client.py`. `logger`/`driver_factory` gereksiz bulundu |
 | Test verisi yönetimi | 1 | 🔴 **3**/10 | ✅ Faz D: üretilen veri tek kaynakta (`utils/test_data.py`). Kalan: `test_data/` dizini hâlâ boş, sınır değer kataloğu yok, literaller Gherkin Examples'ta dağınık |
 | Konfigürasyon | 5 | 🟡 **6**/10 | ✅ Faz A: tek kaynak `utils/config.py`, origin semantiği düzeltildi. Kalan: `requirements.txt`'te sürüm sabitleme yok (K3) |
 | Raporlama | 7 | 🟢 **7**/10 | Allure + pytest-html iyi kurulmuş, ekran görüntüsü ekleniyor |
@@ -368,7 +368,7 @@ tek sebebi bu.
 | CI/CD | 0 | 🟡 **4**/10 | ✅ Faz G: her PR'da çalışan statik doğrulama (derleme, eksik step tanımı, toplama, ölü import) + elle tetiklenen UI job. Kalan: UI suite otomatik koşmuyor (runner yok), gecelik regresyon ve rapor yayımlama yok |
 | Kararlılık (flaky yönetimi) | 5 | 🟡 **6**/10 | ✅ Faz 1: `ignored_exceptions` kapsamı 2/13 → 13/13. Hâlâ retry/paralel/izolasyon mekanizması yok |
 
-**Genel: 3.8 → 6.1 / 10**
+**Genel: 3.8 → 6.2 / 10**
 
 > **Neden genel skor yavaş artıyor?** Skor 10 boyutun ortalamasıdır; POM
 > 3, step katmanı 3.5 puan yükseldi ama bu ortalamaya yalnızca 0.65
@@ -1171,7 +1171,7 @@ def wait_for_stable_count(driver, locator, timeout=None, stable_for=0.6):
 
 ---
 
-### 6.4 `utils/text.py` — Dil Bağımsız Metin Yardımcıları ⭐ **FAZ H2 — GEREKLİ (kanıtlandı)**
+### 6.4 `utils/text.py` — Dil Bağımsız Metin Yardımcıları ✅ **FAZ H2'DE YAPILDI**
 
 `search_customers_page.py` içine gömülü olan Türkçe katlama mantığını dışarı çıkarır.
 
@@ -1193,6 +1193,22 @@ Türkçe'ye özgü harf içermiyor. Yani bu **gizli** bir hata: katalogda
 patlar. `search_customers_page.py`'de aynı sınıf hata canlı yakalanmış ve
 6 metodun **tamamına** önleyici olarak uygulanmıştı (bkz. `bugsbunny.txt`);
 burada da aynı yaklaşım izlenmeli.
+
+**Yapıldı (Faz H2):** `turkish_fold()` `utils/text.py`'ye taşındı;
+`search_customers_page.py`'deki 15 çağrı yeniden bağlandı, iki risk
+noktası (`offer_selection_page.py::_offer_names_match` ve
+`test_offer_selection_steps.py`) katlamaya geçirildi. Toplam 19 çağrı,
+3 dosya. Step tarafındaki assert artık hangi tekliflerin eşleşmediğini
+de mesajda gösteriyor.
+
+**Bilinçli olarak DEĞİŞTİRİLMEYENLER:** `address_add_page.py:115`
+(`tag_name.lower()` — HTML etiket adı, ASCII, Türkçe riski yok) ve
+`_offer_ids_match` (ID'ler sayısal). Katlamayı riski olmayan yerlere de
+uygulamak, gerçek risk noktalarını gürültü içinde görünmez kılardı.
+
+**Doğrulama:** `offer_selection` (12) + `search_customers` (34) →
+**45 passed / 1 failed** (8dk 21sn). Tek kırmızı TC-014-13, bilinen
+kasıtlı kırmızı. Sıfır regresyon.
 
 ```python
 """Dil bağımsız metin karşılaştırma ve ayrıştırma.
@@ -1585,7 +1601,7 @@ utils/
 ├── waits.py        ✅ Faz 2   poll_until  (+ wait_for_dom_settled: ölü, Faz H1)
 ├── test_data.py    ✅ Faz D   Paylaşılan Faker + new_address_args
 ├── session.py      ✅ mevcut  JWT exp claim'i ile oturum sonlandırma
-├── text.py         ⏳ Faz H2  Türkçe katlama
+├── text.py         ✅ Faz H2  Türkçe katlama (19 çağrı, 3 dosya)
 └── api_client.py   ⏳ ileride API ile hızlı kurulum (stratejik)
 ```
 
@@ -1706,7 +1722,7 @@ def user_on_address_tab(driver, disposable_customer):
 |---|---|---|
 | 8 | `utils/config.py` + ortam değişkeninden kimlik bilgileri | ✅ Faz A |
 | 9 | `pages/base_page.py` + 13 sınıfı ona bağla | ✅ Faz 1 |
-| 10 | `utils/text.py` (Türkçe katlama dışarı çıkar) | ⏳ **Faz H2** — gizli hata deneyle kanıtlandı (§6.4) |
+| 10 | `utils/text.py` (Türkçe katlama dışarı çıkar) | ✅ Faz H2 — 2 gizli risk noktası kapatıldı |
 | 11 | ~~`utils/logger.py`~~ | ❌ **Geri çekildi** — kod tabanında 0 logging/print var (§6.6) |
 | 12 | `conftest.py`'ye login fixture'ı | ✅ Faz B (`authenticated_driver`) |
 
@@ -1814,7 +1830,7 @@ Bu yol haritası tamamlandığında beklenen durum:
 | Disposable müşteri bloğunun tekrarı | 14 | ✅ **0** (fixture) | 0 |
 | `Faker` örneği (step + page) | 11 | ✅ **0** (tek paylaşılan) | 0 |
 | `steps/` satır sayısı | 3879 | ✅ **3442** | — |
-| `utils/` modül sayısı | 1 | 🟡 **4** | **6** (hedef 8'den düşürüldü, bkz. §6.9) |
+| `utils/` modül sayısı | 1 | 🟡 **5** | **6** (hedef 8'den düşürüldü, bkz. §6.9) |
 | Sürümü sabitlenmiş bağımlılık | 0 / 8 | ✅ **8 / 8** | 8 / 8 |
 | CI koşumu | yok | 🟡 **statik: her PR** | Her PR + gecelik UI |
 | Bilinen kırmızı test | 10 | ✅ **8** | 6 (yalnızca kasıtlı) |

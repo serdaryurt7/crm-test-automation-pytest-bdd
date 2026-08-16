@@ -7,35 +7,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
+from utils.text import turkish_fold
 from utils.waits import poll_until
-
-# Türkçe alfabeye özgü büyük/küçük harf ve aksan farklarını (İ/I/ı/i,
-# ğ/Ğ, ş/Ş, ç/Ç, ö/Ö, ü/Ü) normalize eden dönüşüm tablosu. Canlı olarak
-# doğrulandı: uygulamanın kendi arama motoru ZATEN bu şekilde aksan/harf
-# duyarsız eşleştiriyor (ör. "Yılmaz" araması hem "Yılmaz" hem "Yilmaz"
-# yazılışını döndürüyor - gerçek veride, muhtemelen Faker'ın tr_TR
-# sağlayıcısının ara sıra üreteceği ASCII-transliterasyonlu bir kayıttan
-# ötürü) - testin karşılaştırması bunu YAKALAYAMADIĞINDA (Python'ın
-# varsayılan str eşitliği/`.startswith()` aksan DUYARLI) sonuç kümesi
-# içeriğinde hiçbir gerçek hata yokken TimeoutException ile FAILED
-# veriyordu (bkz. bugsbunny.txt madde 10-14). Kök neden veri SAYISI drifti
-# değil, karşılaştırmanın uygulamanın kendi eşleştirme toleransından DAHA
-# KATI olmasıydı - düzeltme test verisini değiştirmek değil, karşılaştırmayı
-# uygulamayla AYNI toleransa getirmek.
-_TURKISH_FOLD_MAP = str.maketrans(
-    {
-        "ı": "i", "İ": "i", "I": "i",
-        "ğ": "g", "Ğ": "g",
-        "ş": "s", "Ş": "s",
-        "ç": "c", "Ç": "c",
-        "ö": "o", "Ö": "o",
-        "ü": "u", "Ü": "u",
-    }
-)
-
-
-def _turkish_fold(text):
-    return text.translate(_TURKISH_FOLD_MAP).lower()
 
 
 class CustomersPage(BasePage):
@@ -273,10 +246,10 @@ class CustomersPage(BasePage):
         field.send_keys(value)
 
     def wait_for_last_name_results(self, expected_last_name):
-        expected = _turkish_fold(expected_last_name)
+        expected = turkish_fold(expected_last_name)
         self.wait.until(
             lambda d: bool(d.find_elements(*self.ROW_LAST_NAME))
-            and all(_turkish_fold(e.text.strip()) == expected for e in d.find_elements(*self.ROW_LAST_NAME))
+            and all(turkish_fold(e.text.strip()) == expected for e in d.find_elements(*self.ROW_LAST_NAME))
         )
 
     def enter_first_name(self, value):
@@ -285,37 +258,37 @@ class CustomersPage(BasePage):
         field.send_keys(value)
 
     def wait_for_first_name_results(self, expected_first_name):
-        expected = _turkish_fold(expected_first_name)
+        expected = turkish_fold(expected_first_name)
         self.wait.until(
             lambda d: bool(d.find_elements(*self.ROW_FIRST_NAME))
-            and all(_turkish_fold(e.text.strip()) == expected for e in d.find_elements(*self.ROW_FIRST_NAME))
+            and all(turkish_fold(e.text.strip()) == expected for e in d.find_elements(*self.ROW_FIRST_NAME))
         )
 
     def wait_for_last_name_results_starting_with(self, prefix):
-        folded_prefix = _turkish_fold(prefix)
+        folded_prefix = turkish_fold(prefix)
         self.wait.until(
             lambda d: bool(d.find_elements(*self.ROW_LAST_NAME))
-            and all(_turkish_fold(e.text.strip()).startswith(folded_prefix) for e in d.find_elements(*self.ROW_LAST_NAME))
+            and all(turkish_fold(e.text.strip()).startswith(folded_prefix) for e in d.find_elements(*self.ROW_LAST_NAME))
         )
 
     def wait_for_first_name_results_starting_with(self, prefix):
-        folded_prefix = _turkish_fold(prefix)
+        folded_prefix = turkish_fold(prefix)
         self.wait.until(
             lambda d: bool(d.find_elements(*self.ROW_FIRST_NAME))
-            and all(_turkish_fold(e.text.strip()).startswith(folded_prefix) for e in d.find_elements(*self.ROW_FIRST_NAME))
+            and all(turkish_fold(e.text.strip()).startswith(folded_prefix) for e in d.find_elements(*self.ROW_FIRST_NAME))
         )
 
     def wait_for_results_matching_first_and_last_name(self, first_name_prefix, last_name_prefix):
-        folded_first = _turkish_fold(first_name_prefix)
-        folded_last = _turkish_fold(last_name_prefix)
+        folded_first = turkish_fold(first_name_prefix)
+        folded_last = turkish_fold(last_name_prefix)
         self.wait.until(
             lambda d: bool(d.find_elements(*self.ROW_LINK))
-            and all(_turkish_fold(e.text.strip()).startswith(folded_first) for e in d.find_elements(*self.ROW_FIRST_NAME))
-            and all(_turkish_fold(e.text.strip()).startswith(folded_last) for e in d.find_elements(*self.ROW_LAST_NAME))
+            and all(turkish_fold(e.text.strip()).startswith(folded_first) for e in d.find_elements(*self.ROW_FIRST_NAME))
+            and all(turkish_fold(e.text.strip()).startswith(folded_last) for e in d.find_elements(*self.ROW_LAST_NAME))
         )
 
     def wait_for_results_matching_first_name_or_customer_id(self, first_name_prefix, customer_id):
-        folded_prefix = _turkish_fold(first_name_prefix)
+        folded_prefix = turkish_fold(first_name_prefix)
 
         def check(d):
             links = d.find_elements(*self.ROW_LINK)
@@ -323,13 +296,13 @@ class CustomersPage(BasePage):
             if not links:
                 return False
             matches = [
-                _turkish_fold(fn.text.strip()).startswith(folded_prefix) or link.text.strip() == customer_id
+                turkish_fold(fn.text.strip()).startswith(folded_prefix) or link.text.strip() == customer_id
                 for link, fn in zip(links, firsts)
             ]
             return (
                 all(matches)
                 and any(link.text.strip() == customer_id for link in links)
-                and any(_turkish_fold(fn.text.strip()).startswith(folded_prefix) for fn in firsts)
+                and any(turkish_fold(fn.text.strip()).startswith(folded_prefix) for fn in firsts)
             )
 
         self.wait.until(check)

@@ -8,6 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.billing_account_delete_page import BillingAccountDeletePage
 from pages.offer_selection_page import OfferSelectionPage
+from utils.text import turkish_fold
 
 scenarios("offer_selection.feature")
 
@@ -86,7 +87,11 @@ def only_matching_offers_listed(search_context):
     offer_page, search_value = search_context
     names = offer_page.get_offer_names()
     assert names
-    assert all(search_value.lower() in name.lower() for name in names)
+    # Karşılaştırma, uygulamanın kendi eşleştirme toleransıyla AYNI
+    # olmalı: düz .lower() Türkçe'ye özgü harflerde ("Ev İnterneti Fiber
+    # 1000") yanlış NEGATİF üretir - bkz. utils/text.py.
+    unmatched = [n for n in names if turkish_fold(search_value) not in turkish_fold(n)]
+    assert not unmatched, f"Arama '{search_value}' ile eşleşmeyen teklifler listelendi: {unmatched}"
 
 
 @when("var olmayan bir Teklif Adı ile arama yapılır")

@@ -4,6 +4,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
+from utils.text import turkish_fold
 
 
 class OfferSelectionPage(BasePage):
@@ -111,7 +112,13 @@ class OfferSelectionPage(BasePage):
         rows = self.driver.find_elements(*self.OFFER_ROW_NAME)
         if not rows:
             return True
-        return all(value.lower() in row.text.lower() for row in rows)
+        # turkish_fold, düz .lower() yerine: teklif kataloğunda "Ev
+        # İnterneti Fiber 1000" gibi Türkçe'ye özgü harf içeren adlar var
+        # ve Python'da "İ".lower() İKİ karakter üretiyor (i + U+0307
+        # birleşen nokta). Bu yüzden "internet" araması bu satırda düz
+        # .lower() ile EŞLEŞMEZ. search_customers_page.py'de aynı sınıf
+        # hata canlı yakalanmıştı (bkz. bugsbunny.txt madde 10-14).
+        return all(turkish_fold(value) in turkish_fold(row.text) for row in rows)
 
     def _offer_ids_match(self, value):
         rows = self.driver.find_elements(*self.OFFER_ROW_ID)
