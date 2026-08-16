@@ -33,7 +33,7 @@
 | **Faz J3+J5** | `parse_price()`, `.env.example`, `pytest.ini` sertleştirme, `@lockout` | ✅ Tamam (`9a4fc67`) |
 | **Faz J4** | `BasePage.select_random_option()` — 6 dropdown sitesi | ✅ Tamam (`1e57455`) |
 | **Faz K1** | Katalog verisi tek kaynağa (22 yer → `utils/test_data.py`) | ✅ Tamam (`70ee7a3`) |
-| **Faz K2** | Sınır değerleri → `FIELD_LIMITS` (9 limit, 22 yer) | ✅ Tamam (`FAZ_K2_COMMIT`) |
+| **Faz K2** | Sınır değerleri → `FIELD_LIMITS` (9 limit, 22 yer) | ✅ Tamam (`5b0d5f0`) |
 | Faz K4 | Veri yaşam döngüsü / temizlik | 🔴 J6'ya bağlı |
 | Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Bekliyor |
 | **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`1082909`) |
