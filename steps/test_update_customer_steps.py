@@ -1,6 +1,7 @@
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from pages.update_customer_page import UpdateCustomerPage
+from utils.test_data import FIELD_LIMITS
 
 scenarios("update_customer.feature")
 
@@ -127,12 +128,12 @@ def edit_and_delete_icons_visible(update_customer_page):
 
 @when(parsers.parse('"{alan}" alanına 51 karakterlik değer girilmeye çalışılır'), target_fixture="typed_field_value")
 def user_types_51_characters(update_customer_page, alan):
-    return update_customer_page.attempt_to_type_long_value(alan, 51)
+    return update_customer_page.attempt_to_type_long_value(alan, FIELD_LIMITS["first_name"] + 1)
 
 
 @then("alan en fazla 50 karakteri kabul eder")
 def field_accepts_max_50_characters(typed_field_value):
-    assert len(typed_field_value) == 50
+    assert len(typed_field_value) == FIELD_LIMITS["first_name"]
 
 
 @when('Ad alanına "<script>alert(1)</script>" girilmeye çalışılıp kaydedilir', target_fixture="typed_field_value")
@@ -157,12 +158,12 @@ def no_script_executed(update_customer_page):
 
 @when(parsers.parse('"{alan}" alanına tam 50 karakterlik bir değer girilir'), target_fixture="typed_field_value")
 def user_types_exactly_50_characters(update_customer_page, alan):
-    return update_customer_page.attempt_to_type_long_value(alan, 50)
+    return update_customer_page.attempt_to_type_long_value(alan, FIELD_LIMITS["first_name"])
 
 
 @then("alan girilen 50 karakterin tamamını kabul eder")
 def field_accepts_full_50_characters(typed_field_value):
-    assert len(typed_field_value) == 50
+    assert len(typed_field_value) == FIELD_LIMITS["first_name"]
 
 
 @when("Nationality ID alanı 10 haneli bir değerle değiştirilir")
@@ -192,4 +193,4 @@ def user_types_12_digit_identity_number(update_customer_page):
 
 @then("alan yalnızca ilk 11 haneyi kabul eder, 12. hane yazılamaz")
 def identity_number_capped_at_11_digits(typed_field_value):
-    assert len(typed_field_value) == 11, f"Beklenen 11 hane, gelen: {typed_field_value!r} ({len(typed_field_value)} hane)"
+    assert len(typed_field_value) == FIELD_LIMITS["identity_number"], f"Beklenen 11 hane, gelen: {typed_field_value!r} ({len(typed_field_value)} hane)"

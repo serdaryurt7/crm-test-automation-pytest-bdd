@@ -3,6 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
+from utils.test_data import FIELD_LIMITS
 
 
 class LoginPage(BasePage):
@@ -97,7 +98,7 @@ class LoginPage(BasePage):
         toggle_button = self.wait.until(EC.presence_of_element_located(self.PASSWORD_TOGGLE))
         self.driver.execute_script("arguments[0].click();", toggle_button)
 
-    def enter_long_values(self, length=50):
+    def enter_long_values(self, length=FIELD_LIMITS["username"]):
         long_text = "a" * length
         self.driver.find_element(*self.USERNAME_INPUT).send_keys(long_text)
         self.driver.find_element(*self.PASSWORD_INPUT).send_keys(long_text)

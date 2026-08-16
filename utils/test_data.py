@@ -12,6 +12,34 @@ Gherkin Examples tablolarında yaşıyor) için YAGNI gereği yazılmadı.
 """
 from faker import Faker
 
+# --- ALAN SINIRLARI ---
+# Uygulamanın kabul ettiği azami uzunluklar (canlı doğrulandı).
+#
+# NEDEN ÇIPLAK SAYI DEĞİL DE ALAN ADIYLA: bugün username, first_name ve
+# last_name'in üçü de 50. Tek bir MAX_50 sabitine bağlamak, ilgisiz
+# alanları birbirine kenetlerdi - biri değişince diğerleri de sessizce
+# değişirdi (SOLID/tek sorumluluk).
+#
+# NEDEN ÖNEMLİ: sınır testleri "limit" ve "limit+1" değerlerini BİRLİKTE
+# kullanıyor. Bu ikisi ayrı ayrı yazıldığında (50 ve 51) biri güncellenip
+# diğeri unutulabilir; o durumda test kırılmaz, sessizce YANLIŞ sınırı
+# doğrulamaya başlar. Artık "limit+1" ifadesi FIELD_LIMITS'ten türetiliyor.
+FIELD_LIMITS = {
+    "username": 50,
+    "password": 50,
+    "first_name": 50,
+    "last_name": 50,
+    # İkinci Ad / Baba Adı / Anne Adı - create_customer'ın opsiyonel alanları
+    "optional_name": 100,
+    "identity_number": 11,
+    "gsm": 10,
+    "customer_id": 20,
+    # Biçimlendirilmiş doğum tarihi uzunluğu (gg/aa/yyyy) - azami sınır
+    # DEĞİL, beklenen tam uzunluk.
+    "birth_date_formatted": 10,
+}
+
+
 # --- KATALOG VERİSİ ---
 # Bu adlar uygulamanın teklif kataloğundan gelir; testler onları
 # üretmez, VAR OLDUKLARINI varsayar. Katalog değişirse burası tek

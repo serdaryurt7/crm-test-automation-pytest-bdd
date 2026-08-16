@@ -3,6 +3,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.login_page import LoginPage
 from utils.session import expire_refresh_token
+from utils.test_data import FIELD_LIMITS
 
 scenarios("login.feature")
 
@@ -158,18 +159,18 @@ def redirected_to_login_screen(driver):
 
 @when("kullanıcı adı ve şifre alanlarına 50 karaktere eşit uzunlukta değerler girilir")
 def user_enters_values_of_exactly_50_characters(login_page):
-    login_page.enter_long_values(length=50)
+    login_page.enter_long_values(length=FIELD_LIMITS["username"])
 
 
 @when("kullanıcı adı ve şifre alanlarına 51 karakter uzunluğunda değerler girilir")
 def user_enters_values_of_51_characters(login_page):
-    login_page.enter_long_values(length=51)
+    login_page.enter_long_values(length=FIELD_LIMITS["username"] + 1)
 
 
 @then("her iki alan da en fazla 50 karakter kabul eder")
 def fields_accept_max_50_characters(login_page):
-    assert len(login_page.get_username_value()) == 50, "username alanı 50 karakteri aşıyor"
-    assert len(login_page.get_password_value()) == 50, "password alanı 50 karakteri aşıyor"
+    assert len(login_page.get_username_value()) == FIELD_LIMITS["username"], "username alanı sınırı aşıyor"
+    assert len(login_page.get_password_value()) == FIELD_LIMITS["password"], "password alanı sınırı aşıyor"
 
 
 @when(parsers.parse('"{username}" kullanıcı adı ile art arda 5 kez hatalı bilgilerle giriş dener'), target_fixture="last_error_message")

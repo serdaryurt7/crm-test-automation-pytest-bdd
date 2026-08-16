@@ -2,6 +2,7 @@ from pytest_bdd import given, parsers, scenarios, then, when
 from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.search_customers_page import CustomersPage
+from utils.test_data import FIELD_LIMITS
 
 scenarios("search_customers.feature")
 
@@ -71,7 +72,7 @@ def matching_customer_shown(customers_page):
 
 @then("ID Number alanı yalnızca ilk 11 haneyi kabul eder")
 def identity_number_truncated_to_11(customers_page):
-    assert len(customers_page.get_identity_number_value()) == 11
+    assert len(customers_page.get_identity_number_value()) == FIELD_LIMITS["identity_number"]
 
 
 @then(parsers.parse('"{message}" mesajı görüntülenir'))
@@ -106,7 +107,7 @@ def customer_id_value_shown(customers_page, value):
 
 @then("Customer ID alanı 20 üzeri karakter alamaz")
 def customer_id_rejects_more_than_20_chars(customers_page):
-    assert len(customers_page.get_customer_id_value()) == 20
+    assert len(customers_page.get_customer_id_value()) == FIELD_LIMITS["customer_id"]
 
 
 @when(parsers.parse('kullanıcı GSM alanına "{value}" değerini girer'))
@@ -121,7 +122,7 @@ def gsm_value_shown(customers_page, value):
 
 @then("GSM alanı en fazla 10 haneyi kabul eder")
 def gsm_accepts_max_10_digits(customers_page):
-    assert len(customers_page.get_gsm_value()) == 10
+    assert len(customers_page.get_gsm_value()) == FIELD_LIMITS["gsm"]
 
 
 @when("kullanıcı First Name ve Last Name alanlarına 60 karakterden uzun değerler girer")
@@ -131,8 +132,8 @@ def user_enters_long_first_last_name(customers_page):
 
 @then("First Name ve Last Name alanları en fazla 50 karakter kabul eder")
 def first_last_name_accept_max_50(customers_page):
-    assert len(customers_page.get_first_name_value()) == 50, "First Name alanı 50 karakteri aşıyor"
-    assert len(customers_page.get_last_name_value()) == 50, "Last Name alanı 50 karakteri aşıyor"
+    assert len(customers_page.get_first_name_value()) == FIELD_LIMITS["first_name"], "First Name alanı sınırı aşıyor"
+    assert len(customers_page.get_last_name_value()) == FIELD_LIMITS["last_name"], "Last Name alanı sınırı aşıyor"
 
 
 @when(parsers.parse('kullanıcı Last Name alanına "{value}" değerini girer'))

@@ -1,6 +1,7 @@
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from pages.contact_update_page import ContactUpdatePage
+from utils.test_data import FIELD_LIMITS
 
 scenarios("contact_update.feature")
 
@@ -218,7 +219,7 @@ def user_attempts_eleven_digits_in_phone_field(contact_page, alan):
 
 @then("alan yalnızca ilk 10 haneyi kabul eder")
 def phone_field_capped_at_ten_digits(typed_phone_value):
-    assert len(typed_phone_value) == 10, f"Beklenen 10 hane, gelen: {typed_phone_value!r} ({len(typed_phone_value)} hane)"
+    assert len(typed_phone_value) == FIELD_LIMITS["gsm"], f"Beklenen 10 hane, gelen: {typed_phone_value!r} ({len(typed_phone_value)} hane)"
 
 
 @when("Email alanına formatça geçerli ama çok uzun (150+ karakter) bir değer girilir", target_fixture="typed_long_email")

@@ -3,7 +3,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.create_customer_page import CreateCustomerPage
 from pages.search_customers_page import CustomersPage as SearchCustomersPage
-from utils.test_data import fake
+from utils.test_data import FIELD_LIMITS, fake
 
 scenarios("create_customer.feature")
 
@@ -398,25 +398,25 @@ def all_fields_including_optional_displayed_correctly(create_customer_page, demo
 @when(parsers.parse('"{alan}" alanına 101 karakterlik değer girilmeye çalışılır'))
 def attempt_101_chars_in_optional_name_field(create_customer_page, alan):
     create_customer_page._last_optional_name_value = (
-        create_customer_page.attempt_to_type_long_value_in_optional_name_field(alan, 101)
+        create_customer_page.attempt_to_type_long_value_in_optional_name_field(alan, FIELD_LIMITS["optional_name"] + 1)
     )
 
 
 @then("alan en fazla 100 karakteri kabul eder")
 def optional_name_field_capped_at_100(create_customer_page):
-    assert len(create_customer_page._last_optional_name_value) == 100
+    assert len(create_customer_page._last_optional_name_value) == FIELD_LIMITS["optional_name"]
 
 
 @when(parsers.parse('"{alan}" alanına tam 100 karakterlik bir değer girilir'))
 def enter_exactly_100_chars_in_optional_name_field(create_customer_page, alan):
     create_customer_page._last_optional_name_value = (
-        create_customer_page.attempt_to_type_long_value_in_optional_name_field(alan, 100)
+        create_customer_page.attempt_to_type_long_value_in_optional_name_field(alan, FIELD_LIMITS["optional_name"])
     )
 
 
 @then("alan girilen 100 karakterin tamamını kabul eder")
 def optional_name_field_accepts_full_100(create_customer_page):
-    assert len(create_customer_page._last_optional_name_value) == 100
+    assert len(create_customer_page._last_optional_name_value) == FIELD_LIMITS["optional_name"]
 
 
 @when('"Birth Date" alanına geçerli 8 rakamlık bir tarih yazılır')
@@ -431,7 +431,7 @@ def birth_date_shows_10_char_formatted_value(create_customer_page):
     # veya dd/mm/yyyy) hangi dilde olursa olsun aynı maske/uzunluk kuralı
     # geçerli (canlı doğrulandı).
     value = create_customer_page._birth_date_after_8_digits
-    assert len(value) == 10, f"Beklenen 10 karakter, gelen: {value!r} ({len(value)} karakter)"
+    assert len(value) == FIELD_LIMITS["birth_date_formatted"], f"Beklenen 10 karakter, gelen: {value!r} ({len(value)} karakter)"
     assert value[2] == "/" and value[5] == "/", f"Beklenen gg/aa/yyyy formatı, gelen: {value!r}"
 
 

@@ -7,6 +7,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
+from utils.test_data import FIELD_LIMITS
 from utils.text import turkish_fold
 from utils.waits import poll_until
 
@@ -388,7 +389,7 @@ class CustomersPage(BasePage):
         }
 
     def fill_all_search_fields_via_tab_navigation(self):
-        identity_number = "".join(random.choices("0123456789", k=11))
+        identity_number = "".join(random.choices("0123456789", k=FIELD_LIMITS["identity_number"]))
         self.driver.find_element(*self.IDENTITY_NUMBER).click()
         actions = ActionChains(self.driver)
         actions.send_keys(identity_number).send_keys(Keys.TAB)  # identityNumber
