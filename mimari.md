@@ -30,7 +30,7 @@
 | Faz E | Step'lerdeki ham `By`/`WebDriverWait` (24 + 23) | ⏳ Risk/getiri zayıf |
 | **Faz J1** | `BasePage.fill()`: 18 elle temizleme tekrarı + tuzaklı `type()` | ✅ Tamam (`7796196`) |
 | **Faz J2** | 19 ölü `BasePage` yardımcısı silindi (21 → 3 metot) | ✅ Tamam (`1e697d7`) |
-| **Faz J3+J5** | `parse_price()`, `.env.example`, `pytest.ini` sertleştirme, `@lockout` | ✅ Tamam (`FAZ_J35_COMMIT`) |
+| **Faz J3+J5** | `parse_price()`, `.env.example`, `pytest.ini` sertleştirme, `@lockout` | ✅ Tamam (`9a4fc67`) |
 | Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Bekliyor |
 | **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`1082909`) |
 | **Faz H2** | `utils/text.py` — Türkçe katlama (gizli hata, §6.4) | ✅ Tamam (`5be0d18`) |
