@@ -19,6 +19,7 @@ class AddressUpdatePage(BasePage):
 
     CITY_BUTTON = (By.ID, "address-city")
     CITY_LIST = (By.ID, "address-city-list")
+    CITY_OPTIONS = (By.CSS_SELECTOR, "#address-city-list li[role='option']")
     STREET_INPUT = (By.CSS_SELECTOR, "[data-testid='address-street']")
     BUILDING_INPUT = (By.CSS_SELECTOR, "[data-testid='address-building-no']")
     DESCRIPTION_INPUT = (By.CSS_SELECTOR, "[data-testid='address-description']")
@@ -161,17 +162,13 @@ class AddressUpdatePage(BasePage):
         self.wait.until(EC.visibility_of_element_located(self.STREET_INPUT))
 
     def add_address_with_faker(self, street, building_no, description):
-        import random
-
+        
         # before_count'a göre ARTIŞ bekleniyor (sabit ">= 2" değil) -
         # ikinciden fazla adres eklenen senaryolarda (ör. 3. adres) sabit
         # ">= 2" koşulu, gerçek ekleme gerçekleşmeden ÖNCE bile zaten
         # doğru dönüp sahte-PASS'e yol açabilirdi.
         before_count = len(self.driver.find_elements(*self.ADDRESS_CARD))
-        self.driver.find_element(*self.CITY_BUTTON).click()
-        self.wait.until(EC.visibility_of_element_located(self.CITY_LIST))
-        options = self.driver.find_elements(By.CSS_SELECTOR, "#address-city-list li[role='option']")
-        random.choice(options).click()
+        self.select_random_option(self.CITY_BUTTON, self.CITY_LIST, self.CITY_OPTIONS)
         self.driver.find_element(*self.STREET_INPUT).send_keys(street)
         self.driver.find_element(*self.BUILDING_INPUT).send_keys(building_no)
         self.driver.find_element(*self.DESCRIPTION_INPUT).send_keys(description)

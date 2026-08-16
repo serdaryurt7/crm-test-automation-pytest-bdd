@@ -1,4 +1,3 @@
-import random
 import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -33,6 +32,7 @@ class CreateCustomerPage(BasePage):
     ADDRESS_NEXT = (By.CSS_SELECTOR, "[data-testid='customer-create-address-next']")
     ADDRESS_CITY = (By.ID, "address-city")
     ADDRESS_CITY_LIST = (By.ID, "address-city-list")
+    ADDRESS_CITY_OPTIONS = (By.CSS_SELECTOR, "#address-city-list li[role='option']")
     ADDRESS_CITY_ERROR = (By.ID, "address-city-error")
     ADDRESS_STREET = (By.ID, "address-street")
     ADDRESS_BUILDING_NO = (By.ID, "address-building")
@@ -440,13 +440,9 @@ class CreateCustomerPage(BasePage):
         # Faker'ın ürettiği bir şehir adının bu listeyle birebir eşleşeceği
         # garanti edilemez (örn. ilçe/kısaltma farkı).
         self.click_add_address()
-        city_field = self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY))
-        city_field.click()
-        self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY_LIST))
-        city_options = self.driver.find_elements(By.CSS_SELECTOR, "#address-city-list li[role='option']")
-        chosen = random.choice(city_options)
-        city = chosen.get_attribute("data-value")
-        chosen.click()
+        city = self.select_random_option(
+            self.ADDRESS_CITY, self.ADDRESS_CITY_LIST, self.ADDRESS_CITY_OPTIONS, attribute="data-value"
+        )
         self.wait.until(EC.invisibility_of_element_located(self.ADDRESS_CITY_LIST))
         street = fake.street_name()
         building_no = fake.building_number()
@@ -473,13 +469,9 @@ class CreateCustomerPage(BasePage):
         self.enter_address_description(description)
 
     def fill_missing_city(self):
-        city_field = self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY))
-        city_field.click()
-        self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY_LIST))
-        city_options = self.driver.find_elements(By.CSS_SELECTOR, "#address-city-list li[role='option']")
-        chosen = random.choice(city_options)
-        city = chosen.get_attribute("data-value")
-        chosen.click()
+        city = self.select_random_option(
+            self.ADDRESS_CITY, self.ADDRESS_CITY_LIST, self.ADDRESS_CITY_OPTIONS, attribute="data-value"
+        )
         self.wait.until(EC.invisibility_of_element_located(self.ADDRESS_CITY_LIST))
         return city
 

@@ -1,4 +1,5 @@
 import os
+import random
 
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.keys import Keys
@@ -118,3 +119,35 @@ class BasePage:
 
     def wait_for_url_contains(self, fragment):
         return self.wait.until(lambda d: fragment in d.current_url)
+
+    def select_random_option(self, trigger, option_list, options, attribute=None):
+        """Bir listbox'ı açıp rastgele bir seçeneğe tıklar.
+
+        Uygulamadaki Şehir alanı serbest metin değil, `<button>` + `<li
+        role="option">` listesi. Rastgele seçim BİLİNÇLİ: Faker'ın ürettiği
+        bir şehir adının listedeki 81 ille birebir eşleşeceği garanti
+        edilemez (ilçe/kısaltma farkı), bu yüzden listeden gerçekten var
+        olan bir değer seçiliyor.
+
+        Args:
+            trigger: listeyi açan eleman (buton).
+            option_list: açıldığı görülecek liste kabı.
+            options: seçenek elemanlarının locator'ı.
+            attribute: verilirse, seçilen seçeneğin bu özniteliği
+                **tıklamadan ÖNCE** okunup döndürülür. Sıra önemli:
+                tıklamadan sonra liste DOM'dan kaldırıldığı için eleman
+                stale olur ve okuma patlar.
+
+        Returns:
+            `attribute` verildiyse okunan değer, aksi hâlde None.
+        """
+        # Tetikleyicinin görünür olması BEKLENİYOR: bazı çağrı yerlerinde
+        # (create_customer'ın adres adımı) alan, "Yeni Adres Ekle"den hemen
+        # sonra henüz çizilmemiş olabiliyor. Zaten görünür bir elemanda bu
+        # bekleme no-op'tur, yani diğer çağrı yerlerinin davranışı değişmez.
+        self.wait.until(EC.visibility_of_element_located(trigger)).click()
+        self.wait.until(EC.visibility_of_element_located(option_list))
+        chosen = random.choice(self.driver.find_elements(*options))
+        value = chosen.get_attribute(attribute) if attribute else None
+        chosen.click()
+        return value

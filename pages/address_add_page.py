@@ -1,7 +1,4 @@
-import random
-
 from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.address_update_page import AddressUpdatePage
@@ -16,10 +13,7 @@ class AddressAddPage(AddressUpdatePage):
 
     def fill_new_address_form(self, street, building_no, description, skip_field=None):
         if skip_field != "Şehir":
-            self.driver.find_element(*self.CITY_BUTTON).click()
-            self.wait.until(EC.visibility_of_element_located(self.CITY_LIST))
-            options = self.driver.find_elements(By.CSS_SELECTOR, "#address-city-list li[role='option']")
-            random.choice(options).click()
+            self.select_random_option(self.CITY_BUTTON, self.CITY_LIST, self.CITY_OPTIONS)
         if skip_field != "Sokak":
             self.driver.find_element(*self.STREET_INPUT).send_keys(street)
         if skip_field != "Bina No":
@@ -111,7 +105,7 @@ class AddressAddPage(AddressUpdatePage):
         # (canlı DOM incelemesiyle doğrulandı). 81 = Türkiye'nin sabit il
         # sayısı; bu, uygulamanın değişebilir bir verisi değil, sabit bir
         # coğrafi gerçek olduğu için burada statik kalması kasıtlı/doğru.
-        options = self.driver.find_elements(By.CSS_SELECTOR, "#address-city-list li[role='option']")
+        options = self.driver.find_elements(*self.CITY_OPTIONS)
         city_button_tag = self.driver.find_element(*self.CITY_BUTTON).tag_name.lower()
         return len(options) == expected_count and city_button_tag == "button"
 

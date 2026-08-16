@@ -1,4 +1,3 @@
-import random
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -27,6 +26,7 @@ class ProductConfigurationPage(BasePage):
 
     NEW_ADDRESS_CITY_BUTTON = (By.ID, "address-city")
     NEW_ADDRESS_CITY_LIST = (By.ID, "address-city-list")
+    NEW_ADDRESS_CITY_OPTIONS = (By.CSS_SELECTOR, "#address-city-list li[role='option']")
     NEW_ADDRESS_STREET_INPUT = (By.CSS_SELECTOR, "[data-testid='address-street']")
     NEW_ADDRESS_BUILDING_INPUT = (By.CSS_SELECTOR, "[data-testid='address-building-no']")
     NEW_ADDRESS_DESCRIPTION_INPUT = (By.CSS_SELECTOR, "[data-testid='address-description']")
@@ -89,10 +89,9 @@ class ProductConfigurationPage(BasePage):
         self.wait.until(EC.element_to_be_clickable(self.ADD_ADDRESS_BUTTON)).click()
         self.wait.until(EC.visibility_of_element_located(self.NEW_ADDRESS_STREET_INPUT))
 
-        self.driver.find_element(*self.NEW_ADDRESS_CITY_BUTTON).click()
-        self.wait.until(EC.visibility_of_element_located(self.NEW_ADDRESS_CITY_LIST))
-        options = self.driver.find_elements(By.CSS_SELECTOR, "#address-city-list li[role='option']")
-        random.choice(options).click()
+        self.select_random_option(
+            self.NEW_ADDRESS_CITY_BUTTON, self.NEW_ADDRESS_CITY_LIST, self.NEW_ADDRESS_CITY_OPTIONS
+        )
 
         self.driver.find_element(*self.NEW_ADDRESS_STREET_INPUT).send_keys(street)
         self.driver.find_element(*self.NEW_ADDRESS_BUILDING_INPUT).send_keys(building_no)
