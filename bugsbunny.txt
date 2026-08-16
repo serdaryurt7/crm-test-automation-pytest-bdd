@@ -388,3 +388,33 @@ MADDE 18 (address_update TC-006-06b) - ÇÖZÜLDÜ, AMA İLK TEŞHİS YANLIŞTI
   NOT: wait_for_primary_states_to_persist()'teki poll_until dönüşümü
   KORUNDU - kök neden değildi ama gerçek backend gecikmesine karşı
   zararsız bir tolerans sağlıyor.
+
+===========================================================
+[2026-08-16] FAZ J1 (BasePage.fill) DOĞRULAMA KOŞUMU
+6 feature dosyası: 90 passed / 4 failed (22dk 45sn)
+===========================================================
+
+3 bilinen kasıtlı kırmızı (address_update TC-006-05b,
+billing_account_create TC-010-09b, offer_selection TC-014-13) + 1 YENİ
+flaky. Bilinen flaky'lerden TC-006-04 ve TC-004-07 bu koşumda PASSED.
+
+21. steps/test_create_customer_steps.py ::
+    test_adres_kartında_delete_seçeneğiyle_adresin_statusupdate_olarak_silinmesi
+    Hata: assert 1 == 0 - get_address_card_count() silmeden sonra hâlâ 1.
+    İzole koşum 3 KEZ: 3/3 PASSED. Flaky.
+
+    FAZ J1 İLE İLGİSİ YOK - iki yolla doğrulandı:
+    (a) J1'in create_customer_page.py'de dokunduğu TEK iki yer
+        attempt_to_type_long_* (opsiyonel ad alanı) ve doğum tarihi;
+        adres silme akışında fill() hiç kullanılmıyor.
+    (b) İzole koşumda 3/3 geçiyor.
+
+    KÖK NEDEN ADAYI (kod okumasıyla, henüz ölçülmedi): madde 20 ile AYNI
+    yapı. click_address_card_delete() menüyü açıp Sil'e tıklıyor ve
+    HEMEN dönüyor; step de hemen get_address_card_count() == 0 diye
+    iddia ediyor. Kartın DOM'dan kaldırılması için bir bekleme yok.
+    Önerilen düzeltme: sayımı wait ile sarmalamak (madde 20'deki
+    wait_for_products_persisted_after_reload deseninin DOM içi karşılığı;
+    burada reload gerekmez, kart aynı sayfada kaldırılıyor).
+    Bu düzeltme J1 kapsamına ALINMADI - J1 "yapı değişir, davranış
+    değişmez" sözleşmesiyle yürütüldü.

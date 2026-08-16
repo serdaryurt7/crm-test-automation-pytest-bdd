@@ -1,6 +1,5 @@
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
@@ -60,15 +59,6 @@ class OfferSelectionPage(BasePage):
         super().__init__(driver)
         self.wait.until(EC.visibility_of_element_located(self.OFFER_ROW))
 
-    def _set_field(self, locator, value):
-        field = self.driver.find_element(*locator)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
-        if value:
-            field.send_keys(value)
-        return field
-
     # --- Katalog / Kampanya sekmesi ---
     def is_catalog_tab_active_with_offers(self):
         return bool(self.driver.find_elements(*self.TAB_CATALOG)) and self.get_offer_row_count() > 0
@@ -99,12 +89,12 @@ class OfferSelectionPage(BasePage):
         self.wait.until(lambda d: self.get_offer_row_count() != before_count)
 
     def search_by_name(self, value):
-        self._set_field(self.OFFER_NAME_FILTER, value)
+        self.fill(self.OFFER_NAME_FILTER, value)
         self.wait.until(EC.element_to_be_clickable(self.OFFER_SEARCH)).click()
         self.wait.until(lambda d: self._offer_names_match(value))
 
     def search_by_id(self, value):
-        self._set_field(self.OFFER_ID_FILTER, value)
+        self.fill(self.OFFER_ID_FILTER, value)
         self.wait.until(EC.element_to_be_clickable(self.OFFER_SEARCH)).click()
         self.wait.until(lambda d: self._offer_ids_match(value))
 

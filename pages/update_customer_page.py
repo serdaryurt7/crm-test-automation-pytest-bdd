@@ -1,6 +1,5 @@
 from selenium.common.exceptions import NoAlertPresentException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
@@ -113,20 +112,11 @@ class UpdateCustomerPage(BasePage):
 
     def attempt_to_type_long_value(self, field_label, length):
         locator = self.REQUIRED_FIELD_LOCATORS[field_label]
-        field = self.driver.find_element(*locator)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
-        field.send_keys("a" * length)
+        field = self.fill(locator, "a" * length)
         return field.get_attribute("value")
 
     def update_identity_number(self, new_value):
-        field = self.driver.find_element(*self.IDENTITY_NUMBER_INPUT)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
-        field.send_keys(new_value)
-        field.send_keys(Keys.TAB)
+        self.fill(self.IDENTITY_NUMBER_INPUT, new_value, blur=True)
 
     def is_identity_number_error_displayed(self):
         # Canli dogrulandi: Nationality ID baska bir musteriye ait bir
@@ -185,11 +175,7 @@ class UpdateCustomerPage(BasePage):
         # bkz. create_customer.md notları) - bu yüzden hangi rakamla
         # doldurulursa doldurulsun tarayıcı tarafından güvenilir şekilde
         # ilk 11 karaktere kesilmesi beklenir.
-        field = self.driver.find_element(*self.IDENTITY_NUMBER_INPUT)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
-        field.send_keys("1" * length)
+        field = self.fill(self.IDENTITY_NUMBER_INPUT, "1" * length)
         return field.get_attribute("value")
 
     def get_save_error_text(self):
@@ -203,11 +189,7 @@ class UpdateCustomerPage(BasePage):
         # native alert() gorulmesi tek basina yeterli degil - bu alanda
         # gozlenen ASIL davranis input'un ozel karakterleri (< > ( ) / 1 vb.)
         # yaziliken FILTRELEMESI, HTML kacislama degil.
-        field = self.driver.find_element(*self.FIRST_NAME_INPUT)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
-        field.send_keys("<script>alert(1)</script>")
+        field = self.fill(self.FIRST_NAME_INPUT, "<script>alert(1)</script>")
         return field.get_attribute("value")
 
     def has_unexpected_alert(self):
@@ -224,10 +206,7 @@ class UpdateCustomerPage(BasePage):
         # gercek kullanici tus vurusunu simule etmek icin CTRL+A + BACKSPACE
         # kullaniliyor (projenin genel .clear() pitfall konvansiyonuyla tutarli).
         locator = self.REQUIRED_FIELD_LOCATORS[field_label]
-        field = self.driver.find_element(*locator)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
+        self.fill(locator)
 
     def is_save_button_disabled(self):
         return not self.driver.find_element(*self.SAVE_BUTTON).is_enabled()

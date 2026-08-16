@@ -8,7 +8,6 @@ from selenium.common.exceptions import (
     TimeoutException,
 )
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
@@ -97,18 +96,10 @@ class BillingAccountCreatePage(BasePage):
         return bool(self.driver.find_elements(*self.ACCOUNT_NAME_INPUT))
 
     def fill_account_name(self, value):
-        field = self.driver.find_element(*self.ACCOUNT_NAME_INPUT)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
-        field.send_keys(value)
+        self.fill(self.ACCOUNT_NAME_INPUT, value)
 
     def fill_account_description(self, value):
-        field = self.driver.find_element(*self.ACCOUNT_DESCRIPTION_INPUT)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
-        field.send_keys(value)
+        self.fill(self.ACCOUNT_DESCRIPTION_INPUT, value)
 
     def _generate_account_name_and_description(self):
         name = f"Hesap {fake.word().title()} {fake.random_number(digits=4, fix_len=True)}"
@@ -126,11 +117,7 @@ class BillingAccountCreatePage(BasePage):
         return name, description
 
     def clear_account_name(self):
-        field = self.driver.find_element(*self.ACCOUNT_NAME_INPUT)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
-        field.send_keys(Keys.TAB)
+        self.fill(self.ACCOUNT_NAME_INPUT, blur=True)
 
     def _is_error_displayed(self, locator):
         try:

@@ -191,11 +191,7 @@ class CreateCustomerPage(BasePage):
         # için CTRL+A + BACKSPACE ile gerçek kullanıcı tuş vuruşu simüle
         # edilerek alan önce temizleniyor.
         locator = self.OPTIONAL_NAME_FIELD_LOCATORS[field_label]
-        field = self.driver.find_element(*locator)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
-        field.send_keys("a" * length)
+        field = self.fill(locator, "a" * length)
         return field.get_attribute("value")
 
     def type_valid_birth_date_digits(self, digits="15061990"):
@@ -208,11 +204,7 @@ class CreateCustomerPage(BasePage):
         # olarak sabit kullanılıyor - amaç maskenin gün/ay doğrulama
         # detaylarını değil, yalnızca 10 karakterlik üst sınır kapasitesini
         # test etmek.
-        field = self.driver.find_element(*self.BIRTH_DATE)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
-        field.send_keys(digits)
+        field = self.fill(self.BIRTH_DATE, digits)
         return field.get_attribute("value")
 
     def append_extra_digit_to_birth_date(self):

@@ -1,6 +1,5 @@
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
@@ -90,21 +89,11 @@ class ContactUpdatePage(BasePage):
         return bool(self.driver.find_elements(*self.EMAIL_INPUT))
 
     def update_email(self, new_email):
-        field = self.driver.find_element(*self.EMAIL_INPUT)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
-        field.send_keys(new_email)
-        field.send_keys(Keys.TAB)
+        self.fill(self.EMAIL_INPUT, new_email, blur=True)
         self._new_email = new_email
 
     def update_mobile_phone(self, new_value):
-        field = self.driver.find_element(*self.MOBILE_PHONE_INPUT)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
-        field.send_keys(new_value)
-        field.send_keys(Keys.TAB)
+        self.fill(self.MOBILE_PHONE_INPUT, new_value, blur=True)
         self._new_mobile_phone = new_value
 
     def update_email_and_mobile_with_faker(self):
@@ -195,10 +184,7 @@ class ContactUpdatePage(BasePage):
         # Phone/Fax'ın ÜÇÜ de aynı mekanizmayı (native <input> maxlength)
         # paylaştığından tek bir metotla test edilebiliyor.
         locator = self.ALL_PHONE_FIELD_LOCATORS[field_label]
-        field = self.driver.find_element(*locator)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
+        field = self.fill(locator)
         field.send_keys("55512345678")  # 11 hane
         return field.get_attribute("value")
 
@@ -215,11 +201,7 @@ class ContactUpdatePage(BasePage):
 
     def clear_required_field(self, field_label):
         locator = self.REQUIRED_FIELD_LOCATORS[field_label]
-        field = self.driver.find_element(*locator)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
-        field.send_keys(Keys.TAB)
+        self.fill(locator, blur=True)
 
     def is_required_field_error_displayed(self, field_label):
         return self._is_error_displayed(self.REQUIRED_FIELD_ERROR_LOCATORS[field_label])

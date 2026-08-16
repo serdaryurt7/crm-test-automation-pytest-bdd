@@ -1,5 +1,4 @@
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
@@ -72,18 +71,9 @@ class AddressUpdatePage(BasePage):
         )
 
     def update_street_and_building(self, new_street, new_building_no):
-        street_field = self.driver.find_element(*self.STREET_INPUT)
-        street_field.click()
-        street_field.send_keys(Keys.CONTROL + "a")
-        street_field.send_keys(Keys.BACK_SPACE)
-        street_field.send_keys(new_street)
+        self.fill(self.STREET_INPUT, new_street)
 
-        building_field = self.driver.find_element(*self.BUILDING_INPUT)
-        building_field.click()
-        building_field.send_keys(Keys.CONTROL + "a")
-        building_field.send_keys(Keys.BACK_SPACE)
-        building_field.send_keys(new_building_no)
-        building_field.send_keys(Keys.TAB)
+        self.fill(self.BUILDING_INPUT, new_building_no, blur=True)
 
         self._new_street = new_street
         self._new_building_no = new_building_no
@@ -123,11 +113,7 @@ class AddressUpdatePage(BasePage):
 
     def clear_required_text_field(self, field_label):
         locator = self.REQUIRED_TEXT_FIELD_LOCATORS[field_label]
-        field = self.driver.find_element(*locator)
-        field.click()
-        field.send_keys(Keys.CONTROL + "a")
-        field.send_keys(Keys.BACK_SPACE)
-        field.send_keys(Keys.TAB)
+        self.fill(locator, blur=True)
 
     def is_save_button_disabled(self):
         return not self.driver.find_element(*self.SAVE_BUTTON).is_enabled()

@@ -1,6 +1,7 @@
 import os
 
 from selenium.common.exceptions import StaleElementReferenceException
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
@@ -83,12 +84,43 @@ class BasePage:
         kanıtlanmış bir ihtiyaç."""
         self.driver.execute_script("arguments[0].click();", self.find(locator))
 
-    def type(self, locator, text, clear=True):
-        field = self.find_visible(locator)
-        if clear:
-            field.clear()
+    def fill(self, locator, text=None, blur=False):
+        """Alanı temizler, (verilmişse) yeni değeri yazar, (istenirse) odağı kaydırır.
+
+        `field.clear()` BİLEREK KULLANILMIYOR. Bu uygulamada canlı
+        doğrulandı: `.clear()` alanın değerini siler ama Angular'ın
+        blur/`touched` durumunu tetiklemez - form kendini geçersiz
+        saymaz, hata mesajı çıkmaz, Kaydet butonu pasifleşmez. Bu, bir
+        oturumda "boş ad kaydedilebiliyor" şeklinde SAHTE bir bulguya yol
+        açmıştı; doğru ölçüm (Ctrl+A → Backspace → Tab) uygulamanın
+        aslında doğru davrandığını gösterdi.
+
+        Bu yüzden gerçek kullanıcı etkileşimi taklit ediliyor:
+        tıkla → tümünü seç → sil → yaz. Bu desen 6 sayfa dosyasında
+        18 kez elle tekrarlanıyordu; `offer_selection_page` onu zaten
+        yerel bir `_set_field()` yardımcısına çıkarmıştı - yani ihtiyaç
+        kanıtlıydı, yalnızca yanlış katmandaydı.
+
+        Args:
+            locator: hedef alan.
+            text: yazılacak değer; None/boş ise alan yalnızca temizlenir.
+            blur: True ise sonunda Tab gönderilir. Angular'ın doğrulamayı
+                çalıştırması için alanın `touched` olması gerektiğinden,
+                hata mesajı/buton durumu doğrulayan senaryolarda ŞART.
+
+        Returns:
+            Alanın WebElement'i - çağıran `get_attribute("value")` ile
+            tarayıcının kabul ettiği değeri okuyabilsin diye (sınır değer
+            testlerinde kullanılıyor).
+        """
+        field = self.driver.find_element(*locator)
+        field.click()
+        field.send_keys(Keys.CONTROL + "a")
+        field.send_keys(Keys.BACK_SPACE)
         if text:
             field.send_keys(text)
+        if blur:
+            field.send_keys(Keys.TAB)
         return field
 
     # ------------------------------------------------------------------
