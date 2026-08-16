@@ -34,6 +34,7 @@
 | **Faz J4** | `BasePage.select_random_option()` — 6 dropdown sitesi | ✅ Tamam (`1e57455`) |
 | **Faz K1** | Katalog verisi tek kaynağa (22 yer → `utils/test_data.py`) | ✅ Tamam (`70ee7a3`) |
 | **Faz K2** | Sınır değerleri → `FIELD_LIMITS` (9 limit, 22 yer) | ✅ Tamam (`5b0d5f0`) |
+| **Faz K3** | Boş `test_data/` dizini kaldırıldı | ✅ Tamam (`FAZ_K3_COMMIT`) |
 | Faz K4 | Veri yaşam döngüsü / temizlik | 🔴 J6'ya bağlı |
 | Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Bekliyor |
 | **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`1082909`) |
@@ -809,16 +810,26 @@ Ne eklenmesi gerektiği **§6**'da kodla birlikte.
 
 ---
 
-### 4.5 `test_data/` — Tamamen Boş
+### 4.5 ~~`test_data/`~~ — **KALDIRILDI (Faz K3)**
 
-Sadece `.gitkeep` var. Tüm test verisi ya koda gömülü ya Faker ile üretiliyor.
+İlk tespitte klasör boştu (yalnızca `.gitkeep`) ve bu, "test verisi
+yönetimi" skorunu aşağı çeken bir eksik olarak sayılmıştı.
 
-**Sorun:** Faker rastgele veri üretir; bu **pozitif** akışlar için mükemmeldir ama
-**sınır değer** testleri için uygun değildir. `kesif_testi.txt`'te tasarlanan 16 SDA
-senaryosu (10 hane / 9 hane / 11 hane, 50 karakter / 51 karakter) deterministik veri
-gerektiriyor. Bu değerler şu an Gherkin `Examples` tablolarına gömülü — kabul edilebilir,
-ama alan sınırları (`maxlength`) merkezi bir yerde tanımlı olmalı ki tek noktadan
-güncellenebilsin.
+**Yeniden değerlendirme:** bu bir eksik değil, **gereksiz bir yer tutucuydu.**
+Sorulması gereken soru "klasör neden boş" değil, "dosya tabanlı test verisine
+gerçek bir ihtiyaç var mı" idi. Cevap hayır:
+
+- Pozitif akışlar için veri **Faker** ile üretiliyor (`utils/test_data.py`)
+- Sınır değerleri artık `FIELD_LIMITS`'te merkezî (Faz K2) — ilk tespitteki
+  "alan sınırları merkezi bir yerde tanımlı olmalı" ihtiyacı **karşılandı**,
+  ama bunun için bir JSON/CSV dosyasına gerek olmadı; bir Python sözlüğü yetti
+- Katalog verisi (teklif adları) `utils/test_data.py` sabitlerinde (Faz K1)
+- Sınır değer senaryolarının parametreleri Gherkin `Examples` tablolarında —
+  orası doğru yer, çünkü senaryonun **okunabilir** parçası
+
+**Yapıldı (Faz K3):** klasör kaldırıldı. Boş bir dizini "eksik" diye taşımak,
+skoru gerçek bir sorun olmadan aşağı çekiyordu. Gerçek ihtiyaç doğarsa
+(ör. sabit bir referans veri seti) yeniden açılır.
 
 ---
 

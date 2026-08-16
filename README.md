@@ -1,6 +1,7 @@
 # CRM Test Automation Framework
 
-Selenium + pytest-bdd ile UI test otomasyon iskeleti. **214 senaryo**, 17 feature.
+Selenium + pytest-bdd ile UI test otomasyon iskeleti. **214 senaryo**, 17 feature
+(varsayılan koşumda 213 — biri `@lockout` ile hariç tutulur, aşağıya bakın).
 
 ## Klasör Yapısı
 
@@ -8,8 +9,7 @@ Selenium + pytest-bdd ile UI test otomasyon iskeleti. **214 senaryo**, 17 featur
 - `steps/` — step definition modülleri (`@given/@when/@then`) ve `scenarios()` bağlantıları. Örnek: `test_login_steps.py`
 - `steps/conftest.py` — tüm feature'ların paylaştığı fixture'lar (aşağıda)
 - `pages/` — Page Object Model sınıfları; hepsi `pages/base_page.py::BasePage`'ten türer
-- `utils/` — ortak altyapı: `config.py`, `waits.py`, `test_data.py`, `session.py`
-- `test_data/` — dosya tabanlı test verisi (JSON/YAML/CSV) için ayrıldı, şu an boş. Üretilen (Faker) veri `utils/test_data.py`'de
+- `utils/` — ortak altyapı: `config.py`, `waits.py`, `text.py`, `test_data.py`, `session.py`
 - `test-design/final-test-set/` — otomasyonun uyguladığı manuel test case'lerin kaynağı (UC-EACRML 001–017). Kod yorumları buraya atıf yapıyor (ör. "bkz. `order_submission.md` TC-016-05")
 - `conftest.py` — kök fixture'lar (`driver`, `base_url`) ve raporlama hook'ları
 - `pytest.ini` — pytest/pytest-bdd konfigürasyonu (`pythonpath = .` sayesinde `pages`/`utils` paketleri `steps/` altından import edilebiliyor)
@@ -47,7 +47,7 @@ değişkeniyle ezilebilir. Kök dizinde bir `.env` dosyası oluşturun:
 ## Çalıştırma
 
 ```
-pytest -v                          # tam suite (~55 dk, 214 senaryo)
+pytest -v                          # tam suite (~55 dk, 213 senaryo)
 pytest steps/test_login_steps.py   # tek feature
 pytest -m lockout                  # varsayılan koşumdan hariç tutulan testler
 ```
