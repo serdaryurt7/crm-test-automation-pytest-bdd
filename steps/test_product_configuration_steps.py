@@ -6,7 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from pages.billing_account_delete_page import BillingAccountDeletePage
 from pages.offer_selection_page import OfferSelectionPage
 from pages.product_configuration_page import ProductConfigurationPage
-from utils.test_data import new_address_args
+from utils.test_data import SECOND_SIMPLE_OFFER, SIMPLE_OFFER, new_address_args
 
 scenarios("product_configuration.feature")
 
@@ -34,20 +34,20 @@ def _open_config_screen_with_offers(driver, offer_names):
 
 @given("kullanıcı sepete birden fazla teklif ekleyip İleri ile Ürün Konfigürasyonu ekranına geçmiştir", target_fixture="config_page")
 def cart_has_multiple_offers_on_config_screen(disposable_customer):
-    return _open_config_screen_with_offers(disposable_customer, ["Mobil 20GB Paket", "Superbox 50GB"])
+    return _open_config_screen_with_offers(disposable_customer, [SIMPLE_OFFER, SECOND_SIMPLE_OFFER])
 
 
 @then("sepetteki her teklif için ayrı bir konfigürasyon kartı (Ürün Teklif ID/Adı ile) görüntülenir")
 def each_cart_offer_has_own_config_card(config_page):
     names = config_page.get_config_card_offer_names()
     assert config_page.get_config_card_count() == 2
-    assert "Mobil 20GB Paket" in names
-    assert "Superbox 50GB" in names
+    assert SIMPLE_OFFER in names
+    assert SECOND_SIMPLE_OFFER in names
 
 
 @given("kullanıcı Ürün Konfigürasyonu ekranındadır", target_fixture="config_page")
 def user_on_product_configuration_screen(disposable_customer):
-    return _open_config_screen_with_offers(disposable_customer, ["Mobil 20GB Paket"])
+    return _open_config_screen_with_offers(disposable_customer, [SIMPLE_OFFER])
 
 
 @when("zorunlu konfigürasyon alanları boş bırakılır")
@@ -66,7 +66,7 @@ def user_on_config_screen_with_multiple_addresses(authenticated_driver, new_cust
     # Bu senaryo BİRDEN FAZLA kayıtlı adres gerektiriyor - ikinci adres
     # create_customer sihirbazının kendi adres adımında ekleniyor.
     new_customer(extra_addresses=1)
-    return _open_config_screen_with_offers(authenticated_driver, ["Mobil 20GB Paket"])
+    return _open_config_screen_with_offers(authenticated_driver, [SIMPLE_OFFER])
 
 
 @when("müşterinin kayıtlı adreslerinden biri hizmet adresi olarak seçilir")
@@ -93,7 +93,7 @@ def new_address_added_and_selected(config_page):
 
 @given("kullanıcı Ürün Konfigürasyonu ekranında konfigürasyon alanlarını doldurmuştur", target_fixture="config_page")
 def user_filled_config_fields(disposable_customer):
-    config_page = _open_config_screen_with_offers(disposable_customer, ["Mobil 20GB Paket"])
+    config_page = _open_config_screen_with_offers(disposable_customer, [SIMPLE_OFFER])
     config_page.fill_all_required_text_fields_with_dummy_values()
     return config_page
 
@@ -125,7 +125,7 @@ def previously_entered_values_preserved(driver):
 
 @given("tüm zorunlu konfigürasyon alanları doldurulmuştur", target_fixture="config_page")
 def all_required_config_fields_filled(disposable_customer):
-    config_page = _open_config_screen_with_offers(disposable_customer, ["Mobil 20GB Paket"])
+    config_page = _open_config_screen_with_offers(disposable_customer, [SIMPLE_OFFER])
     config_page.fill_all_required_text_fields_with_dummy_values()
     assert config_page.is_next_button_enabled()
     return config_page

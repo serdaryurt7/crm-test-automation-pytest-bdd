@@ -12,6 +12,32 @@ Gherkin Examples tablolarında yaşıyor) için YAGNI gereği yazılmadı.
 """
 from faker import Faker
 
+# --- KATALOG VERİSİ ---
+# Bu adlar uygulamanın teklif kataloğundan gelir; testler onları
+# üretmez, VAR OLDUKLARINI varsayar. Katalog değişirse burası tek
+# güncelleme noktasıdır. Her sabitin YANINDA neden o teklifin seçildiği
+# yazıyor - yoksa bir sonraki kişi rastgele başka bir teklifle değiştirir
+# ve senaryo sessizce farklı bir şey test etmeye başlar.
+
+# Zorunlu tamamlayıcı ürün İSTEMEYEN, en az adımda satın alınabilen
+# teklif (canlı doğrulandı). Kurulum amaçlı senaryoların varsayılanı.
+SIMPLE_OFFER = "Mobil 20GB Paket"
+
+# SIMPLE_OFFER'ın arama filtresinde kullanılan ÖN EKİ. Tam ad DEĞİL:
+# "içeren" aramasının çalıştığı test edildiği için bilinçli olarak kısa.
+SIMPLE_OFFER_SEARCH_TERM = "Mobil 20GB"
+
+# Yalnızca <input> alanı içeren (dropdown İÇERMEYEN) ikinci basit
+# şablonlu teklif - "sepette birden fazla teklif" senaryolarında
+# SIMPLE_OFFER ile birlikte kullanılıyor.
+SECOND_SIMPLE_OFFER = "Superbox 50GB"
+
+# Fatura hesabı ürün listesinde ikinci ürün olarak kullanılıyor.
+SECOND_PRODUCT_OFFER = "TV Başlangıç Paketi"
+
+# Mükerrer sepete ekleme senaryosunun (TC-014-13) teklifi.
+DUPLICATE_TEST_OFFER = "Ev İnterneti Fiber 100"
+
 # Tek paylaşılan örnek. Faker örnekleri birbirinden bağımsız rastgele
 # akışlardır; tek bir örneği paylaşmak davranışı değiştirmez (hiçbiri
 # seed'lenmiyordu) ama iki örneğin aynı diziyi üretme ihtimalini de

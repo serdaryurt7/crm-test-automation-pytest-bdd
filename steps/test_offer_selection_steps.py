@@ -9,6 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from pages.billing_account_delete_page import BillingAccountDeletePage
 from pages.offer_selection_page import OfferSelectionPage
 from utils.text import turkish_fold
+from utils.test_data import DUPLICATE_TEST_OFFER, SIMPLE_OFFER_SEARCH_TERM
 
 scenarios("offer_selection.feature")
 
@@ -77,7 +78,7 @@ def only_mobil_offers_listed(offer_page):
 
 @when("Teklif Adı filtresine bir değer girilip Ara'ya tıklanır", target_fixture="search_context")
 def search_by_name_value(offer_page):
-    search_value = "Mobil 20GB"
+    search_value = SIMPLE_OFFER_SEARCH_TERM
     offer_page.search_by_name(search_value)
     return offer_page, search_value
 
@@ -139,7 +140,7 @@ def total_increases_by_offer_price(offer_selection_context):
 @given('kullanıcı sepete "Ev İnterneti Fiber 100" teklifini YALNIZCA BİR KEZ eklemiştir', target_fixture="offer_page")
 def offer_added_exactly_once(disposable_customer):
     offer_page = _open_offer_selection_screen(disposable_customer)
-    offer_page.select_offer_by_name("Ev İnterneti Fiber 100")
+    offer_page.select_offer_by_name(DUPLICATE_TEST_OFFER)
     offer_page.click_add_to_cart_and_wait()
     return offer_page
 

@@ -5,6 +5,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
 from pages.offer_selection_page import OfferSelectionPage
+from utils.test_data import SIMPLE_OFFER_SEARCH_TERM
 
 
 class SalesSetupPage(BasePage):
@@ -27,7 +28,7 @@ class SalesSetupPage(BasePage):
     SUBMIT = (By.CSS_SELECTOR, "[data-testid='sales-submit']")
     SUCCESS_TITLE = (By.CSS_SELECTOR, "[data-testid='sales-success-title']")
 
-    def purchase_simple_offer(self, offer_name_contains="Mobil 20GB"):
+    def purchase_simple_offer(self, offer_name_contains=SIMPLE_OFFER_SEARCH_TERM):
         # "Mobil 20GB Paket" bilerek seçiliyor - donanım gerektiren
         # tekliflerin (ör. "Ev İnterneti Fiber 100") aksine zorunlu bir
         # tamamlayıcı ürün istemiyor, bu yüzden minimal kurulum için en

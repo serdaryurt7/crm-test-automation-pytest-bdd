@@ -13,7 +13,7 @@
 
 ## 0. İlerleme Durumu
 
-**Genel olgunluk: 3.8 → 6.6 / 10**
+**Genel olgunluk: 3.8 → 6.75 / 10**
 **Page Object Model: 6 → 9 / 10** ✅ &nbsp;·&nbsp; **Step katmanı: 3 → 7 / 10** ✅
 
 | Faz | Kapsam | Durum |
@@ -32,6 +32,9 @@
 | **Faz J2** | 19 ölü `BasePage` yardımcısı silindi (21 → 3 metot) | ✅ Tamam (`1e697d7`) |
 | **Faz J3+J5** | `parse_price()`, `.env.example`, `pytest.ini` sertleştirme, `@lockout` | ✅ Tamam (`9a4fc67`) |
 | **Faz J4** | `BasePage.select_random_option()` — 6 dropdown sitesi | ✅ Tamam (`1e57455`) |
+| **Faz K1** | Katalog verisi tek kaynağa (22 yer → `utils/test_data.py`) | ✅ Tamam (`FAZ_K1_COMMIT`) |
+| Faz K2 | Sınır değerleri (`FIELD_LIMITS`, 18 yer) | ⏳ Sıradaki |
+| Faz K4 | Veri yaşam döngüsü / temizlik | 🔴 J6'ya bağlı |
 | Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Bekliyor |
 | **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`1082909`) |
 | **Faz H2** | `utils/text.py` — Türkçe katlama (gizli hata, §6.4) | ✅ Tamam (`5be0d18`) |
@@ -366,14 +369,14 @@ tek sebebi bu.
 | Page Object Model | 6 | 🟢 **9**/10 | ✅ Faz 1: BasePage, 18/18 sınıf bağlı. ✅ Faz 3: assert 11 → 6 (kalanlar gerekçeli). Kalan tek eksik: 735 satırlık god class |
 | Step katmanı | 3 | 🟢 **7**/10 | ✅ Faz A+B: login tekrarı 16 → 0, sabit kimlik bilgisi 17 → 0. ✅ Faz C: sihirbaz tekrarı 14 → 0. ✅ Faz D: Faker örneği 7 → 0. Kalan: 56 çıplak `WebDriverWait`, 24 ham `By` (Faz E) |
 | Ortak altyapı (`utils/` + `BasePage`) | 1 | 🟢 **7.5**/10 | ✅ Faz 2: `waits.py`. ✅ Faz A: `config.py`. ✅ Faz D: `test_data.py` ✅ Faz H2: `text.py` (**5/6 modül**). Kalan tek hedef `api_client.py`. `logger`/`driver_factory` gereksiz bulundu |
-| Test verisi yönetimi | 1 | 🔴 **3**/10 | ✅ Faz D: üretilen veri tek kaynakta (`utils/test_data.py`). Kalan: `test_data/` dizini hâlâ boş, sınır değer kataloğu yok, literaller Gherkin Examples'ta dağınık |
+| Test verisi yönetimi | 1 | 🟡 **4.5**/10 | ✅ Faz D: üretilen veri tek kaynakta. ✅ Faz K1: katalog verisi 22 yerden tek kaynağa. Kalan: sınır değerleri dağınık (K2), **veri yaşam döngüsü yok** (K4, J6'ya bağlı) |
 | Konfigürasyon | 5 | 🟡 **6**/10 | ✅ Faz A: tek kaynak `utils/config.py`, origin semantiği düzeltildi. Kalan: `requirements.txt`'te sürüm sabitleme yok (K3) |
 | Raporlama | 7 | 🟢 **7**/10 | Allure + pytest-html iyi kurulmuş, ekran görüntüsü ekleniyor |
 | Repo hijyeni | 2 | 🟢 **7**/10 | ✅ Faz G: README merge conflict'i çözüldü, 8 bağımlılık sabitlendi, 28 artık rapor klasörü silindi (15→6 MB), silinmiş 17 test tasarım dosyası geri alındı. Kalan: `login.feature`'ın tasarım karşılığı yok |
 | CI/CD | 0 | 🟡 **4**/10 | ✅ Faz G: her PR'da çalışan statik doğrulama (derleme, eksik step tanımı, toplama, ölü import) + elle tetiklenen UI job. Kalan: UI suite otomatik koşmuyor (runner yok), gecelik regresyon ve rapor yayımlama yok |
 | Kararlılık (flaky yönetimi) | 5 | 🟢 **7**/10 | ✅ Faz 1: `ignored_exceptions` 2/13 → 13/13. ✅ Faz I: madde 18 ve 20 kök nedenleriyle çözüldü (4/4 doğrulama). Kalan: 5 bilinen flaky, paralel/izolasyon yok |
 
-**Genel: 3.8 → 6.6 / 10**
+**Genel: 3.8 → 6.75 / 10**
 
 > **Neden genel skor yavaş artıyor?** Skor 10 boyutun ortalamasıdır; POM
 > 3, step katmanı 3.5 puan yükseldi ama bu ortalamaya yalnızca 0.65

@@ -7,11 +7,12 @@ from pages.billing_account_products_page import BillingAccountProductsPage
 from pages.offer_selection_page import OfferSelectionPage
 from pages.order_submission_page import OrderSubmissionPage
 from pages.product_configuration_page import ProductConfigurationPage
+from utils.test_data import SIMPLE_OFFER
 
 scenarios("order_submission.feature")
 
 
-def _reach_config_screen(driver, offer_name="Mobil 20GB Paket"):
+def _reach_config_screen(driver, offer_name=SIMPLE_OFFER):
     account_page = BillingAccountProductsPage(driver)
     customer_url = driver.current_url
     account_page.create_account_and_wait()
@@ -23,14 +24,14 @@ def _reach_config_screen(driver, offer_name="Mobil 20GB Paket"):
     return ProductConfigurationPage(driver), customer_url
 
 
-def _reach_submission_screen(driver, offer_name="Mobil 20GB Paket"):
+def _reach_submission_screen(driver, offer_name=SIMPLE_OFFER):
     config_page, customer_url = _reach_config_screen(driver, offer_name)
     config_page.fill_all_required_text_fields_with_dummy_values()
     config_page.click_next_and_wait_for_summary()
     return OrderSubmissionPage(driver), customer_url
 
 
-def _place_order_from_account_page(driver, offer_name="Mobil 20GB Paket"):
+def _place_order_from_account_page(driver, offer_name=SIMPLE_OFFER):
     # UC-014/UC-015'te kurulan AYNI akış - hesap sayfasından başlayıp
     # tam bir sipariş tamamlıyor, benzersizlik gibi tekrarlı senaryolar
     # (TC-016-08) için DRY bir yapı taşı.

@@ -6,6 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.billing_account_products_page import BillingAccountProductsPage
 from pages.sales_setup_page import SalesSetupPage
+from utils.test_data import SECOND_PRODUCT_OFFER, SIMPLE_OFFER
 
 scenarios("billing_account_products.feature")
 
@@ -57,7 +58,7 @@ def _setup_account_with_products(driver, offer_names):
 
 @given("kullanıcı bir fatura hesabı altındaki ürün listesini görüntülemektedir", target_fixture="products_context")
 def user_viewing_product_list(disposable_customer):
-    return _setup_account_with_products(disposable_customer, ["Mobil 20GB Paket"])
+    return _setup_account_with_products(disposable_customer, [SIMPLE_OFFER])
 
 
 @when("kullanıcı bir ürünün View butonuna tıklar")
@@ -74,7 +75,7 @@ def preview_shows_readonly_offer_fields(products_context):
 
 @given("hesap altındaki bir ürün kampanyasız alınmıştır", target_fixture="products_context")
 def account_product_without_campaign(disposable_customer):
-    return _setup_account_with_products(disposable_customer, ["Mobil 20GB Paket"])
+    return _setup_account_with_products(disposable_customer, [SIMPLE_OFFER])
 
 
 @when("ürün listesi görüntülenir")
@@ -92,7 +93,7 @@ def campaign_fields_show_placeholder(products_context):
 
 @given("kullanıcı ürün detay tablosunu görüntülemektedir", target_fixture="products_context")
 def user_viewing_product_detail_table(disposable_customer):
-    return _setup_account_with_products(disposable_customer, ["Mobil 20GB Paket"])
+    return _setup_account_with_products(disposable_customer, [SIMPLE_OFFER])
 
 
 @then("her kayıt için bir Delete ikonu görüntülenir")
@@ -120,7 +121,7 @@ def delete_click_has_no_effect(products_context):
 
 @given("ürün önizleme paneli açıktır", target_fixture="products_context")
 def preview_panel_open(disposable_customer):
-    account_page, panel_id = _setup_account_with_products(disposable_customer, ["Mobil 20GB Paket"])
+    account_page, panel_id = _setup_account_with_products(disposable_customer, [SIMPLE_OFFER])
     account_page.click_preview_on_row(panel_id)
     return account_page, panel_id
 
@@ -139,7 +140,7 @@ def preview_closes_and_list_returns(products_context):
 
 @given("bir hesap altında birden fazla ürün vardır", target_fixture="products_context")
 def account_has_multiple_products(disposable_customer):
-    return _setup_account_with_products(disposable_customer, ["Mobil 20GB Paket", "TV Başlangıç Paketi"])
+    return _setup_account_with_products(disposable_customer, [SIMPLE_OFFER, SECOND_PRODUCT_OFFER])
 
 
 @then("tüm ürünler aynı tabloda ayrı satırlar olarak eksiksiz listelenir")
@@ -201,7 +202,7 @@ def user_can_expand_table_again(products_context):
 
 @given("fatura hesabı genişletilmiş ve bağlı ürünler listelenmiştir", target_fixture="products_context")
 def account_expanded_with_products(disposable_customer):
-    return _setup_account_with_products(disposable_customer, ["Mobil 20GB Paket", "TV Başlangıç Paketi"])
+    return _setup_account_with_products(disposable_customer, [SIMPLE_OFFER, SECOND_PRODUCT_OFFER])
 
 
 @then("tablodaki her kayıt için bir View ikonu görüntülenir")
