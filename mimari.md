@@ -30,7 +30,7 @@
 | Faz E | Step'lerdeki ham `By`/`WebDriverWait` (24 + 23) | ⏳ Risk/getiri zayıf |
 | Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Bekliyor |
 | **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`1082909`) |
-| **Faz H2** | `utils/text.py` — Türkçe katlama (gizli hata, §6.4) | ✅ Tamam (`FAZ_H2_COMMIT`) |
+| **Faz H2** | `utils/text.py` — Türkçe katlama (gizli hata, §6.4) | ✅ Tamam (`5be0d18`) |
 | Faz H1 | `wait_for_dom_settled`: benimse ya da sil (§4.2c) | ⏳ **Sıradaki karar** |
 
 ### Faz 0 — Yapılanlar
