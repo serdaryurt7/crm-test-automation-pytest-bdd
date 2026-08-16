@@ -29,7 +29,7 @@ class BasePage:
 
     Sorumluluğu iki şeyle sınırlı:
       1. driver ve wait örneklerini tek ve tutarlı biçimde kurmak
-      2. her sayfada tekrarlanan temel etkileşimleri sunmak
+      2. KANITLANMIŞ ortak etkileşimi sunmak (şu an yalnızca `fill`)
 
     Alt sınıflar kendi __init__'lerini KORUR; yalnızca ortak iki satırı
     super().__init__(driver) ile değiştirirler. Sayfaya özel hazır-olma
@@ -39,6 +39,25 @@ class BasePage:
     bırakıldı. Bu bir REFACTOR'dır - yapı değişir, davranış değişmez.
     Yoklama sıklığını değiştirmek ölçülmemiş bir zamanlama değişikliği
     getirirdi ve refactor'un regresyon ürettiğini ayırt etmeyi zorlaştırırdı.
+
+    NEDEN BU KADAR KÜÇÜK (Faz J2):
+    Bu sınıf ilk yazıldığında 21 yardımcı içeriyordu (`find`, `click`,
+    `text_of`, `wait_until_gone`, ...). Sonradan ölçüldü: **19'u hiç
+    çağrılmamıştı.** Üstelik biri (`type`) yalnızca ölü değil YANLIŞTI -
+    `field.clear()` kullanıyordu ve bu uygulamada Angular doğrulamasını
+    tetiklemiyor; kullanılsaydı sahte bulgu üretirdi. Yani kullanılmayan
+    yardımcı zararsız değildir: kimse çağırmadığı için kimse hatasını da
+    fark etmez.
+
+    Bu yüzden buraya bir yardımcı, ancak **onu çağıran kod ile aynı
+    commit'te** eklenmelidir. "Şimdilik dursun, sonra kullanırız" bu
+    projede iki kez denendi (`wait_for_dom_settled` ve bu 19 metot),
+    ikisi de ölü kod olarak silindi.
+
+    Sayfaların doğrudan `self.driver.find_element` / `self.wait.until`
+    kullanması BİLİNÇLİ olarak korunuyor: bunları `find()` gibi bekleme
+    EKLEYEN sarmalayıcılara çevirmek 276 çağrı yerinde davranış
+    değişikliği olurdu, yapı değişikliği değil.
     """
 
     def __init__(self, driver, timeout=None):
@@ -56,33 +75,6 @@ class BasePage:
             ignored_exceptions=_IGNORED,
         )
 
-    # ------------------------------------------------------------------
-    # Eleman bulma
-    # ------------------------------------------------------------------
-    def find(self, locator):
-        return self.wait.until(EC.presence_of_element_located(locator))
-
-    def find_visible(self, locator):
-        return self.wait.until(EC.visibility_of_element_located(locator))
-
-    def find_all(self, locator):
-        """Beklemeden anlık liste döndürür - 'hiç yok' da geçerli bir cevaptır."""
-        return self.driver.find_elements(*locator)
-
-    def count(self, locator):
-        return len(self.driver.find_elements(*locator))
-
-    # ------------------------------------------------------------------
-    # Etkileşim
-    # ------------------------------------------------------------------
-    def click(self, locator):
-        self.wait.until(EC.element_to_be_clickable(locator)).click()
-
-    def js_click(self, locator):
-        """Selenium'un hesapladığı tıklama noktası bir kaplama (overlay)
-        nedeniyle şaştığında kullanılır - login-password-toggle'da
-        kanıtlanmış bir ihtiyaç."""
-        self.driver.execute_script("arguments[0].click();", self.find(locator))
 
     def fill(self, locator, text=None, blur=False):
         """Alanı temizler, (verilmişse) yeni değeri yazar, (istenirse) odağı kaydırır.
@@ -123,67 +115,6 @@ class BasePage:
             field.send_keys(Keys.TAB)
         return field
 
-    # ------------------------------------------------------------------
-    # Okuma
-    # ------------------------------------------------------------------
-    def text_of(self, locator):
-        """find + .text'i TEK bir retry'lanan lambda içinde yapar.
-
-        Bunları ayrı ayrı yapmak (önce visibility_of_element_located, sonra
-        .text) aradaki DOM yenilenmesinde stale hatası üretir - bu hata
-        daha önce canlı olarak yaşandı.
-        """
-        return self.wait.until(lambda d: d.find_element(*locator).text)
-
-    def value_of(self, locator):
-        return self.find(locator).get_attribute("value") or ""
-
-    def attribute_of(self, locator, name):
-        return self.find(locator).get_attribute(name)
-
-    def is_displayed(self, locator):
-        elements = self.find_all(locator)
-        return bool(elements) and elements[0].is_displayed()
-
-    def is_enabled(self, locator):
-        return self.find(locator).is_enabled()
-
-    def is_disabled(self, locator):
-        return not self.is_enabled(locator)
-
-    # ------------------------------------------------------------------
-    # Beklemeler
-    # ------------------------------------------------------------------
-    def wait_until_visible(self, locator):
-        return self.wait.until(EC.visibility_of_element_located(locator))
-
-    def wait_until_gone(self, locator):
-        return self.wait.until(EC.invisibility_of_element_located(locator))
 
     def wait_for_url_contains(self, fragment):
         return self.wait.until(lambda d: fragment in d.current_url)
-
-    def wait_for_count(self, locator, expected):
-        return self.wait.until(lambda d: len(d.find_elements(*locator)) == expected)
-
-    # ------------------------------------------------------------------
-    # Tarayıcı
-    # ------------------------------------------------------------------
-    def open(self, url):
-        self.driver.get(url)
-        return self
-
-    def refresh(self):
-        self.driver.refresh()
-        return self
-
-    @property
-    def current_url(self):
-        return self.driver.current_url
-
-    def browser_logs(self):
-        """JS hatalarını yakalamanın en ucuz yolu; her tarayıcı desteklemez."""
-        try:
-            return self.driver.get_log("browser")
-        except Exception:
-            return []
