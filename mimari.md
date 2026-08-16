@@ -28,7 +28,10 @@
 | **Faz D** | `utils/test_data.py` (11 ayrı Faker örneği) | ✅ Tamam (`3e49afd`) |
 | **Faz G** | Repo hijyeni (K1/K2/K3/K5) + CI iş akışı | ✅ Tamam (`5625720`, `12f9a93`) |
 | Faz E | Step'lerdeki ham `By`/`WebDriverWait` (24 + 23) | ⏳ Risk/getiri zayıf |
-| Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Önerilen sıradaki adım |
+| Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Bekliyor |
+| **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`FAZ_H3_COMMIT`) |
+| Faz H2 | `utils/text.py` — Türkçe katlama (gizli hata, §6.4) | ⏳ Önerilen sıradaki adım |
+| Faz H1 | `wait_for_dom_settled`: benimse ya da sil (§4.2c) | ⏳ Karar bekliyor |
 
 ### Faz 0 — Yapılanlar
 
@@ -98,7 +101,7 @@ geçmesinden kaynaklandı.
 | Fonksiyon | Amaç | Durum |
 |---|---|---|
 | `poll_until()` | "eylem → bekle → kontrol" turunu tekrarlar; asenkron backend işlemleri için | Kullanımda (2 yer) |
-| `wait_for_dom_settled()` | MutationObserver ile DOM durulmasını bekler | Yazıldı, **henüz kullanılmıyor** |
+| `wait_for_dom_settled()` | MutationObserver ile DOM durulmasını bekler | 🔴 **Ölü kod** — Faz G sonrası ölçüldü: **0 çağrı** |
 
 `delete_customer_page.py` ve `search_customers_page.py` içindeki elle
 yazılmış poll döngüleri `poll_until()`'e taşındı; iki dosyadan ölü
@@ -118,6 +121,14 @@ metotları kullanan TC-005-05 ve TC-005-06 **geçti**. Sıfır regresyon.
 İlk plan "6 `time.sleep`'i `poll_until`'e taşı" idi. İnceleme bu planın
 yanlış bir sayıma dayandığını gösterdi (bkz. §4.2c): gerçek sayı 5'ti,
 biri yorum satırıydı ve **3'ü poll döngüsü değildi**.
+
+> **Sonradan ortaya çıkan sorun (Faz H denetimi):** `wait_for_dom_settled`
+> yazıldı ve **hiç benimsenmedi** — bugün 0 çağrısı var, yani
+> `utils/waits.py`'nin 100 satırının 58'i ölü kod. `utils/`'i
+> "kullanılmayan yardımcı çöplüğü" olmaktan kurtarmayı hedeflerken tam da
+> o anti-pattern'i üretmişim. İki seçenek var ve ikisi de kabul edilebilir:
+> Faz H1'de benimsemek (3 sabit beklemeyi değiştirmek) ya da silmek.
+> Kullanılmadan bırakmak **kabul edilebilir değil**.
 
 Kalan 3 sabit bekleme için çözüm (`wait_for_dom_settled`) yazıldı ama
 uygulanmadı — ayrıntılı gerekçe §4.2c'de. Özet: en sıcak kod yolunda,
@@ -349,7 +360,7 @@ tek sebebi bu.
 | Senaryo kapsamı | 8 | 🟢 **8**/10 | 187 senaryo, iyi Gherkin disiplini, INVEST'e uyum |
 | Page Object Model | 6 | 🟢 **9**/10 | ✅ Faz 1: BasePage, 18/18 sınıf bağlı. ✅ Faz 3: assert 11 → 6 (kalanlar gerekçeli). Kalan tek eksik: 735 satırlık god class |
 | Step katmanı | 3 | 🟢 **7**/10 | ✅ Faz A+B: login tekrarı 16 → 0, sabit kimlik bilgisi 17 → 0. ✅ Faz C: sihirbaz tekrarı 14 → 0. ✅ Faz D: Faker örneği 7 → 0. Kalan: 56 çıplak `WebDriverWait`, 24 ham `By` (Faz E) |
-| Ortak altyapı (`utils/`) | 1 | 🟡 **4**/10 | ✅ Faz 2: `waits.py`. ✅ Faz A: `config.py`. ✅ Faz D: `test_data.py` (4 modül). Hedef 8; `text`, `logger`, `driver_factory`, `api_client` hâlâ yok |
+| Ortak altyapı (`utils/`) | 1 | 🟡 **4**/10 | ✅ Faz 2: `waits.py`. ✅ Faz A: `config.py`. ✅ Faz D: `test_data.py` (4 modül). Hedef **6**: `text.py` (gerekli, kanıtlandı) + `api_client.py`. `logger`/`driver_factory` gereksiz bulundu |
 | Test verisi yönetimi | 1 | 🔴 **3**/10 | ✅ Faz D: üretilen veri tek kaynakta (`utils/test_data.py`). Kalan: `test_data/` dizini hâlâ boş, sınır değer kataloğu yok, literaller Gherkin Examples'ta dağınık |
 | Konfigürasyon | 5 | 🟡 **6**/10 | ✅ Faz A: tek kaynak `utils/config.py`, origin semantiği düzeltildi. Kalan: `requirements.txt`'te sürüm sabitleme yok (K3) |
 | Raporlama | 7 | 🟢 **7**/10 | Allure + pytest-html iyi kurulmuş, ekran görüntüsü ekleniyor |
@@ -685,10 +696,16 @@ müşteri oluşturmak için kullandığı en sıcak kod yolunda. Bugün çalış
 olmaları ve kazancın ancak CI'ya geçildiğinde görünür olması nedeniyle
 değişiklik ertelendi.
 
-> **Yapılacak (CI'ya geçişten önce):** `create_customer_page.py`'deki üç
-> `time.sleep(0.3)` çağrısını `wait_for_dom_settled()` ile değiştir ve
-> `create_customer` + ona bağlı feature'ları koş (~35 dk). Sabit 300ms
-> varsayımı, CI'da kırılacak ilk şeylerden biridir.
+> **Yapılacak (Faz H1):** `create_customer_page.py`'deki üç
+> `time.sleep(0.3)` çağrısını `wait_for_dom_settled()` ile değiştir.
+> Sabit 300ms varsayımı, CI'da kırılacak ilk şeylerden biridir.
+>
+> **Bu erteleme bir bedel yarattı.** Faz H denetiminde ölçüldü:
+> `wait_for_dom_settled` bugün **0 kez** çağrılıyor — yani
+> `utils/waits.py`'nin 100 satırının 58'i ölü kod. "Şimdilik yazalım,
+> sonra benimseriz" kararı, `utils/`'in düzeltmeye çalıştığı problemin
+> (kullanılmayan yardımcı biriktirmek) bir örneğini üretti. Ya benimsenmeli
+> ya silinmelidir; ölü bırakmak seçenek değil.
 
 #### d) `create_customer_page.py` 735 satır — tek sorumluluk ihlali
 
@@ -776,8 +793,9 @@ utils/
 ```
 
 `session.py` iyi yazılmış, amacı net ve yorumlanmış. Artık tek başına
-değil, ama hedef 8 modüle göre hâlâ **3/8**: `text`, `test_data`,
-`logger`, `driver_factory`, `api_client` eksik.
+değil. **Hedef 8'den 6'ya düşürüldü** (§6.9): `logger.py` ve
+`driver_factory.py` ölçüldüğünde gereksiz çıktı; kalan gerçek ihtiyaç
+`text.py` (Faz H2) ve `api_client.py`.
 
 Ne eklenmesi gerektiği **§6**'da kodla birlikte.
 
@@ -1153,10 +1171,28 @@ def wait_for_stable_count(driver, locator, timeout=None, stable_for=0.6):
 
 ---
 
-### 6.4 `utils/text.py` — Dil Bağımsız Metin Yardımcıları ⭐ ÖNCELİK 2
+### 6.4 `utils/text.py` — Dil Bağımsız Metin Yardımcıları ⭐ **FAZ H2 — GEREKLİ (kanıtlandı)**
 
-`search_customers_page.py` içine gömülü olan Türkçe katlama mantığını dışarı çıkarır ve
-**tüm projede** kullanılabilir hale getirir.
+`search_customers_page.py` içine gömülü olan Türkçe katlama mantığını dışarı çıkarır.
+
+**Bu modül, geri çekilen 6.6/6.7'nin aksine ölçülmüş bir ihtiyaca dayanıyor.**
+Python'un `str.lower()`'ı Türkçe yerel ayarı kullanmaz ama `İ` harfinde
+**iki karakter** üretir (`i` + birleşen nokta U+0307). Canlı ölçüm:
+
+| Metin | Aranan | `.lower()` ile | `_turkish_fold` ile |
+|---|---|---|---|
+| `Ev İnterneti Fiber 1000` | `internet` | ❌ **eşleşmez** | ✅ eşleşir |
+| `IŞIK Paket` | `ışık` | ❌ **eşleşmez** | ✅ eşleşir |
+
+Katlama uygulanmamış **iki risk noktası** var:
+`pages/offer_selection_page.py:114` ve `steps/test_offer_selection_steps.py:89`.
+
+Şu an kırmızı vermiyorlar çünkü ilgili test `"Mobil 20GB"` arıyor —
+Türkçe'ye özgü harf içermiyor. Yani bu **gizli** bir hata: katalogda
+`Ev İnterneti Fiber 1000` teklifi mevcut ve senaryo değeri değiştiği anda
+patlar. `search_customers_page.py`'de aynı sınıf hata canlı yakalanmış ve
+6 metodun **tamamına** önleyici olarak uygulanmıştı (bkz. `bugsbunny.txt`);
+burada da aynı yaklaşım izlenmeli.
 
 ```python
 """Dil bağımsız metin karşılaştırma ve ayrıştırma.
@@ -1331,9 +1367,20 @@ class AddressData:
 
 ---
 
-### 6.6 `utils/logger.py` — Yapılandırılmış Loglama ⭐ ÖNCELİK 3
+### 6.6 ~~`utils/logger.py`~~ — ❌ **GERİ ÇEKİLDİ**
 
-CI'da hata ayıklamanın olmazsa olmazı.
+> İlk taslakta "CI'da hata ayıklamanın olmazsa olmazı" diye ⭐3 önceliğe
+> konmuştu. Ölçüldüğünde dayanağı olmadığı görüldü: `pages/`, `steps/`,
+> `utils/` ve `conftest.py` genelinde **0 adet** `logging` veya `print`
+> kullanımı var. Yani karşılanacak bir talep yok — bu, çözdüğü bir sorun
+> olmadan eklenecek bir soyutlama olurdu.
+>
+> Ayrıca hata ayıklama ihtiyacının büyük kısmı zaten karşılanıyor:
+> `conftest.py` başarısız her testte ekran görüntüsü, sayfa kaynağı ve URL'i
+> Allure'a ekliyor; CI iş akışı da bunları artifact olarak saklıyor.
+>
+> **Karar:** yazılmayacak. CI'da gerçek bir ihtiyaç doğarsa o zaman
+> değerlendirilir. Aşağıdaki kod referans olarak bırakıldı.
 
 ```python
 """Konsol + dosya loglaması.
@@ -1379,9 +1426,20 @@ log = get_logger()
 
 ---
 
-### 6.7 `utils/driver_factory.py` — Sürücü Kurulumu ⭐ ÖNCELİK 4
+### 6.7 ~~`utils/driver_factory.py`~~ — ❌ **GERİ ÇEKİLDİ**
 
-`conftest.py`'yi inceltir, tarayıcı yeteneklerini merkezîleştirir.
+> "`conftest.py`'yi inceltir" gerekçesiyle önerilmişti. Ölçüldüğünde:
+> `conftest.py::_build_driver` **15 satır** ve **tek bir yerden**
+> (`driver` fixture'ı) çağrılıyor. Ayrı bir modüle taşımak hiçbir tekrarı
+> ortadan kaldırmaz, yalnızca aynı kodu başka bir dosyaya koyar — ve
+> okuyanı sürücünün nasıl kurulduğunu görmek için ikinci bir dosyaya
+> gönderir.
+>
+> Bu fazlarda uygulanan ölçüt tutarlı biçimde şuydu: **bir soyutlama,
+> kanıtlanmış bir tekrarı ortadan kaldırdığı için eklenir** (11 Faker
+> örneği, 16 login bloğu, 14 sihirbaz bloğu). Burada tekrar yok.
+>
+> **Karar:** yazılmayacak. Aşağıdaki kod referans olarak bırakıldı.
 
 ```python
 """WebDriver oluşturma - tarayıcıya özel tüm ayarlar TEK yerde."""
@@ -1517,24 +1575,31 @@ class ApiClient:
 
 ### 6.9 Özet: `utils/` Hedef Yapısı
 
+**Hedef 8 modülden 6'ya düşürüldü.** Aşağıdaki liste ilk taslakta
+"olması gerekenler" diye sayılmıştı; her biri ölçüldüğünde ikisinin
+gerçek bir talebi olmadığı görüldü.
+
 ```
 utils/
-├── __init__.py
-├── config.py            ⭐1  Merkezî konfigürasyon + kimlik bilgileri
-├── waits.py             ⭐2  poll_until, MutationObserver, kararlı sayım
-├── text.py              ⭐2  Türkçe katlama, sayı/para ayrıştırma
-├── test_data.py         ⭐3  Veri fabrikası + ALAN SINIRLARI
-├── logger.py            ⭐3  Konsol + dosya loglaması
-├── driver_factory.py    ⭐4  Tarayıcı kurulumu
-├── api_client.py        ⭐5  API ile hızlı kurulum (stratejik)
-├── assertions.py        ⭐5  Alan bazlı özel assert'ler
-└── session.py           ✅   (mevcut, korunacak)
+├── config.py       ✅ Faz A   Merkezî konfigürasyon + kimlik bilgileri
+├── waits.py        ✅ Faz 2   poll_until  (+ wait_for_dom_settled: ölü, Faz H1)
+├── test_data.py    ✅ Faz D   Paylaşılan Faker + new_address_args
+├── session.py      ✅ mevcut  JWT exp claim'i ile oturum sonlandırma
+├── text.py         ⏳ Faz H2  Türkçe katlama
+└── api_client.py   ⏳ ileride API ile hızlı kurulum (stratejik)
 ```
+
+| Vazgeçilen | Neden |
+|---|---|
+| `logger.py` | Kod tabanında **0** `logging`/`print` var. Bir talep yok; CI'da ihtiyaç doğarsa o zaman eklenir |
+| `driver_factory.py` | `conftest.py::_build_driver` 15 satır ve **tek yerde** kullanılıyor. Taşımak salt yer değiştirme olurdu |
+| `assertions.py` | Faz 3'ten sonra assert'ler zaten step katmanında ve okunabilir; ek bir soyutlama katmanı YAGNI |
+| `test_data.py::FIELD_LIMITS` | Alan sınırları Gherkin `Examples` tablolarında yaşıyor, kullanan kod yok (Faz D) |
 
 Ve yeni bir dosya:
 
 ```
-pages/base_page.py       ⭐1  Tüm page object'lerin ortak atası
+pages/base_page.py       ✅ Faz 1   Tüm page object'lerin ortak atası
 ```
 
 ---
@@ -1641,8 +1706,8 @@ def user_on_address_tab(driver, disposable_customer):
 |---|---|---|
 | 8 | `utils/config.py` + ortam değişkeninden kimlik bilgileri | ✅ Faz A |
 | 9 | `pages/base_page.py` + 13 sınıfı ona bağla | ✅ Faz 1 |
-| 10 | `utils/text.py` (Türkçe katlama dışarı çıkar) | ⏳ Şu an yalnızca `search_customers_page.py` içinde |
-| 11 | `utils/logger.py` | ⏳ CI'da hata ayıklama için |
+| 10 | `utils/text.py` (Türkçe katlama dışarı çıkar) | ⏳ **Faz H2** — gizli hata deneyle kanıtlandı (§6.4) |
+| 11 | ~~`utils/logger.py`~~ | ❌ **Geri çekildi** — kod tabanında 0 logging/print var (§6.6) |
 | 12 | `conftest.py`'ye login fixture'ı | ✅ Faz B (`authenticated_driver`) |
 
 ### Sprint 3 — Tekrarın Ortadan Kaldırılması
@@ -1652,7 +1717,7 @@ def user_on_address_tab(driver, disposable_customer):
 | 13 | `disposable_customer` fixture'ı | ✅ Faz C (+ `new_customer` fabrikası) |
 | 14 | `utils/test_data.py` | ✅ Faz D — `FIELD_LIMITS` **bilinçli olarak yazılmadı** (YAGNI, kullanan yok) |
 | 15 | `utils/waits.py`; poll döngülerini taşı | ✅ Faz 2 |
-| 15b | `create_customer`'daki sabit beklemeleri `wait_for_dom_settled`'a taşı | ⏳ **CI öncesi** — 4 adet (3 değil) |
+| 15b | `create_customer`'daki **3** sabit beklemeyi `wait_for_dom_settled`'a taşı | ⏳ **Faz H1** — ya benimse ya sil; ölü bırakma |
 | 16 | Step'lerdeki çıplak `WebDriverWait` + ham `By`'ı page'e taşı | ⏳ Faz E (23 + 24) |
 | 16b | Step'ten page `_private` erişimini accessor'a çevir | ⏳ **Faz F — önerilen sıradaki adım** (24 yer, 8'i yazma) |
 | 17 | `create_customer_page.py`'yi 3 sınıfa böl | ⏳ Faz 4 (735 satır, 14 step dosyası bağlı) |
@@ -1749,11 +1814,11 @@ Bu yol haritası tamamlandığında beklenen durum:
 | Disposable müşteri bloğunun tekrarı | 14 | ✅ **0** (fixture) | 0 |
 | `Faker` örneği (step + page) | 11 | ✅ **0** (tek paylaşılan) | 0 |
 | `steps/` satır sayısı | 3879 | ✅ **3442** | — |
-| `utils/` modül sayısı | 1 | 🟡 **4** | 8 |
+| `utils/` modül sayısı | 1 | 🟡 **4** | **6** (hedef 8'den düşürüldü, bkz. §6.9) |
 | Sürümü sabitlenmiş bağımlılık | 0 / 8 | ✅ **8 / 8** | 8 / 8 |
 | CI koşumu | yok | 🟡 **statik: her PR** | Her PR + gecelik UI |
 | Bilinen kırmızı test | 10 | ✅ **8** | 6 (yalnızca kasıtlı) |
-| Page içinde sabit `time.sleep` | 3 | 🔴 **4** | **0** (CI öncesi) |
+| Page içinde sabit `time.sleep` | 3 | 🔴 **3** | **0** (Faz H1) |
 | Step katmanında çıplak `WebDriverWait` | 48 | 🔴 **23** | **0** (Faz E) |
 | Step'ten page `_private` erişimi | 24 | 🔴 **24** | **0** (Faz F) |
 | En büyük page dosyası (satır) | 735 | 🔴 **735** | **~250** (Faz 4) |
@@ -1767,8 +1832,13 @@ Bu yol haritası tamamlandığında beklenen durum:
 > süreyi düşürürdü ama senaryo izolasyonunu kırardı — bilinçli olarak
 > yapılmadı.
 >
-> **`time.sleep` 3 → 4 arttı:** `address_update_page.py`'de daha önce
-> sayılmamış bir tane bulundu. Sayı büyümedi, ölçüm düzeldi.
+> **DÜZELTME — bir önceki revizyondaki "3 → 4" yanlıştı.** Gerçek sayı
+> **3**; hepsi `create_customer_page.py`'de (satır 236, 325, 623).
+> Dördüncü sandığım `address_update_page.py:213` bir **yorum satırı**
+> ("sabit bir `time.sleep` ile tahmin edilen bir süre beklemek…").
+> Bu, Faz 2'de yapıp düzelttiğim hatanın **birebir aynısıydı** —
+> `grep time.sleep` yorumları da sayıyor. Ölçüm artık yorum/kod ayrımı
+> yapılarak alındı.
 
 ---
 
@@ -1834,11 +1904,29 @@ sahte senaryoyu topladı ve exit 0 verdi — pytest-bdd step'leri koşum
 anında çözüyor. Bu deney olmasaydı CI, hiçbir şey doğrulamayan yeşil
 bir rozet olacaktı.
 
-**5. Kendi analizini de gözden geçir.** Bu belgedeki bulguların
-birkaçı yanlış ya da abartılıydı ve düzeltildi: K5 (`reports/` zaten
-gitignore'daydı, repo sorunu değildi), K6 (`project_brain.txt` için
-aksiyon gereksiz), §6.5'teki `FIELD_LIMITS` (kullanan yok, YAGNI),
-§9'daki ilk CI YAML'ı (dört ölümcül hata, ilk koşumda kırılırdı),
-Faz 2'deki `time.sleep` sayımı (6 değil 5), Faz 3'teki assert
-kategorizasyonu (11 değil 5 gerçek ihlal). Bir mimari değerlendirme,
-kendi iddialarını da doğrulanabilir tutmalıdır.
+**5. "Şimdilik yazalım, sonra kullanırız" ölü kod üretir.** Faz 2'de
+`wait_for_dom_settled` yazıldı ve benimsenmesi ertelendi. Faz H
+denetiminde ölçüldü: **0 çağrı**. `utils/`'i kullanılmayan yardımcı
+çöplüğü olmaktan kurtarmayı hedefleyen bir çalışma, tam da o
+anti-pattern'in bir örneğini üretti. Bir yardımcı, onu **kullanacak
+çağrı yeriyle aynı commit'te** girmelidir.
+
+**6. Kendi analizini de gözden geçir.** Bu belgedeki bulguların
+birkaçı yanlış ya da abartılıydı ve düzeltildi:
+
+| Bulgu | Ne oldu |
+|---|---|
+| K5 — 25 artık rapor klasörü | `reports/` zaten gitignore'daydı; repo sorunu değildi, önemi abartılmıştı |
+| K6 — `project_brain.txt` 316KB | Düz metin, git iyi yönetir, içeriği değerli → aksiyon geri çekildi |
+| §6.5 `FIELD_LIMITS` | Kullanan kod yok → yazılmadı (YAGNI) |
+| §6.6 `logger.py` | Kod tabanında 0 logging/print → geri çekildi |
+| §6.7 `driver_factory.py` | 15 satır, tek çağrı, tekrar yok → geri çekildi |
+| §9 ilk CI YAML'ı | Dört ölümcül hata, ilk koşumda kırılırdı → yeniden yazıldı |
+| Faz 2 `time.sleep` sayımı | 6 değil 5 (biri yorum satırıydı) |
+| §10 `time.sleep` "3 → 4" | **Yine yanlıştı** — gerçek sayı 3; dördüncü yine bir yorum satırıydı |
+| Faz 3 assert kategorizasyonu | 11 değil, 5 gerçek ihlal |
+
+Bir mimari değerlendirme kendi iddialarını da doğrulanabilir tutmalıdır.
+Yukarıdaki listede iki kez **aynı** hata var (`grep time.sleep` yorumları
+da sayıyor) — bu, düzeltmenin tek seferlik bir iş değil, tekrarlanan bir
+disiplin olduğunu gösteriyor.
