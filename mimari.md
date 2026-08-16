@@ -29,7 +29,7 @@
 | **Faz G** | Repo hijyeni (K1/K2/K3/K5) + CI iş akışı | ✅ Tamam (`5625720`, `12f9a93`) |
 | Faz E | Step'lerdeki ham `By`/`WebDriverWait` (24 + 23) | ⏳ Risk/getiri zayıf |
 | Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Bekliyor |
-| **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`FAZ_H3_COMMIT`) |
+| **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`1082909`) |
 | Faz H2 | `utils/text.py` — Türkçe katlama (gizli hata, §6.4) | ⏳ Önerilen sıradaki adım |
 | Faz H1 | `wait_for_dom_settled`: benimse ya da sil (§4.2c) | ⏳ Karar bekliyor |
 
