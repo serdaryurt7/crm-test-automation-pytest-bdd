@@ -28,7 +28,7 @@
 | **Faz D** | `utils/test_data.py` (11 ayrı Faker örneği) | ✅ Tamam (`3e49afd`) |
 | **Faz G** | Repo hijyeni (K1/K2/K3/K5) + CI iş akışı | ✅ Tamam (`5625720`, `12f9a93`) |
 | Faz E | Step'lerdeki ham `By`/`WebDriverWait` (24 + 23) | ⏳ Risk/getiri zayıf |
-| **Faz J1** | `BasePage.fill()`: 18 elle temizleme tekrarı + tuzaklı `type()` | ✅ Tamam (`FAZ_J1_COMMIT`) |
+| **Faz J1** | `BasePage.fill()`: 18 elle temizleme tekrarı + tuzaklı `type()` | ✅ Tamam (`7796196`) |
 | Faz J2 | Kalan ölü `BasePage` yardımcılarını sil | ⏳ Sıradaki |
 | Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Bekliyor |
 | **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`1082909`) |
