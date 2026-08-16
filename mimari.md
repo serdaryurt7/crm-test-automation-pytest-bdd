@@ -13,7 +13,7 @@
 
 ## 0. İlerleme Durumu
 
-**Genel olgunluk: 3.8 → 6.2 / 10**
+**Genel olgunluk: 3.8 → 6.3 / 10**
 **Page Object Model: 6 → 9 / 10** ✅ &nbsp;·&nbsp; **Step katmanı: 3 → 7 / 10** ✅
 
 | Faz | Kapsam | Durum |
@@ -31,7 +31,8 @@
 | Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Bekliyor |
 | **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`1082909`) |
 | **Faz H2** | `utils/text.py` — Türkçe katlama (gizli hata, §6.4) | ✅ Tamam (`5be0d18`) |
-| Faz H1 | `wait_for_dom_settled`: benimse ya da sil (§4.2c) | ⏳ **Sıradaki karar** |
+| **Faz H1** | `wait_for_dom_settled` silindi (0 çağrı, ölü kod) | ✅ Tamam (`FAZ_H_COMMIT`) |
+| **Faz I** | Flaky düzeltmesi: `bugsbunny.txt` madde 18 + 20 | ✅ Tamam (`FAZ_H_COMMIT`) |
 
 ### Faz 0 — Yapılanlar
 
@@ -366,9 +367,9 @@ tek sebebi bu.
 | Raporlama | 7 | 🟢 **7**/10 | Allure + pytest-html iyi kurulmuş, ekran görüntüsü ekleniyor |
 | Repo hijyeni | 2 | 🟢 **7**/10 | ✅ Faz G: README merge conflict'i çözüldü, 8 bağımlılık sabitlendi, 28 artık rapor klasörü silindi (15→6 MB), silinmiş 17 test tasarım dosyası geri alındı. Kalan: `login.feature`'ın tasarım karşılığı yok |
 | CI/CD | 0 | 🟡 **4**/10 | ✅ Faz G: her PR'da çalışan statik doğrulama (derleme, eksik step tanımı, toplama, ölü import) + elle tetiklenen UI job. Kalan: UI suite otomatik koşmuyor (runner yok), gecelik regresyon ve rapor yayımlama yok |
-| Kararlılık (flaky yönetimi) | 5 | 🟡 **6**/10 | ✅ Faz 1: `ignored_exceptions` kapsamı 2/13 → 13/13. Hâlâ retry/paralel/izolasyon mekanizması yok |
+| Kararlılık (flaky yönetimi) | 5 | 🟢 **7**/10 | ✅ Faz 1: `ignored_exceptions` 2/13 → 13/13. ✅ Faz I: madde 18 ve 20 kök nedenleriyle çözüldü (4/4 doğrulama). Kalan: 5 bilinen flaky, paralel/izolasyon yok |
 
-**Genel: 3.8 → 6.2 / 10**
+**Genel: 3.8 → 6.3 / 10**
 
 > **Neden genel skor yavaş artıyor?** Skor 10 boyutun ortalamasıdır; POM
 > 3, step katmanı 3.5 puan yükseldi ama bu ortalamaya yalnızca 0.65
@@ -1834,7 +1835,7 @@ Bu yol haritası tamamlandığında beklenen durum:
 | Sürümü sabitlenmiş bağımlılık | 0 / 8 | ✅ **8 / 8** | 8 / 8 |
 | CI koşumu | yok | 🟡 **statik: her PR** | Her PR + gecelik UI |
 | Bilinen kırmızı test | 10 | ✅ **8** | 6 (yalnızca kasıtlı) |
-| Page içinde sabit `time.sleep` | 3 | 🔴 **3** | **0** (Faz H1) |
+| Page içinde sabit `time.sleep` | 3 | 🔴 **3** | **0** (CI UI koşumu geldiğinde) |
 | Step katmanında çıplak `WebDriverWait` | 48 | 🔴 **23** | **0** (Faz E) |
 | Step'ten page `_private` erişimi | 24 | 🔴 **24** | **0** (Faz F) |
 | En büyük page dosyası (satır) | 735 | 🔴 **735** | **~250** (Faz 4) |

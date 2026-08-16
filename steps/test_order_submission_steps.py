@@ -108,8 +108,10 @@ def order_created_and_product_added_to_account(driver, submission_context):
         EC.visibility_of_element_located((By.CSS_SELECTOR, "[data-testid='customer-detail-header']"))
     )
     account_page = BillingAccountProductsPage(driver)
-    panel_id = account_page.get_products_panel_id()
-    assert account_page.get_product_row_count(panel_id) >= 1
+    assert account_page.wait_for_products_persisted_after_reload(customer_url), (
+        "Sipariş gönderildi ancak ürün, fatura hesabının ürün listesinde görünmedi "
+        "(reload'lar tekrarlanarak asenkron yazma beklendi)."
+    )
 
 
 @when('"Geri" butonuna tıklanır')

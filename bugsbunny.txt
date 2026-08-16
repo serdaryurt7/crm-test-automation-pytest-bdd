@@ -343,3 +343,48 @@ geçerli ve yapılmadı.
 
 Koşum süresi 54dk -> 70dk'ya çıktı; test sayısı ve iş aynı olduğundan
 bu makine yükü kaynaklı, kodla ilgisi yok.
+
+===========================================================
+[2026-08-16] MADDE 18 ve 20 DÜZELTİLDİ - kök nedenler AYRIŞTI
+===========================================================
+
+MADDE 20 (order_submission TC-016-03) - ÇÖZÜLDÜ
+  Teşhis doğruydu: sipariş gönderimi ile ürünün fatura hesabında
+  görünmesi arasında asenkron gecikme var, tek bir DOM beklemesi yetmiyor
+  (veri ancak yeni sayfa yüklemesiyle geliyor).
+  Çözüm: pages/billing_account_products_page.py::
+  wait_for_products_persisted_after_reload() - poll_until ile reload'ı
+  tekrarlıyor. Doğrulama: 4 ardışık koşumda 4/4 PASSED.
+
+MADDE 18 (address_update TC-006-06b) - ÇÖZÜLDÜ, AMA İLK TEŞHİS YANLIŞTI
+  İLK DENEME BAŞARISIZ: wait_for_primary_states_to_persist()'i
+  WebDriverWait-içinde-reload deseninden poll_until'e çevirdim
+  ("sıkı ardışık reload" hipotezi). İzole koşumda 3 denemede 2 FAILED -
+  yani DAHA KÖTÜ. 6 reload x 2sn = 12+ saniye beklenmesine rağmen durum
+  hiç düzelmiyordu; bu, "asenkron yazma gecikmesi" teşhisinin YANLIŞ
+  olduğunun kanıtıydı.
+
+  GERÇEK KÖK NEDEN (Performance API ile canlı ÖLÇÜLDÜ, tahmin değil):
+      tıklama                              -> +0.00 sn
+      DOM'da radio checked (metot döndü)   -> +0.04 sn
+      PATCH /v1/addresses/{id} tamamlandı  -> +0.33 sn
+  mark_second_address_as_primary(), isteği UÇUŞTAYKEN dönüyordu. Çağıran
+  taraf hemen driver.get() yapınca navigasyon isteği İPTAL ediyor ve
+  değişiklik hiç kaydedilmiyordu. Reload'ları tekrarlamak işe yaramıyordu
+  çünkü kaydedilecek bir şey kalmamıştı.
+
+  DERS: DOM'da bir radio'nun "checked" olması İSTEMCİ TARAFI bir
+  durumdur; sunucuya yazıldığı anlamına GELMEZ. Bir mutasyondan sonra
+  navigasyon yapan her testte bu tuzak var.
+
+  Çözüm: mark_second_address_as_primary() artık isteğin gerçekten
+  tamamlanmasını bekliyor (performance.getEntriesByType('resource'),
+  responseEnd > 0 - iptal edilen isteklerde 0 kalır). Sabit süre DEĞİL,
+  olayın kendisi yoklanıyor.
+  Doğrulama: 4 ardışık koşumda 4/4 PASSED (öncesi: 3'te 2 FAILED).
+  address_update tam dosya: 12 passed / 2 failed - ikisi de bilinen
+  (TC-006-05b kasıtlı kırmızı, TC-006-04 madde 8'deki flaky).
+
+  NOT: wait_for_primary_states_to_persist()'teki poll_until dönüşümü
+  KORUNDU - kök neden değildi ama gerçek backend gecikmesine karşı
+  zararsız bir tolerans sağlıyor.

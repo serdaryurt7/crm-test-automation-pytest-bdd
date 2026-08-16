@@ -3,6 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.billing_account_delete_page import BillingAccountDeletePage
+from utils.waits import poll_until
 
 
 class BillingAccountProductsPage(BillingAccountDeletePage):
@@ -53,6 +54,31 @@ class BillingAccountProductsPage(BillingAccountDeletePage):
 
     def get_product_row_names(self, panel_id):
         return [row.find_element(*self.PRODUCT_ROW_NAME).text.strip() for row in self.get_product_rows(panel_id)]
+
+    def wait_for_products_persisted_after_reload(self, customer_url, minimum_count=1):
+        # DÜZELTME (bugsbunny.txt madde 20 - flaky olarak yakalandı, izole
+        # koşumda 3 denemede 1 FAILED): sipariş gönderimi ile ürünün fatura
+        # hesabında GÖRÜNMESİ arasında asenkron bir gecikme var. Eski
+        # implementasyon müşteri detayına dönüp ürün satırlarını HEMEN
+        # sayıyordu; backend henüz yazmamışsa 0 görüyordu.
+        #
+        # Bu, TC-005-03 / TC-012-03 / TC-006-06b ile AYNI aile: "backend
+        # mutasyonu kabul ediliyor ama saniyeler sonra tamamlanıyor".
+        # Çözüm de aynı ve kanıtlanmış: reload'ı tekrarlayan seyrek bir
+        # yoklama döngüsü. Tek bir DOM beklemesi yetmez - veri ancak yeni
+        # bir sayfa yüklemesiyle geliyor.
+        def _reload_account_tab():
+            self.driver.get(customer_url)
+            self.wait.until(EC.element_to_be_clickable(self.TAB_ACCOUNT)).click()
+
+        def _products_visible():
+            # Global sorgu: her senaryo fresh, tek kullanımlık bir
+            # müşteri/hesapla çalıştığından TEK bir hesap var
+            # (get_products_panel_id'deki AYNI gerekçe). Panel, hesap
+            # oluşturulduğunda varsayılan olarak zaten açık.
+            return len(self.driver.find_elements(*self.PRODUCT_ROW)) >= minimum_count
+
+        return poll_until(condition=_products_visible, action=_reload_account_tab)
 
     def wait_for_product_row_count_at_least(self, panel_id, minimum_count):
         try:

@@ -1,9 +1,9 @@
-from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
+from utils.waits import poll_until
 
 
 class AddressUpdatePage(BasePage):
@@ -202,8 +202,30 @@ class AddressUpdatePage(BasePage):
         # edilmiş bir gösterge görünür - native .click() elementin
         # kendisine ulaşamıyor (ElementClickIntercepted, canlı doğrulandı),
         # bu yüzden JS click kullanılıyor.
+        self.driver.execute_script("performance.clearResourceTimings();")
         self.driver.execute_script("arguments[0].click();", radios[1])
         self.wait.until(lambda d: d.find_elements(*self.ADDRESS_CARD_PRIMARY)[1].is_selected())
+
+        # DÜZELTME (bugsbunny.txt madde 18 - TC-006-06b flaky'sinin GERÇEK
+        # kök nedeni, Performance API ile canlı ÖLÇÜLDÜ):
+        #   tıklama            -> +0.00sn
+        #   DOM radio checked  -> +0.04sn   (yukarıdaki bekleme burada biter)
+        #   PATCH /v1/addresses/{id} tamamlandı -> +0.33sn
+        # Yani metot, istek daha UÇUŞTAYKEN dönüyordu. Çağıran taraf hemen
+        # driver.get() yapınca navigasyon isteği İPTAL ediyor ve değişiklik
+        # hiç kaydedilmiyordu - reload'ları ne kadar tekrarlarsak
+        # tekrarlayalım durum asla düzelmiyordu (izole koşumda 2/3 FAILED).
+        #
+        # DOM'da radio'nun "checked" olması İSTEMCİ TARAFI bir durumdur ve
+        # sunucuya yazıldığı anlamına GELMEZ. Bu yüzden istek gerçekten
+        # tamamlanana kadar bekleniyor - sabit bir süre değil, olayın
+        # kendisi yoklanıyor (responseEnd, iptal edilen isteklerde 0 kalır).
+        self.wait.until(
+            lambda d: d.execute_script(
+                "return performance.getEntriesByType('resource')"
+                "  .some(e => /\\/addresses\\/\\d+/.test(e.name) && e.responseEnd > 0);"
+            )
+        )
 
     def wait_for_primary_states_to_persist(self, expected_states):
         # Canlı doğrulandı: Primary değişikliği backend'e ANINDA değil,
@@ -211,26 +233,36 @@ class AddressUpdatePage(BasePage):
         # yapılan bir reload'da HÂLÂ eski durum görünüyor, birkaç saniye
         # sonraki bir reload'da ise doğru/beklenen durum görünüyor. Bu,
         # sabit bir time.sleep ile "tahmin edilen" bir süre beklemek
-        # yerine, WebDriverWait'in kendi dinamik polling mekanizmasıyla
-        # (varsayılan ~0.5sn aralıklarla, en fazla self.wait'in timeout
-        # süresi kadar) durum GERÇEKTEN beklenen hale gelene kadar
-        # navigasyonun TEKRARLANMASINI sağlıyor - hem gecikmeli persist'i
-        # adil şekilde tolere ediyor hem de GERÇEKTEN hiç kaydedilmiyorsa
-        # (gerçek bug) zaman aşımı sonunda doğru şekilde FAIL veriyor.
+        # yerine, eylemi (reload) tekrarlayan bir yoklama döngüsüyle durum
+        # GERÇEKTEN beklenen hale gelene kadar bekleniyor - hem gecikmeli
+        # persist'i adil şekilde tolere ediyor hem de GERÇEKTEN hiç
+        # kaydedilmiyorsa (gerçek bug) denemeler tükenince FAIL veriyor.
+        #
+        # DÜZELTME (bugsbunny.txt madde 18 - tam suite koşumunda flaky
+        # olarak yakalandı): eski implementasyon reload'ı WebDriverWait
+        # predicate'inin İÇİNDE yapıyordu, yani ~0.5sn'lik polling
+        # aralığıyla SIKI/hızlı ardışık reload. Bu tam olarak
+        # delete_customer_page.py'de canlı yakalanıp terk edilen desen:
+        # hızlı ardışık reload'lar uygulamanın token-yenileme mantığını
+        # zorluyor ve asenkron persist'e yeterli zaman TANIMIYOR. Çözüm
+        # orada kanıtlanmış olanla aynı: poll_until ile BİLEREK DAHA
+        # SEYREK (varsayılan 2sn arayla, en fazla 6 deneme) yoklamak.
         detail_url = self.driver.current_url
         self._last_reload_primary_states = None
 
-        def reached_expected_state(driver):
-            driver.get(detail_url)
+        def _reload_address_tab():
+            self.driver.get(detail_url)
             self.wait.until(EC.element_to_be_clickable(self.TAB_ADDRESS)).click()
             self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CARD_PRIMARY))
+
+        def _states_match():
             self._last_reload_primary_states = self.get_primary_states()
             return self._last_reload_primary_states == expected_states
 
-        try:
-            self.wait.until(reached_expected_state)
-        except TimeoutException:
-            pass
+        poll_until(condition=_states_match, action=_reload_address_tab)
+        # Durum döndürülüyor, iddia step katmanında (bkz. §4.2b) - eşleşme
+        # olmasa dahi SON okunan durum döner, böylece hata mesajı gerçekte
+        # ne görüldüğünü gösterir.
         return self._last_reload_primary_states
 
     def is_single_address_primary_and_unchangeable(self):
