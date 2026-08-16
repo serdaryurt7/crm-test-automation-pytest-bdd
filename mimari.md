@@ -13,7 +13,7 @@
 
 ## 0. İlerleme Durumu
 
-**Genel olgunluk: 3.8 → 6.9 / 10**
+**Genel olgunluk: 3.8 → 7.0 / 10**
 **Page Object Model: 6 → 9 / 10** ✅ &nbsp;·&nbsp; **Step katmanı: 3 → 7 / 10** ✅
 
 | Faz | Kapsam | Durum |
@@ -366,18 +366,18 @@ tek sebebi bu.
 
 | Boyut | İlk | Güncel | Değerlendirme |
 |---|---|---|---|
-| Senaryo kapsamı | 8 | 🟢 **8**/10 | 187 senaryo, iyi Gherkin disiplini, INVEST'e uyum |
+| Senaryo kapsamı | 8 | 🟢 **8**/10 | **214 senaryo** (varsayılan koşumda 213, biri `@lockout`), 17 feature, iyi Gherkin disiplini, INVEST'e uyum. `kesif_testi.txt`'teki 106 senaryo henüz implemente edilmedi |
 | Page Object Model | 6 | 🟢 **9**/10 | ✅ Faz 1: BasePage, 18/18 sınıf bağlı. ✅ Faz 3: assert 11 → 6 (kalanlar gerekçeli). Kalan tek eksik: 735 satırlık god class |
-| Step katmanı | 3 | 🟢 **7**/10 | ✅ Faz A+B: login tekrarı 16 → 0, sabit kimlik bilgisi 17 → 0. ✅ Faz C: sihirbaz tekrarı 14 → 0. ✅ Faz D: Faker örneği 7 → 0. Kalan: 56 çıplak `WebDriverWait`, 24 ham `By` (Faz E) |
+| Step katmanı | 3 | 🟢 **7**/10 | ✅ Faz A+B: login tekrarı 16 → 0, sabit kimlik bilgisi 17 → 0. ✅ Faz C: sihirbaz tekrarı 14 → 0. ✅ Faz D: Faker örneği 7 → 0. Kalan: **23** çıplak `WebDriverWait`, **24** ham `By` (Faz E) |
 | Ortak altyapı (`utils/` + `BasePage`) | 1 | 🟢 **7.5**/10 | ✅ Faz 2: `waits.py`. ✅ Faz A: `config.py`. ✅ Faz D: `test_data.py` ✅ Faz H2: `text.py` (**5/6 modül**). Kalan tek hedef `api_client.py`. `logger`/`driver_factory` gereksiz bulundu |
 | Test verisi yönetimi | 1 | 🟡 **6**/10 | ✅ Faz D: üretilen veri. ✅ Faz K1: katalog verisi (22 yer). ✅ Faz K2: `FIELD_LIMITS` (22 yer, limit+1 desenkronizasyonu kapandı). Kalan tek şey: **veri yaşam döngüsü** (K4 — J6'ya bağlı, bu boyutun tavanı) |
-| Konfigürasyon | 5 | 🟡 **6**/10 | ✅ Faz A: tek kaynak `utils/config.py`, origin semantiği düzeltildi. Kalan: `requirements.txt`'te sürüm sabitleme yok (K3) |
+| Konfigürasyon | 5 | 🟢 **7**/10 | ✅ Faz A: tek kaynak `utils/config.py`, origin semantiği düzeltildi. ✅ Faz G: 8/8 bağımlılık sabitlendi, `.env.example`, `pytest.ini` sertleştirildi (`--strict-markers`) |
 | Raporlama | 7 | 🟢 **7**/10 | Allure + pytest-html iyi kurulmuş, ekran görüntüsü ekleniyor |
 | Repo hijyeni | 2 | 🟢 **7**/10 | ✅ Faz G: README merge conflict'i çözüldü, 8 bağımlılık sabitlendi, 28 artık rapor klasörü silindi (15→6 MB), silinmiş 17 test tasarım dosyası geri alındı. Kalan: `login.feature`'ın tasarım karşılığı yok |
 | CI/CD | 0 | 🟡 **4**/10 | ✅ Faz G: her PR'da çalışan statik doğrulama (derleme, eksik step tanımı, toplama, ölü import) + elle tetiklenen UI job. Kalan: UI suite otomatik koşmuyor (runner yok), gecelik regresyon ve rapor yayımlama yok |
 | Kararlılık (flaky yönetimi) | 5 | 🟢 **7**/10 | ✅ Faz 1: `ignored_exceptions` 2/13 → 13/13. ✅ Faz I: madde 18 ve 20 kök nedenleriyle çözüldü (4/4 doğrulama). Kalan: 5 bilinen flaky, paralel/izolasyon yok |
 
-**Genel: 3.8 → 6.9 / 10**
+**Genel: 3.8 → 7.0 / 10**
 
 > **Neden genel skor yavaş artıyor?** Skor 10 boyutun ortalamasıdır; POM
 > 3, step katmanı 3.5 puan yükseldi ama bu ortalamaya yalnızca 0.65
