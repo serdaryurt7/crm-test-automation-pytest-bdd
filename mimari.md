@@ -13,7 +13,7 @@
 
 ## 0. İlerleme Durumu
 
-**Genel olgunluk: 3.8 → 6.4 / 10**
+**Genel olgunluk: 3.8 → 6.5 / 10**
 **Page Object Model: 6 → 9 / 10** ✅ &nbsp;·&nbsp; **Step katmanı: 3 → 7 / 10** ✅
 
 | Faz | Kapsam | Durum |
@@ -30,6 +30,7 @@
 | Faz E | Step'lerdeki ham `By`/`WebDriverWait` (24 + 23) | ⏳ Risk/getiri zayıf |
 | **Faz J1** | `BasePage.fill()`: 18 elle temizleme tekrarı + tuzaklı `type()` | ✅ Tamam (`7796196`) |
 | **Faz J2** | 19 ölü `BasePage` yardımcısı silindi (21 → 3 metot) | ✅ Tamam (`1e697d7`) |
+| **Faz J3+J5** | `parse_price()`, `.env.example`, `pytest.ini` sertleştirme, `@lockout` | ✅ Tamam (`FAZ_J35_COMMIT`) |
 | Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Bekliyor |
 | **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`1082909`) |
 | **Faz H2** | `utils/text.py` — Türkçe katlama (gizli hata, §6.4) | ✅ Tamam (`5be0d18`) |
@@ -363,7 +364,7 @@ tek sebebi bu.
 | Senaryo kapsamı | 8 | 🟢 **8**/10 | 187 senaryo, iyi Gherkin disiplini, INVEST'e uyum |
 | Page Object Model | 6 | 🟢 **9**/10 | ✅ Faz 1: BasePage, 18/18 sınıf bağlı. ✅ Faz 3: assert 11 → 6 (kalanlar gerekçeli). Kalan tek eksik: 735 satırlık god class |
 | Step katmanı | 3 | 🟢 **7**/10 | ✅ Faz A+B: login tekrarı 16 → 0, sabit kimlik bilgisi 17 → 0. ✅ Faz C: sihirbaz tekrarı 14 → 0. ✅ Faz D: Faker örneği 7 → 0. Kalan: 56 çıplak `WebDriverWait`, 24 ham `By` (Faz E) |
-| Ortak altyapı (`utils/` + `BasePage`) | 1 | 🟡 **6**/10 | ✅ Faz 2: `waits.py`. ✅ Faz A: `config.py`. ✅ Faz D: `test_data.py` ✅ Faz H2: `text.py` (**5/6 modül**). Kalan tek hedef `api_client.py`. `logger`/`driver_factory` gereksiz bulundu |
+| Ortak altyapı (`utils/` + `BasePage`) | 1 | 🟢 **7**/10 | ✅ Faz 2: `waits.py`. ✅ Faz A: `config.py`. ✅ Faz D: `test_data.py` ✅ Faz H2: `text.py` (**5/6 modül**). Kalan tek hedef `api_client.py`. `logger`/`driver_factory` gereksiz bulundu |
 | Test verisi yönetimi | 1 | 🔴 **3**/10 | ✅ Faz D: üretilen veri tek kaynakta (`utils/test_data.py`). Kalan: `test_data/` dizini hâlâ boş, sınır değer kataloğu yok, literaller Gherkin Examples'ta dağınık |
 | Konfigürasyon | 5 | 🟡 **6**/10 | ✅ Faz A: tek kaynak `utils/config.py`, origin semantiği düzeltildi. Kalan: `requirements.txt`'te sürüm sabitleme yok (K3) |
 | Raporlama | 7 | 🟢 **7**/10 | Allure + pytest-html iyi kurulmuş, ekran görüntüsü ekleniyor |
@@ -371,7 +372,7 @@ tek sebebi bu.
 | CI/CD | 0 | 🟡 **4**/10 | ✅ Faz G: her PR'da çalışan statik doğrulama (derleme, eksik step tanımı, toplama, ölü import) + elle tetiklenen UI job. Kalan: UI suite otomatik koşmuyor (runner yok), gecelik regresyon ve rapor yayımlama yok |
 | Kararlılık (flaky yönetimi) | 5 | 🟢 **7**/10 | ✅ Faz 1: `ignored_exceptions` 2/13 → 13/13. ✅ Faz I: madde 18 ve 20 kök nedenleriyle çözüldü (4/4 doğrulama). Kalan: 5 bilinen flaky, paralel/izolasyon yok |
 
-**Genel: 3.8 → 6.4 / 10**
+**Genel: 3.8 → 6.5 / 10**
 
 > **Neden genel skor yavaş artıyor?** Skor 10 boyutun ortalamasıdır; POM
 > 3, step katmanı 3.5 puan yükseldi ama bu ortalamaya yalnızca 0.65
@@ -1714,10 +1715,10 @@ def user_on_address_tab(driver, disposable_customer):
 | 1 | `README.md` merge conflict'ini çöz | ✅ Faz G |
 | 2 | `test-design/` geri al | ✅ Faz G — kod yorumları bu dosyalara atıf yapıyordu |
 | 3 | `requirements.txt` sürümlerini sabitle | ✅ Faz G (8/8) |
-| 4 | `.env.example` oluştur | ⏳ Ortam değişkenleri README'de tablolandı; ayrı dosya hâlâ yok |
+| 4 | `.env.example` oluştur | ✅ Faz J5 |
 | 5 | `reports/allure-results-*` artık klasörlerini temizle | ✅ Faz G (15→6 MB) |
 | 6 | ~~`project_brain.txt`'i taşı veya gitignore'a al~~ | ❌ **Geri çekildi** — bkz. K6 |
-| 7 | `pytest.ini`'ye `--strict-markers -ra --tb=short` ekle | ⏳ 20 dk, düşük risk |
+| 7 | `pytest.ini`'ye `--strict-markers -ra --tb=short` ekle | ✅ Faz J5 — ayrıca `@lockout` etiketi eklendi (marker hiç uygulanmamıştı) |
 
 ### Sprint 2 — Ortak Altyapı
 

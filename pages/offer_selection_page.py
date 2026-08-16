@@ -3,7 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
-from utils.text import turkish_fold
+from utils.text import parse_price, turkish_fold
 
 
 class OfferSelectionPage(BasePage):
@@ -75,7 +75,7 @@ class OfferSelectionPage(BasePage):
 
     def get_campaign_row_price_value(self, index=0):
         text = self.get_campaign_rows()[index].find_element(*self.CAMPAIGN_ROW_PRICE).text
-        return float(text.replace("TL", "").replace(",", "").strip())
+        return parse_price(text)
 
     # --- Katalog filtreleme ---
     def select_catalog_category(self, category_text):
@@ -137,7 +137,7 @@ class OfferSelectionPage(BasePage):
         for row in self.get_offer_rows():
             if row.find_element(*self.OFFER_ROW_NAME).text.strip() == name:
                 text = row.find_element(*self.OFFER_ROW_PRICE).text
-                return float(text.replace("TL", "").replace(",", "").strip())
+                return parse_price(text)
         raise NoSuchElementException(f"Teklif satırı bulunamadı: {name}")
 
     # --- Sepet ---
@@ -149,7 +149,7 @@ class OfferSelectionPage(BasePage):
 
     def get_cart_total_value(self):
         text = self.driver.find_element(*self.CART_TOTAL).text
-        return float(text.replace("TL", "").replace(",", "").strip())
+        return parse_price(text)
 
     def is_cart_empty(self):
         return self.get_cart_line_count() == 0 and bool(self.driver.find_elements(*self.CART_EMPTY))

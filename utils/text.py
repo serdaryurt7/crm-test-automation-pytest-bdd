@@ -47,3 +47,14 @@ def turkish_fold(text):
     Yalnızca bir tarafa uygulamak sorunu çözmez.
     """
     return text.translate(_TURKISH_FOLD_MAP).lower()
+
+
+def parse_price(text):
+    """Arayüzdeki para metnini sayıya çevirir: "1,299.90 TL" -> 1299.90.
+
+    Virgül binlik ayırıcı olarak atılıyor, "TL" soneki kaldırılıyor.
+    Bu dönüşüm 2 sayfa dosyasında 4 kez birebir tekrarlanıyordu; para
+    biçimi değişirse (ör. "₺" simgesi ya da ondalık virgül) tek yer
+    güncellenecek.
+    """
+    return float(text.replace("TL", "").replace(",", "").strip())

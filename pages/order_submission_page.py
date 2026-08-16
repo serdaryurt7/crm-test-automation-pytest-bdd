@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
+from utils.text import parse_price
 
 
 class OrderSubmissionPage(BasePage):
@@ -41,7 +42,7 @@ class OrderSubmissionPage(BasePage):
 
     def get_summary_total_value(self):
         text = self.driver.find_element(*self.SUMMARY_TOTAL).text
-        return float(text.replace("TL", "").replace(",", "").strip())
+        return parse_price(text)
 
     def is_service_address_displayed(self):
         title = self.driver.find_element(*self.SUMMARY_ADDRESS_TITLE).text.strip()

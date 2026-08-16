@@ -418,3 +418,32 @@ flaky. Bilinen flaky'lerden TC-006-04 ve TC-004-07 bu koşumda PASSED.
     burada reload gerekmez, kart aynı sayfada kaldırılıyor).
     Bu düzeltme J1 kapsamına ALINMADI - J1 "yapı değişir, davranış
     değişmez" sözleşmesiyle yürütüldü.
+
+===========================================================
+[2026-08-16] FAZ J5 BULGUSU: `lockout` marker'i HIC UYGULANMAMISTI
+===========================================================
+
+pytest.ini `lockout` marker'ini tanimliyor ve `-m "not lockout"` ile
+disliyordu. ANCAK ne feature dosyalarinda `@lockout` etiketi ne de
+step'lerde `@pytest.mark.lockout` vardi - yani filtre HICBIR SEYI
+dislamiyordu.
+
+SONUC: login.feature'daki "5 Başarısız Giriş Denemesi Sonrası Hesabın
+15 Dakika Kilitlenmesi" senaryosu HER TAM KOSUMDA calisiyordu ve
+"admin-crm" hesabini gercekten 15 dakika kilitliyordu. Faz D koşum
+kaydinda PASSED olarak gorunuyor - test gectigi icin kimse fark
+etmemisti (assertion zaten "kilitliyken giris yapilamaz" diyor).
+
+Bu, sessiz kalan bir yan etki: suite kendi test ortamini bozuyor ve
+admin-crm'i kullanan baska bir sey olsaydi zincirleme hataya yol
+acardi.
+
+DUZELTME: senaryoya `@lockout` etiketi eklendi (pytest-bdd Gherkin
+etiketlerini pytest marker'ina cevirir). Dogrulama:
+  varsayilan kosum : 213 toplandi, 1 deselected  (onceden 214/0)
+  pytest -m lockout: 1 toplandi, 213 deselected
+pytest.ini'ye ayrica --strict-markers eklendi; yazim hatali bir
+marker artik sessizce yok sayilmak yerine hata verir.
+
+NOT: marker aciklamasi da yanlisti - "demo hesabini kilitler" diyordu,
+kilitlenen hesap "admin-crm". Duzeltildi.
