@@ -31,7 +31,7 @@
 | **Faz J1** | `BasePage.fill()`: 18 elle temizleme tekrarı + tuzaklı `type()` | ✅ Tamam (`7796196`) |
 | **Faz J2** | 19 ölü `BasePage` yardımcısı silindi (21 → 3 metot) | ✅ Tamam (`1e697d7`) |
 | **Faz J3+J5** | `parse_price()`, `.env.example`, `pytest.ini` sertleştirme, `@lockout` | ✅ Tamam (`9a4fc67`) |
-| **Faz J4** | `BasePage.select_random_option()` — 6 dropdown sitesi | ✅ Tamam (`FAZ_J4_COMMIT`) |
+| **Faz J4** | `BasePage.select_random_option()` — 6 dropdown sitesi | ✅ Tamam (`1e57455`) |
 | Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Bekliyor |
 | **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`1082909`) |
 | **Faz H2** | `utils/text.py` — Türkçe katlama (gizli hata, §6.4) | ✅ Tamam (`5be0d18`) |
