@@ -31,8 +31,8 @@
 | Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Bekliyor |
 | **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`1082909`) |
 | **Faz H2** | `utils/text.py` — Türkçe katlama (gizli hata, §6.4) | ✅ Tamam (`5be0d18`) |
-| **Faz H1** | `wait_for_dom_settled` silindi (0 çağrı, ölü kod) | ✅ Tamam (`FAZ_H_COMMIT`) |
-| **Faz I** | Flaky düzeltmesi: `bugsbunny.txt` madde 18 + 20 | ✅ Tamam (`FAZ_H_COMMIT`) |
+| **Faz H1** | `wait_for_dom_settled` silindi (0 çağrı, ölü kod) | ✅ Tamam (`6e60abe`) |
+| **Faz I** | Flaky düzeltmesi: `bugsbunny.txt` madde 18 + 20 | ✅ Tamam (`6e60abe`) |
 
 ### Faz 0 — Yapılanlar
 
