@@ -35,7 +35,7 @@
 | **Faz K1** | Katalog verisi tek kaynağa (22 yer → `utils/test_data.py`) | ✅ Tamam (`70ee7a3`) |
 | **Faz K2** | Sınır değerleri → `FIELD_LIMITS` (9 limit, 22 yer) | ✅ Tamam (`5b0d5f0`) |
 | **Faz K3** | Boş `test_data/` dizini kaldırıldı | ✅ Tamam (`00bba3f`) |
-| **Faz K4a** | Test verisi izlenebilirliği + `new_email`/`new_mobile_phone` | ✅ Tamam (`FAZ_K4A_COMMIT`) |
+| **Faz K4a** | Test verisi izlenebilirliği + `new_email`/`new_mobile_phone` | ✅ Tamam (`9da9ace`) |
 | Faz K4b | Otomatik temizlik (oluşturulan müşterilerin silinmesi) | 🔴 J6'ya bağlı |
 | Faz F | Kapsülleme: step → page `_private` erişimi (24 yer) | ⏳ Bekliyor |
 | **Faz H3** | `utils/` denetimi + belge düzeltmeleri | ✅ Tamam (`1082909`) |
