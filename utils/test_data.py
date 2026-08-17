@@ -73,6 +73,44 @@ DUPLICATE_TEST_OFFER = "Ev İnterneti Fiber 100"
 fake = Faker("tr_TR")
 
 
+# --- TEST VERİSİNİN İZLENEBİLİRLİĞİ ---
+# Testler her koşumda gerçek müşteri kaydı oluşturuyor ve bunlar
+# SİLİNMİYOR (bkz. mimari.md K4b - otomatik temizlik api_client'a bağlı).
+# Faker gerçekçi Türkçe adlar ürettiği için bu kayıtlar bugüne kadar
+# gerçek müşterilerden AYIRT EDİLEMİYORDU: elle temizlemek isteyen biri
+# bile hangilerinin test artığı olduğunu bulamazdı.
+#
+# Bu işaret, üretilen her e-postaya konuyor. Taşıyıcı olarak e-posta
+# ÖLÇÜLEREK seçildi: (a) zaten sentetik ("example.com"), (b) hiçbir
+# assertion biçimine bağlı değil, (c) ad/soyad gibi arama testlerinin
+# kullandığı alanlara dokunmuyor.
+TEST_DATA_MARKER = "qa-otomasyon"
+
+
+def new_email():
+    """Testlerin oluşturduğu kayıtlar için benzersiz, İŞARETLİ e-posta.
+
+    Alan adı BİLEREK "example.com": canlı doğrulandı, uygulamanın form
+    doğrulaması e-postanın ".com" ile bitmesini zorunlu kılıyor
+    ("Geçerli bir e-posta girin; adres .com ile bitmelidir.") ve
+    `fake.email()` bazen .org/.net üretip bu kurala takılıyordu.
+
+    6 haneli rastgele sayı benzersizlik için: backend e-postanın
+    benzersiz olmasını zorunlu kılıyor (koşumlar arası 400 "already
+    registered" çakışması canlı yaşandı).
+    """
+    return f"{TEST_DATA_MARKER}.{fake.user_name()}.{fake.random_number(digits=6, fix_len=True)}@example.com"
+
+
+def new_mobile_phone():
+    """Türkiye GSM formatında numara: 5 ile başlayan 10 hane.
+
+    Faker'ın genel `phone_number()` sağlayıcısı boşluk/parantez
+    içerdiğinden kullanılmıyor - alan yalnızca rakam kabul ediyor.
+    """
+    return fake.numerify("5#########")
+
+
 def new_address_args(nb_words=4):
     """Yeni adres formu için (sokak, bina no, açıklama) üçlüsü.
 

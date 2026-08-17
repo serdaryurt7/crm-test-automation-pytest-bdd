@@ -3,7 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
-from utils.test_data import fake
+from utils.test_data import new_email, new_mobile_phone
 
 
 class ContactUpdatePage(BasePage):
@@ -97,8 +97,8 @@ class ContactUpdatePage(BasePage):
         self._new_mobile_phone = new_value
 
     def update_email_and_mobile_with_faker(self):
-        email = f"{fake.user_name()}.{fake.random_number(digits=6, fix_len=True)}@example.com"
-        mobile = fake.numerify("5#########")
+        email = new_email()
+        mobile = new_mobile_phone()
         self.update_email(email)
         self.update_mobile_phone(mobile)
         return email, mobile

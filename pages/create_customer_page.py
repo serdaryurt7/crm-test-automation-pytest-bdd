@@ -4,7 +4,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.base_page import BasePage
-from utils.test_data import fake
+from utils.test_data import fake, new_email, new_mobile_phone
 
 class CreateCustomerPage(BasePage):
     PAGE_TITLE = (By.CSS_SELECTOR, "[data-testid='page-title']")
@@ -555,7 +555,7 @@ class CreateCustomerPage(BasePage):
         return bool(errors) and errors[0].is_displayed()
 
     def fix_email_with_faker(self):
-        email = f"{fake.user_name()}.{fake.random_number(digits=6, fix_len=True)}@example.com"
+        email = new_email()
         self.enter_email(email)
         self.driver.find_element(*self.EMAIL).send_keys(Keys.TAB)
         # Sabit bir sleep süresi güvenilir değildi (canlı ölçümde gecikme
@@ -568,7 +568,7 @@ class CreateCustomerPage(BasePage):
         return email
 
     def fill_mobile_phone_with_faker(self):
-        mobile_phone = fake.numerify("5#########")
+        mobile_phone = new_mobile_phone()
         self.enter_mobile_phone(mobile_phone)
         return mobile_phone
 
@@ -634,8 +634,8 @@ class CreateCustomerPage(BasePage):
         # gerekiyor - Faker'ın genel phone_number() sağlayıcısı boşluk/
         # parantez içerdiğinden kullanılmıyor, bunun yerine numerify ile
         # format zorlanıyor.
-        email = f"{fake.user_name()}.{fake.random_number(digits=6, fix_len=True)}@example.com"
-        mobile_phone = fake.numerify("5#########")
+        email = new_email()
+        mobile_phone = new_mobile_phone()
         self.enter_email(email)
         self.enter_mobile_phone(mobile_phone)
         self._last_email = email
@@ -647,8 +647,8 @@ class CreateCustomerPage(BasePage):
         # alanları (Home Phone, Fax) da dolduruyor - "tüm alanlar
         # (opsiyonel dahil) doldurulduğunda müşterinin eksiksiz
         # oluşturulması" senaryosuna özel.
-        email = f"{fake.user_name()}.{fake.random_number(digits=6, fix_len=True)}@example.com"
-        mobile_phone = fake.numerify("5#########")
+        email = new_email()
+        mobile_phone = new_mobile_phone()
         home_phone = fake.numerify("2#########")
         fax = fake.numerify("2#########")
         self.enter_email(email)
