@@ -19,7 +19,7 @@ def user_selects_delete_from_card_menu(address_page):
     address_page.delete_last_added_card()
 
 
-@then("sistem adresi kalıcı olarak siler (sayfa yenilense dahi adres listede görünmez)")
+@then("sistem adresi kalıcı olarak siler, sayfa yenilense dahi adres listede görünmez")
 def system_permanently_deletes_address(address_page):
     assert address_page.wait_for_deletion_persisted_after_reload()
 
@@ -45,8 +45,6 @@ def card_removed_instantly(address_page):
 
 @given("müşterinin yalnızca 1 kayıtlı adresi vardır", target_fixture="address_page")
 def customer_has_single_address(disposable_customer):
-    # Fresh müşteri create_customer wizard'ı sırasında zaten TAM OLARAK
-    # 1 adresle oluşturuluyor - ek bir adım gerekmiyor.
     return AddressDeletePage(disposable_customer)
 
 
@@ -55,7 +53,7 @@ def user_opens_address_card_menu(address_page):
     address_page.open_card_menu()
 
 
-@then("Delete seçeneği pasif (disabled) olarak görüntülenir")
+@then("Delete seçeneği pasif olarak görüntülenir")
 def delete_option_displayed_disabled(address_page):
     delete_option = address_page.driver.find_elements(*address_page.ADDRESS_CARD_DELETE)[0]
     assert not delete_option.is_enabled()
@@ -93,7 +91,7 @@ def an_address_has_been_deleted(disposable_customer):
     return page, stale_button
 
 
-@when("kullanıcı aynı adresi (artık silinmiş, stale bir referansla) tekrar silmeyi dener", target_fixture="duplicate_delete_result")
+@when("kullanıcı aynı adresi artık silinmiş, stale bir referansla tekrar silmeyi dener", target_fixture="duplicate_delete_result")
 def user_attempts_to_delete_same_address_again(stale_delete_context):
     page, stale_button = stale_delete_context
     return page, page.attempt_duplicate_delete_with_stale_reference(stale_button)
@@ -108,14 +106,6 @@ def second_attempt_safely_rejected(duplicate_delete_result):
 
 @given("bir adres, aktif bir Fatura Hesabının hizmet adresi olarak kullanılmaktadır", target_fixture="service_address_context")
 def address_used_as_active_billing_account_service_address(disposable_customer):
-    # ÖNEMLİ: hizmet adresi olarak billing-account formunun KENDİ "Yeni
-    # Adres Ekle" alt-formuyla eklenen bir adres KULLANILMIYOR - canlı
-    # keşifte bulundu ki O YOL üzerinden eklenen adres, sayfa tamamen
-    # yenilendikten sonra bile Adres sekmesinin gerçek listesinde HİÇ
-    # görünmüyor (kalıcı olarak persist edilmiyor). Bu yüzden Adres
-    # sekmesinin KENDİ (address_add.feature'da doğrulanmış) "Yeni Adres
-    # Ekle" akışıyla GERÇEK, kalıcı bir 2. adres oluşturulup, fatura
-    # hesabı formunda BU adres hizmet adresi olarak seçiliyor.
     page = AddressDeletePage(disposable_customer)
     page.add_new_address_and_wait_for_card(*new_address_args())
     service_address_title = page.get_all_card_titles()[-1]
@@ -143,15 +133,6 @@ def user_attempts_to_delete_the_service_address(service_address_context):
 
 @then("sistemin gerçek davranışı doğrulanır: adres herhangi bir engelleme veya uyarı olmadan serbestçe silinir")
 def address_deleted_freely_without_blocking(service_address_context):
-    # Canlı doğrulandı: sistem şu an bu ilişkiyi (adres <-> aktif Fatura
-    # Hesabı'nın hizmet adresi) HİÇBİR şekilde korumuyor - engelleme
-    # diyaloğu/uyarı mesajı YOK, silme sessizce ve tamamen başarılı
-    # oluyor. Bu, olası bir veri bütünlüğü açığı (hesap artık var olmayan
-    # bir adrese referans veriyor olabilir) olarak dev ekibine/PO'ya
-    # AYRICA bildirilmesi gereken bir bulgu - ama manuel case'in kendisi
-    # "sistemin davranışı doğrulanır" diyerek üç olası dalı (engelleme/
-    # uyarı/serbest silme) GÖZLEMLEMEYİ istediğinden, bu test GERÇEK
-    # (gözlemlenen) davranışı doğruluyor, kasıtlı kırmızı DEĞİL.
     delete_page, service_address_title = service_address_context
     assert not delete_page.is_confirm_dialog_present()
     assert service_address_title not in delete_page.get_all_card_titles()

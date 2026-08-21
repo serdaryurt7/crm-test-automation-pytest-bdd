@@ -362,7 +362,7 @@ Bunun ölçülebilir kanıtı:
 `utils/` klasörü tek bir 40 satırlık dosya içeriyor. `test_data/` tamamen boş.
 Yani framework'ün "ortak altyapı" katmanı fiilen **mevcut değil** — ve yukarıdaki tekrarların
 tek sebebi bu.
-
+    
 ### Olgunluk Skoru
 
 | Boyut | İlk | Güncel | Değerlendirme |

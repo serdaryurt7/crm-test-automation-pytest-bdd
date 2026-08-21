@@ -5,15 +5,6 @@ from pages.base_page import BasePage
 
 
 class LanguageSwitcherPage(BasePage):
-    # Sayfa başlığı/nav gibi HER ekranda ortak görünen bir topbar bileşeni
-    # (app-language-switcher) - belirli bir sayfaya/akışa ait DEĞİL, bu
-    # yüzden projedeki diğer standalone sayfalarla (OfferSelectionPage vb.)
-    # AYNI "has-a, is-a değil" tasarım kararı: başka HİÇBİR SAYFADAN
-    # inherit ETMİYOR, herhangi bir authenticated ekranda kullanılabilir.
-    #
-    # BasePage bu karara aykırı değil: o bir sayfa değil, tüm page
-    # object'lerin paylaştığı ALTYAPI (driver + wait kurulumu). Sayfalar
-    # arası "is-a" ilişkisi kurmuyor.
 
     TOGGLE = (By.CSS_SELECTOR, "[data-testid='language-switcher-toggle']")
     PANEL = (By.CSS_SELECTOR, "[data-testid='language-switcher-panel']")
@@ -36,8 +27,6 @@ class LanguageSwitcherPage(BasePage):
         self.wait.until(EC.invisibility_of_element_located(self.PANEL))
 
     def get_option_codes(self):
-        # "language-option-tr" -> "tr" - dilden bağımsız, testid'in kendi
-        # yapısından çıkarılıyor (görünen metne bakılmıyor).
         codes = []
         for item in self.driver.find_elements(*self.OPTION_ITEMS):
             button = item.find_element(By.CSS_SELECTOR, "button")

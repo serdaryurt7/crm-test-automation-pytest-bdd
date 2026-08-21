@@ -11,7 +11,7 @@ def user_on_contact_tab(disposable_customer):
     return ContactUpdatePage(disposable_customer)
 
 
-@when("Edit ile Email/Mobile Phone alanları güncellenip Kaydet'e tıklanır")
+@when("Edit ile Email, Mobile Phone alanları güncellenip Kaydet'e tıklanır")
 def user_edits_email_and_mobile_then_saves(contact_page):
     contact_page.click_edit()
     contact_page.update_email_and_mobile_with_faker()
@@ -48,11 +48,6 @@ def user_clears_required_field(contact_page, alan):
 
 @then("ilgili alan hatalı olarak işaretlenir")
 def related_field_marked_as_error(contact_page):
-    # Bu Then step'i hangi alanın boşaltıldığını bilmiyor (önceki @when'in
-    # parsers.parse parametresi pytest-bdd'de step'ler arası fixture
-    # olarak taşınmıyor) - bu yüzden Email/Mobile Phone'un HER İKİSİ için
-    # de (hangisi boşaltıldıysa yalnızca O görünür olacağından) OR
-    # mantığıyla kontrol ediliyor.
     assert contact_page.is_required_field_error_displayed("Email") or contact_page.is_required_field_error_displayed(
         "Mobile Phone"
     )
@@ -63,17 +58,13 @@ def update_not_performed(contact_page):
     assert contact_page.is_save_button_disabled()
 
 
-@when(parsers.parse('Mobile Phone alanına "{value}" (8 haneli) girilir'))
+@when(parsers.parse('Mobile Phone alanına 8 haneli "{value}" değeri girilir'))
 def user_enters_eight_digit_mobile_phone(contact_page, value):
     contact_page.update_mobile_phone(value)
 
 
 @then("hata gösterilir ve Kaydet butonu pasif kalır")
 def error_shown_and_save_disabled(contact_page):
-    # Canlı doğrulandı: Contact Update formunda 8 haneli değer DOĞRU
-    # şekilde reddediliyor (hata + Save disabled) - UC-003-14'teki
-    # (yalnızca CREATE sihirbazının Contact adımına özgü) 8-hane
-    # doğrulama-atlama bug'ı BU ekranda tekrarlanmıyor.
     assert contact_page.is_mobile_phone_error_displayed()
     assert contact_page.is_save_button_disabled()
 
@@ -85,12 +76,10 @@ def customer_has_registered_contact_info(disposable_customer):
 
 @when("kullanıcı İletişim Kanalı sekmesini açar")
 def user_opens_contact_tab(contact_page):
-    # ContactUpdatePage.__init__ zaten sekmeyi açıp view moduna geçiyor -
-    # bu adımda ek bir aksiyon gerekmiyor, sadece durum doğrulanıyor.
     pass
 
 
-@then("iletişim bilgileri salt okunur (read-only) görüntülenir")
+@then("iletişim bilgileri salt okunur görüntülenir")
 def contact_info_displayed_readonly(contact_page):
     assert contact_page.is_view_mode_readonly_with_edit_icon()
 
@@ -112,12 +101,6 @@ def user_clicks_edit_icon(contact_page):
 
 @then("sistem iletişim bilgilerini düzenlemek için formu açar")
 def system_opens_edit_form(contact_page):
-    # Not: manuel case'in "Contact Medium Update ekranını açar" ifadesi
-    # ayrı bir ROUTE/URL değişimini ima ediyor gibi görünüyor - canlı
-    # doğrulandı: URL DEĞİŞMİYOR, aynı sayfa AYNI sekmede düzenleme
-    # formuna (inline) geçiyor. Bu yüzden assertion yapısal olarak
-    # (düzenleme alanlarının görünür hale gelmesi) kontrol ediliyor,
-    # URL/route değişimi İDDİA EDİLMİYOR.
     assert contact_page.is_edit_form_open()
 
 
@@ -136,13 +119,6 @@ def user_fills_only_required_fields(contact_page):
 
 @then("güncelleme başarıyla tamamlanır")
 def update_completes_successfully(contact_page):
-    # Not: Save'in enabled olmasını burada ayrıca senkron kontrol etmiyoruz -
-    # click_save() zaten EC.element_to_be_clickable ile (görünür VE enabled
-    # olana kadar) dinamik olarak bekliyor. Doldurma sonrası Angular'ın form
-    # validity durumunu güncellemesi ile Save'in enabled olması arasında
-    # kısa bir gecikme olabiliyor (canlı doğrulandı) - erken/senkron bir
-    # is_save_button_disabled() kontrolü bu gecikmeyi yarış durumuna
-    # çeviriyordu.
     contact_page.click_save()
     assert contact_page.is_new_values_reflected()
 
@@ -157,14 +133,8 @@ def changes_discarded_original_preserved(contact_page):
     assert contact_page.is_view_showing_original_values()
 
 
-@given("müşterinin dışında (başka bir müşteride) zaten kayıtlı bir email vardır", target_fixture="duplicate_email_context")
+@given("müşterinin dışında başka bir müşteride zaten kayıtlı bir email vardır", target_fixture="duplicate_email_context")
 def another_customer_has_this_email(disposable_customer, new_customer):
-    # İki AYRI disposable müşteri: biri email'in "zaten kayıtlı" olduğu
-    # taraf (other_page), diğeri bu email'i KENDİ formuna girmeyi
-    # deneyecek olan taraf (contact_page) - update_customer.feature'daki
-    # Nationality ID çakışma senaryosunda kurulan "ikinci disposable
-    # müşteri" deseniyle tutarlı. İkincisi new_customer fabrikasıyla AYNI
-    # oturumda oluşturuluyor (fixture önbelleği sayesinde re-login yok).
     other_page = ContactUpdatePage(disposable_customer)
     taken_email = other_page.get_displayed_email()
 
@@ -192,7 +162,7 @@ def phone_number_is_changed(contact_page):
     contact_page.update_mobile_phone("5" + "".join(str((i * 3) % 10) for i in range(9)))
 
 
-@then('Mobile/Home Phone/Fax alanlarının önünde sabit "+90" ülke kodu değişmeden görüntülenmeye devam eder')
+@then('Mobile, Home Phone, Fax alanlarının önünde sabit ülke kodu öneki değişmeden görüntülenmeye devam eder')
 def country_code_remains_fixed(contact_page):
     assert contact_page.is_country_code_fixed_at_plus_90()
 
@@ -222,7 +192,7 @@ def phone_field_capped_at_ten_digits(typed_phone_value):
     assert len(typed_phone_value) == FIELD_LIMITS["gsm"], f"Beklenen 10 hane, gelen: {typed_phone_value!r} ({len(typed_phone_value)} hane)"
 
 
-@when("Email alanına formatça geçerli ama çok uzun (150+ karakter) bir değer girilir", target_fixture="typed_long_email")
+@when("Email alanına formatça geçerli ama 150 karakterden uzun bir değer girilir", target_fixture="typed_long_email")
 def user_enters_long_valid_email(contact_page):
     return contact_page.attempt_to_type_long_valid_email(150)
 

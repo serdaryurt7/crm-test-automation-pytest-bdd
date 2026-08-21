@@ -15,7 +15,7 @@ Feature: Fatura Hesabını Silme
     Given hesaba bağlı en az bir aktif ürün vardır
     When kullanıcı hesabı silmeyi dener
     Then hesap listeden kaldırılmaz
-    And sistem doğrudan silmek yerine bir uyarı/engelleme mesajı gösterir
+    And sistem doğrudan silmek yerine bir uyarı, engelleme mesajı gösterir
 
   Scenario: TC-EACRML-012-04 - Silinen hesabın aktif hesap listesinden kaldırılması
     Given bir fatura hesabı silinmiştir
@@ -29,5 +29,5 @@ Feature: Fatura Hesabını Silme
 
   Scenario: TC-EACRML-012-06 - Silme isteğinin tekrarlanmasının güvenli şekilde reddedilmesi
     Given bir hesap silinmiştir
-    When kullanıcı aynı hesabı (artık silinmiş, stale bir referansla) tekrar silmeyi dener
+    When kullanıcı aynı hesabı artık silinmiş, stale bir referansla tekrar silmeyi dener
     Then sistem ikinci denemeyi güvenli şekilde reddeder, uygulama tutarlı durumda kalır

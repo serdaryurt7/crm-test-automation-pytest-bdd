@@ -1,0 +1,388 @@
+===============================================================================
+CRM TEST OTOMASYONU - CANLI KOD GÖSTERİMİ · KONUŞMA METNİ
+===============================================================================
+
+Süre   : 5 dk (4 dk kod turu + 1 dk Allure)
+Ortam  : VS Code + tarayıcı. Slayt yok, ekranda proje var.
+Akış   : yapı → features → steps → pages → utils → Allure
+
+-------------------------------------------------------------------------------
+DEMODAN ÖNCE (2 dakika, mutlaka yap)
+-------------------------------------------------------------------------------
+  1. pytest ÇALIŞTIRMA. pytest.ini'de --clean-alluredir var; herhangi bir
+     koşum allure-results'ı siler. Göstereceğin rapor zaten üretilmiş
+     statik HTML, dokunmadığın sürece güvende.
+
+  2. Allure'u önceden ayağa kaldır, ayrı bir tarayıcı sekmesinde beklesin:
+         allure open reports/allure-report
+     index.html'e ÇİFT TIKLAMA - file:// ile Allure boş açılır (CORS).
+
+  3. Şu dosyaları sekme olarak önceden aç, sırayla:
+         features/address_add.feature
+         steps/conftest.py
+         steps/test_address_add_steps.py
+         pages/base_page.py
+         pages/address_update_page.py     (satır 196'ya kaydır)
+         utils/test_data.py
+
+  4. VS Code: Ctrl+Shift+P → Reload Window. Sarı step kalmadı, öyle kalsın.
+
+  5. Explorer panelinde features/, steps/, pages/, utils/ klasörleri KAPALI
+     dursun - açılışta tek tek açacaksın, görsel olarak etkili oluyor.
+
+
+===============================================================================
+1 · AÇILIŞ VE DOSYA YAPISI                                          ~30 saniye
+===============================================================================
+
+[ ] Explorer paneli ekranda. Klasörleri konuşurken tek tek aç.
+
+Bu, bir CRM uygulamasının arayüzünü uçtan uca test eden otomasyon
+çerçevesi. Python 3.12 üzerinde Selenium ve pytest-bdd; senaryo yazımı
+Gherkin, veri üretimi Faker, raporlama Allure. Bağımlılıkların tamamı
+requirements.txt'te sürüm sabitli - çünkü bir kütüphanenin yeni sürümüyle
+gelen kırılma, gerçek uygulama hatasından ayırt edilmesi en zor
+başarısızlık türü.
+
+[ ] Klasörleri sırayla aç: features → steps → pages → utils
+
+Yapı dört klasör. features altında 17 dosya, 187 senaryo bloğu - Examples
+tablolarıyla birlikte 214 test. steps altında 17 dosya, 493 adım tanımı.
+pages altında 19 sayfa sınıfı, 422 metot. utils'te de hepsinin paylaştığı
+5 modül.
+
+Sırayla bu dördünü gezeceğiz, sonunda da rapora bakacağız.
+
+
+===============================================================================
+1B · TEK SENARYO, DÖRT KATMAN  (bağlantı anlatımı)                  ~30 saniye
+===============================================================================
+
+  KULLANIM: Katmanları tek tek gezmeden önce, bağlantının nasıl kurulduğunu
+  tek bir senaryo üzerinden göstermek için. Bölüm 2-3-4'ün yerine DEĞİL,
+  onlardan önce bir "önizleme" olarak. Tek başına da kullanılabilir.
+
+  ÖRNEK SENARYO: TC-EACRML-007-01 (address_add.feature)
+  Neden bu: üç satırlık Gherkin, üç tek satırlık step, tek bir page
+  metodu - ve fixture + utils + page + assert sınırının HEPSİNE dokunuyor.
+  Projede dört katmanı bu kadar kısa gösteren başka senaryo yok.
+
+-------------------------------------------------------------------------------
+
+Tek senaryo üzerinden dört katmanı birden göstereyim.
+
+[ ] features/address_add.feature - satır 3-6
+
+Üç satır, iş dilinde: adres sekmesindeyim, yeni bir adres ekliyorum,
+sistem bunu gerçekten kaydediyor mu.
+
+[ ] steps/test_address_add_steps.py - satır 9, 51, 56
+
+Karşılığı üç fonksiyon, her biri tek satır. Given'da müşteri oluşturma
+kodu yok - onu fixture veriyor. When'de test verisi yok - onu utils
+üretiyor. Step yalnızca orkestrasyon yapıyor.
+
+[ ] pages/address_add_page.py - satır 29
+
+Asıl iş burada: tıkla, formu doldur, kartın listeye düşmesini bekle.
+
+[ ] Satır 68'i göster, sonra step dosyasındaki 58'e dön
+
+Ve kritik nokta: bu metot true/false döndürüyor, kendisi assert etmiyor.
+Kararı step veriyor. Aramızdaki kural bu - page durum döndürür, step
+iddia eder.
+
+-------------------------------------------------------------------------------
+
+  EKRANDA İZLENECEK SIRA (tek ekranda 3 dosya böl - split editor)
+
+    1. features/address_add.feature          3-6    Gherkin, iş dili
+    2. steps/test_address_add_steps.py       9      fixture: disposable_customer
+    3. steps/test_address_add_steps.py       51-53  utils: new_address_args()
+    4. pages/address_add_page.py             29-35  page: asıl etkileşim
+    5. pages/address_add_page.py             68     bool döndürüyor
+    6. steps/test_address_add_steps.py       56-58  assert step'te
+
+  SORU GELİRSE: "Page neden assert etmiyor?"
+    Bir senaryo kırıldığında hangi katmanda arayacağını bilmek için.
+    Assert page'e girerse hata mesajı sayfa nesnesinden gelir; senaryo
+    hangi iddiada düştü, göremezsin.
+
+  BONUS (süre varsa, 10 sn): pages/address_add_page.py satır 7
+    AddressAddPage, AddressUpdatePage'den miras alıyor - "Yeni Adres Ekle"
+    formu ile güncelleme formu AYNI DOM'u kullanıyor, locator'lar
+    tekrarlanmıyor.
+
+
+===============================================================================
+2 · features/ - SENARYOLAR                                          ~50 saniye
+===============================================================================
+
+[ ] features/address_add.feature aç.
+
+Buradan başlıyoruz çünkü test kodunu hiç açmadan "ne test ediliyor"
+sorusunun cevabı bu klasörde.
+
+[ ] Satır 3'ü göster - senaryo başlığı.
+
+Her senaryonun başında bir izlenebilirlik numarası var: TC-EACRML-007-01.
+Bu, test tasarım dokümanındaki maddeyle birebir eşleşiyor. Yani "şu madde
+otomatize edildi mi" sorusu grep ile cevaplanıyor, toplantıda değil.
+
+[ ] Satır 13-23'ü göster - Scenario Outline + Examples.
+
+Burası veri odaklı kısım. Tek bir senaryo yazılmış, altındaki Examples
+tablosunda dört alan var - Şehir, Sokak, Bina No, Açıklama. pytest-bdd
+bunu dört ayrı teste açıyor. Yeni bir zorunlu alan eklendiğinde tabloya
+bir satır ekliyoruz, kod yazmıyoruz.
+
+[ ] features/language_support.feature aç, satır 3-12'yi göster.
+
+Bir şeyi daha göstermek istiyorum. Buradaki yorum bloğu, spesifikasyonun
+dilin oturum kapanınca sıfırlanmasını beklediğini söylüyor. Canlı
+doğruladık: tercih localStorage'da tutuluyor, çıkış-giriş döngüsünden
+bağımsız olarak kalıcı. Yani spesifikasyon yanlıştı.
+
+Bunu sessizce düzeltmedik - senaryonun üstüne neyin neden değiştiğini
+yazdık. Feature dosyası burada sadece test değil, yaşayan bir
+spesifikasyon belgesi olarak çalışıyor.
+
+
+===============================================================================
+3 · steps/ - YAPIŞTIRICI KATMAN                                     ~60 saniye
+===============================================================================
+
+[ ] steps/conftest.py aç. BU DOSYA SUNUMUN EN ÖNEMLİ KISMI, acele etme.
+
+Gherkin cümlelerini Python'a bağlayan katman burası. Ama önce paylaşılan
+fixture'lara bakalım - projedeki en büyük mimari kazanç bu dosyada.
+
+[ ] Satır 22 - authenticated_driver.
+
+Giriş yapmış bir tarayıcı döndürüyor. Bundan önce 16 step dosyası aynı
+login bloğunu satır satır kopyalamıştı.
+
+[ ] Satır 39 - new_customer. Fabrika olduğunu vurgula.
+
+Bu bir fabrika - yani çağrılabilir bir fonksiyon döndürüyor, düz bir
+değer değil. Sebebi satır 44'te yazıyor: bazı senaryolar aynı test
+içinde İKİNCİ bir müşteriye ihtiyaç duyuyor. "Bu e-posta başka bir
+müşteride zaten kayıtlı" gibi çakışma senaryoları. Düz bir fixture
+yalnızca bir kez değer üretebilir, o yüzden çağrılabilir olması şart.
+
+[ ] Satır 46-52'deki yorumu göster.
+
+Burada hoşuma giden şey şu: "ikinci müşteri için tekrar login yapma"
+kuralını elle korumuyoruz. authenticated_driver test başına bir kez
+çözüldüğü için pytest'in fixture önbelleğinden bedava geliyor. Kural
+yorumla değil, mimariyle garanti altında.
+
+[ ] Satır 80 - disposable_customer.
+
+Ve bu kısayol sayesinde her senaryo kendi taze müşterisiyle başlıyor.
+Testler ne birbirine ne de önceki koşumlara bağımlı.
+
+[ ] steps/test_address_add_steps.py aç.
+
+Şimdi tipik bir step dosyası. Dikkat edilecek şey adımların boyu -
+neredeyse hepsi tek satır.
+
+[ ] Satır 56-58 ve 78-80'i göster.
+
+Aramızdaki kural şu: page nesnesi DURUM döndürür, step ASSERT eder.
+Sayfa "kaydedildi mi" sorusuna true/false cevap veriyor, kararı step
+veriyor. Böylece bir senaryo kırıldığında hangi katmanda arayacağını
+biliyorsun.
+
+[ ] Satır 71 - parsers.parse.
+
+Bir de bu var: parametreli adım. Az önceki Examples tablosundaki dört
+değer buraya akıyor.
+
+
+===============================================================================
+4 · pages/ - EKRANLA KONUŞAN KATMAN                                 ~60 saniye
+===============================================================================
+
+[ ] pages/base_page.py aç.
+
+Tüm sayfa sınıflarının ortak atası. Dikkat: içinde sadece dört şey var.
+
+[ ] Satır 44-56'daki docstring'i göster. Bu hikâyeyi anlat.
+
+Bu sınıf ilk yazıldığında 21 yardımcı metot içeriyordu. Sonra ölçtük:
+on dokuzu hiç çağrılmamıştı. Üstelik biri sadece ölü değil, YANLIŞTI -
+alanı temizlemek için clear() kullanıyordu ve bu uygulamada clear(),
+Angular'ın doğrulamasını tetiklemiyor.
+
+[ ] Duraklama. Sıradaki cümle asıl mesaj.
+
+Yani kullanılmayan yardımcı zararsız değil. Kimse çağırmadığı için
+kimse hatasını da fark etmiyor. On dokuzunu sildik.
+
+[ ] Satır 80-117 - fill metodu.
+
+Yerine geçen tek metot bu. Gerçek kullanıcı etkileşimini taklit ediyor:
+tıkla, Ctrl+A, sil, yaz. Sondaki blur parametresi de önemli - Angular bir
+alanı ancak "touched" olduktan sonra doğruluyor, yani hata mesajı
+bekleyen senaryolarda Tab göndermek şart.
+
+[ ] Satır 25 ve 69'u göster - _IGNORED.
+
+Bir de şu: Angular DOM'u sürekli yeniden çiziyor, bu da flaky testlerin
+en yaygın kaynağı. Bu tolerans daha önce sadece iki sayfada vardı.
+Ortak ataya taşıdık - artık yeni bir sayfa eklendiğinde unutulması
+imkânsız.
+
+[ ] pages/address_update_page.py aç, satır 196'ya git.
+[ ] BU EN İYİ HİKÂYE. Yavaş anlat.
+
+Son olarak en zor bug. Bir test üç koşumun ikisinde kırılıyordu. İlk
+teşhisim "backend geç yazıyor, bekleme koyalım" oldu. Altı kez yeniden
+yükleyip on iki saniye bekledik. Hiç düzelmedi.
+
+[ ] Duraklama.
+
+O başarısızlık aslında bilgi verdi. On iki saniye bekleyip düzelmiyorsa
+sorun gecikme olamaz - yazma hiç gerçekleşmemiş demektir.
+
+[ ] Satır 206-211'i göster.
+
+Bu sefer tahmin etmedik, ölçtük. Tarayıcının Performance API'siyle isteğe
+baktık: tıklamadan 40 milisaniye sonra DOM'da işaret görünüyor, ama
+sunucuya yazan istek 330 milisaniyede tamamlanıyor. Aradaki farkta biz
+sayfayı değiştiriyorduk, navigasyon da uçuştaki isteği iptal ediyordu.
+
+Çıkan ders: DOM'da bir elemanın işaretli olması istemci tarafı durumdur,
+sunucuya yazıldığı anlamına gelmez. Şimdi sabit süre beklemiyoruz,
+isteğin kendisini yokluyoruz.
+
+
+===============================================================================
+5 · utils/ - ORTAK ALTYAPI                                          ~30 saniye
+===============================================================================
+
+[ ] utils/ klasörünü Explorer'da göster, dosya adlarını okut. Hızlı geç.
+
+Beş modül, toplam 300 satır. Hepsi kullanımda - ölü kod yok.
+
+config.py adres ve kimlik bilgilerini tek yerden veriyor; bunlar önce
+17 ayrı step satırına ve 14 dosyaya dağılmıştı.
+
+[ ] utils/test_data.py aç, satır 27-40.
+
+test_data.py test verisi üretiminin tek kaynağı. Şuradaki alan sınırları
+sözlüğü hoşuma gidiyor: kullanıcı adı da, ad alanı da bugün elli karakter.
+Ama tek bir sabite bağlamadık, ayrı anahtarlar - ilgisiz iki alan, biri
+değişince diğeri sessizce değişmemeli.
+
+text.py Türkçe'ye özgü harflerde arama karşılaştırması yapıyor;
+waits.py tekrarlı yoklama için.
+
+[ ] utils/session.py aç - kısa göster, süre varsa anlat, yoksa atla.
+
+Bir de şu var: süresi dolmuş oturum senaryosu için sekiz saat beklemek
+yerine JWT token'ın son kullanma alanını geçmişe çekiyoruz.
+
+
+===============================================================================
+6 · ALLURE RAPORU                                                   ~70 saniye
+===============================================================================
+
+Son olarak rapora bakalım. 
+Grafikte görüldüğü gibi, 50 dakika sürmüş.
+204 test geçmiş, 10'u kırmızı. Yüzde 95.32 geçiş oranı.
+
+Rapordaki hataları "biliyoruz ve
+takip ediyoruz". Bu 10 hatanın hepsi biliniyor ve
+belgelendi.
+
+Behaviors'a gelecek olursam,
+Burada testler feature bazında gruplanıyor - Gherkin yapısı rapora
+doğrudan yansıyor. Paydaşlar iş akışının hangi durumda
+olduğunu buradan görebiliyor.
+
+[ ] HATA ALAN BİR TESTE GİT
+Şimdi teklif seçimine gidelim.
+Bir teste girdiğimizde senaryonun adımları sırayla görünüyor, hangisinde 
+testin kırıldığı işaretli.
+
+[ ] HATA ADIMINA GİT
+Ve her başarısız testte otomatik olarak üç ek bulunuyor: 
+kırıldığı andaki ekran görüntüsü, sayfa kaynağı ve URL.
+
+Sadece hata alan testlerde screenshot ve detaylı log tuttuk. 
+Çünkü bunları tüm testlerde üretmek performans kaybına, 
+gereksiz rapor boyutunu büyütüp, raporun kalabalıklaşmasına neden olacaktı.
+
+Özetle: iş dilinde yazılmış senaryolar, tek yerden yönetilen hazırlık,
+ekranla konuşan izole bir katman ve her koşumda kanıt üreten bir rapor.
+Beni dinlediğiniz için teşekkür eder, sözü ekip arkadaşım Deniz e bırakıyorum.
+
+===============================================================================
+SORU GELİRSE
+===============================================================================
+
+"Kaç testiniz var, ne kadar sürüyor?"
+  214 test, tam suite 50 dakika. Tek komutla koşuyor.
+
+"Testler birbirini etkiliyor mu?"
+  Hayır. Her senaryo kendi müşterisini oluşturuyor, her test yeni bir
+  tarayıcı profiliyle başlıyor. Fixture kapsamı bilerek fonksiyon
+  seviyesinde - modül seviyesine alsak süre düşerdi ama izolasyon kırılırdı.
+
+"Neden kırmızılar duruyor, düzeltmediniz mi?"
+  Çoğu uygulamanın gerçek hatası, testin değil. Testi yeşile çekmek
+  hatayı gizlemek olurdu. Hepsi kök neden analiziyle kayıtlı.
+
+"CI'da koşuyor mu?"
+  Statik kontroller GitHub Actions'ta her push'ta koşuyor - derleme,
+  eksik adım tanımı taraması, ölü import kontrolü. Arayüz testleri
+  localhost'a bağlı olduğu için elle tetikleniyor.
+
+"Yeni bir senaryo eklemek ne kadar sürer?"
+  Adımlar mevcutsa sadece feature dosyasına yazmak yeterli, kod yok.
+  Yeni bir ekran gerekiyorsa sayfa sınıfı + adım tanımı.
+
+"Neden Selenium, Playwright değil?"
+  Uygulama Angular ve gerçek tarayıcı davranışını görmek istedik.
+  Selenium'un ekosistemi ve ekipteki bilgi birikimi belirleyici oldu.
+
+
+===============================================================================
+SÜRE AŞARSAN - KISALTMA PLANI
+===============================================================================
+
+Sırayla kes, üstten aşağı:
+
+  1. utils/session.py (JWT) - tamamen atla                        -10 sn
+  2. features/language_support.feature yorum bloğu - atla         -15 sn
+  3. base_page _IGNORED / stale element kısmı - atla              -15 sn
+  4. Allure Behaviors sekmesi - atla, doğrudan kırmızı teste git  -15 sn
+  5. utils bölümünü tek cümleye indir: "beş ortak modül,
+     yapılandırma, veri üretimi ve bekleme yardımcıları"          -20 sn
+
+ASLA KESME:
+  - steps/conftest.py fixture'ları (mimarinin kalbi)
+  - address_update_page Performance API hikâyesi (en iyi hikâye)
+  - Allure'daki "kırmızılar biliniyor ve belgeli" mesajı
+
+
+===============================================================================
+EKRANDA GÖSTERİLECEK SATIRLAR - HIZLI LİSTE
+===============================================================================
+
+  features/address_add.feature            3       izlenebilirlik ID
+  features/address_add.feature            13-23   Scenario Outline
+  features/language_support.feature       3-12    spesifikasyon düzeltmesi
+  steps/conftest.py                       22      authenticated_driver
+  steps/conftest.py                       39      new_customer (fabrika)
+  steps/conftest.py                       46-52   fixture önbelleği yorumu
+  steps/conftest.py                       80      disposable_customer
+  steps/test_address_add_steps.py         56-58   page döndürür, step assert
+  steps/test_address_add_steps.py         71      parsers.parse
+  pages/base_page.py                      44-56   19 ölü metot hikâyesi
+  pages/base_page.py                      80-117  fill()
+  pages/base_page.py                      25, 69  stale element toleransı
+  pages/address_update_page.py            196-211 Performance API
+  utils/test_data.py                      27-40   FIELD_LIMITS

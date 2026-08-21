@@ -7,10 +7,6 @@ from utils.text import parse_price, turkish_fold
 
 
 class OfferSelectionPage(BasePage):
-    # "Yeni Satış Başlat" ile ulaşılan "Teklif Seçimi" ekranı - hesap
-    # satırı bileşenleriyle "is-a" DEĞİL "has-a" ilişkisinde (SalesSetupPage
-    # için de daha önce alınan AYNI karar): kavramsal olarak tamamen ayrı
-    # bir ekran/özellik alanı, inheritance burada ilişkiyi bozar.
 
     TAB_CATALOG = (By.CSS_SELECTOR, "[data-testid='sales-tab-catalog']")
     TAB_CAMPAIGN = (By.CSS_SELECTOR, "[data-testid='sales-tab-campaign']")
@@ -46,20 +42,11 @@ class OfferSelectionPage(BasePage):
     CAMPAIGN_ROW_LIST_PRICE = (By.CSS_SELECTOR, "[data-testid='sales-campaign-row-list-price']")
     CAMPAIGN_ROW_PRICE = (By.CSS_SELECTOR, "[data-testid='sales-campaign-row-price']")
 
-    # Kampanya sekmesinden sepete eklenen bir kampanya, ürün başına ayrı
-    # satırlar OLARAK DEĞİL, kampanyanın kendisini temsil eden TEK bir
-    # sepet satırı olarak ekleniyor (canlı doğrulandı) - toplam tutar
-    # kampanyanın indirimli fiyatını yansıtıyor.
 
     def __init__(self, driver):
-        # BasePage, StaleElementReferenceException korumasını da beraberinde
-        # getiriyor. Bu sayfada daha önce YOKTU ve TC-014-12'nin flaky
-        # olmasının kök nedeniydi (teklif listesi Angular tarafından
-        # yeniden çizilirken satır referansları kopuyordu).
         super().__init__(driver)
         self.wait.until(EC.visibility_of_element_located(self.OFFER_ROW))
 
-    # --- Katalog / Kampanya sekmesi ---
     def is_catalog_tab_active_with_offers(self):
         return bool(self.driver.find_elements(*self.TAB_CATALOG)) and self.get_offer_row_count() > 0
 
@@ -77,7 +64,6 @@ class OfferSelectionPage(BasePage):
         text = self.get_campaign_rows()[index].find_element(*self.CAMPAIGN_ROW_PRICE).text
         return parse_price(text)
 
-    # --- Katalog filtreleme ---
     def select_catalog_category(self, category_text):
         before_count = self.get_offer_row_count()
         self.wait.until(EC.element_to_be_clickable(self.CATALOG_SELECT)).click()
@@ -102,12 +88,6 @@ class OfferSelectionPage(BasePage):
         rows = self.driver.find_elements(*self.OFFER_ROW_NAME)
         if not rows:
             return True
-        # turkish_fold, düz .lower() yerine: teklif kataloğunda "Ev
-        # İnterneti Fiber 1000" gibi Türkçe'ye özgü harf içeren adlar var
-        # ve Python'da "İ".lower() İKİ karakter üretiyor (i + U+0307
-        # birleşen nokta). Bu yüzden "internet" araması bu satırda düz
-        # .lower() ile EŞLEŞMEZ. search_customers_page.py'de aynı sınıf
-        # hata canlı yakalanmıştı (bkz. bugsbunny.txt madde 10-14).
         return all(turkish_fold(value) in turkish_fold(row.text) for row in rows)
 
     def _offer_ids_match(self, value):
@@ -116,7 +96,6 @@ class OfferSelectionPage(BasePage):
             return True
         return all(row.text.strip() == value for row in rows)
 
-    # --- Teklif listesi / satır seçimi ---
     def get_offer_rows(self):
         return self.driver.find_elements(*self.OFFER_ROW)
 
@@ -140,7 +119,6 @@ class OfferSelectionPage(BasePage):
                 return parse_price(text)
         raise NoSuchElementException(f"Teklif satırı bulunamadı: {name}")
 
-    # --- Sepet ---
     def get_cart_line_count(self):
         return len(self.driver.find_elements(*self.CART_LINE))
 

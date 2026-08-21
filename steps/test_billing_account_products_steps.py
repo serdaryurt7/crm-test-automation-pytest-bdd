@@ -12,15 +12,6 @@ scenarios("billing_account_products.feature")
 
 
 def _purchase_offers_and_wait_for_products(driver, customer_url, account_page, offer_names):
-    # Canlı doğrulandı (UC-013 keşfi): satış akışı "Sipariş oluşturuldu!"
-    # ile BAŞARIYLA tamamlansa bile ürün hesabın panelinde ARA SIRA hiç
-    # yansımıyor (ortam/zaman kaynaklı - UC-012/TC-012-03'te belgelenen
-    # AYNI tutarsızlık deseni). Bu yüzden her teklif için, panelde
-    # BEKLENEN sayıya GERÇEKTEN ulaşıldığı dinamik olarak doğrulanana
-    # kadar (sabit, küçük bir üst sınırla) satın alma tekrarlanıyor -
-    # sadece "satır var mı" değil, "satır sayısı ARTTI mı" kontrol
-    # edilerek önceki bir satının satırını yanlışlıkla "yeni satın alma
-    # başarılı" sanmanın önüne geçiliyor.
     panel_id = account_page.get_products_panel_id()
     expected_count = account_page.get_product_row_count(panel_id)
     for offer_name in offer_names:
@@ -67,7 +58,7 @@ def click_view_button(products_context):
     account_page.click_preview_on_row(panel_id)
 
 
-@then("panel Ürün Teklif ID/Adı/Spec ID ve karakteristiklerini salt okunur şekilde gösterir")
+@then("panel Ürün Teklif ID, Adı, Spec ID ve karakteristiklerini salt okunur şekilde gösterir")
 def preview_shows_readonly_offer_fields(products_context):
     account_page, _ = products_context
     assert account_page.is_preview_displayed_readonly_with_offer_fields()
@@ -80,8 +71,6 @@ def account_product_without_campaign(disposable_customer):
 
 @when("ürün listesi görüntülenir")
 def product_list_displayed(products_context):
-    # Given adımı zaten ürün listesini görüntüler durumda bırakıyor -
-    # bu adımda ek bir aksiyon gerekmiyor, sadece durum doğrulanıyor.
     pass
 
 
@@ -161,8 +150,6 @@ def account_without_products(disposable_customer):
 
 @when("kullanıcı hesap satırını görüntüler")
 def user_views_account_row(products_context):
-    # Given adımı zaten hesap satırını görüntüler durumda - ek bir
-    # aksiyon gerekmiyor, sadece durum doğrulanıyor.
     pass
 
 

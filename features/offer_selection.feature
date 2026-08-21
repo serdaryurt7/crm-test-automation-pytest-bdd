@@ -1,34 +1,5 @@
 Feature: Teklif Seçimi
 
-  # KAPSAM DIŞI BIRAKILAN 2 SENARYO (kullanıcının kendi spesifikasyonunda
-  # [ASKIDA] olarak işaretlenmişti - dokümanın 8 UC-014 test case'inde bu
-  # özelliklerden hiç bahsedilmiyor, PM/BA onayı gelene kadar suite'e
-  # ALINMADI):
-  #   TC-EACRML-014-06 - Tamamlayıcı ürün gereken teklif seçildiğinde uyarı
-  #   TC-EACRML-014-07 - "Birlikte alınması önerilenler" çapraz satış önerisi
-  #
-  # TC-EACRML-014-08 NOTU: Kullanıcı bunu "DEFEKT ADAYI" (sipariş özetinde
-  # teklifin 3 kez tekrarlanıp 899.70 TL çıktığı) olarak işaretlemişti.
-  # Canlı olarak 3 AYRI denemede DE yeniden üretilemedi - "Ev İnterneti
-  # Fiber 100" TAM 1 KEZ eklenip Sipariş Özeti'ne kadar ilerlendiğinde her
-  # seferinde doğru şekilde TEK satır/299.90 TL görüntülendi. Kullanıcı
-  # kararıyla senaryo DOĞRU/beklenen davranışı assert edecek şekilde
-  # (şu an PASS veren, bug geri gelirse otomatik regresyon yakalayacak bir
-  # test olarak) implemente edildi.
-  #
-  # TC-EACRML-014-13 NOTU: Canlı doğrulandı - sepete mükerrer ekleme ŞU AN
-  # HİÇ ENGELLENMİYOR (2. ekleme ayrı bir satır olarak ekleniyor, toplam
-  # 2 katına çıkıyor). Kullanıcı kararıyla KASITLI KIRMIZI olarak
-  # implemente edildi - TC-014-08'in tarif ettiği "veri bütünlüğü" bug
-  # sınıfıyla aynı kök nedene işaret ediyor olabilir.
-  #
-  # TC-EACRML-014-12 NOTU: "Alan yalnızca sayısal değer kabul eder" ifadesi
-  # canlıda INPUT SEVİYESİNDE bir kısıtlama olarak doğrulanamadı (harf
-  # yazılabiliyor, type="text"). Kullanıcı kararıyla İŞLEVSEL olarak
-  # uyarlandı: harfli bir ID ile arama yapıldığında sonuç bulunamaz -
-  # spec'in arkasındaki niyet (ID alanı sayısal eşleştirme içindir) hâlâ
-  # doğrulanıyor, gerçek/çalışan davranışla uyumlu.
-
   Scenario: TC-EACRML-014-01 - "Yeni Satış Başlat" ile Teklif Seçimi ekranına geçiş ve varsayılan katalog listesinin görüntülenmesi
     Given kullanıcı bir fatura hesabının Müşteri Hesabı ekranındadır
     When kullanıcı "Yeni Satış Başlat" butonuna tıklar
@@ -80,7 +51,7 @@ Feature: Teklif Seçimi
     Then sonuç bulunamadı durumu görüntülenir
 
   Scenario: TC-EACRML-014-13 - Sepette zaten bulunan bir ürünün tekrar eklenmeye çalışılmasının engellenmesi
-    Given sepette (Basket) en az bir ürün vardır
+    Given sepette en az bir ürün vardır
     When kullanıcı aynı ürünü tekrar "Sepete Ekle" ile eklemeyi dener
     Then sepete mükerrer bir kayıt eklenmez
     And Basket içeriği ve Total Amount değişmeden kalır

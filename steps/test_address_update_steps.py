@@ -8,10 +8,6 @@ scenarios("address_update.feature")
 
 @given("kullanıcı bir müşterinin Adres sekmesinde kayıtlı bir adres kartı görüntülemektedir", target_fixture="address_page")
 def user_on_customer_address_tab(disposable_customer):
-    # Adres güncelleme/silme geri dönüşü zor mutasyonlar barındırdığından
-    # (Primary değişikliği, silme vb.) HER SENARYO için fresh, tek
-    # kullanımlık bir disposable müşteri gerekiyor - bunu artık
-    # disposable_customer fixture'ı sağlıyor (bkz. steps/conftest.py).
     return AddressUpdatePage(disposable_customer)
 
 
@@ -26,7 +22,7 @@ def form_is_prefilled(address_page):
     assert address_page.is_form_prefilled_correctly()
 
 
-@when("Sokak/Bina No alanları değiştirilip Kaydet'e tıklanır")
+@when("Sokak, Bina No alanları değiştirilip Kaydet'e tıklanır")
 def user_updates_street_and_building_then_saves(address_page):
     new_street = fake.street_name()
     new_building_no = fake.building_number()

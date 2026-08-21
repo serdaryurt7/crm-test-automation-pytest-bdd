@@ -8,12 +8,6 @@ scenarios("update_customer.feature")
 
 @given("kullanıcı bir müşterinin Müşteri Bilgisi ekranındadır", target_fixture="update_customer_page")
 def user_on_customer_info_screen(disposable_customer):
-    # Sabit bir müşteri ID'sine (paylaşılan, kalıcı bir disposable kayıt)
-    # bağımlı olmak yerine, her senaryo için HER SEFERİNDE fresh bir
-    # disposable müşteri kullanılıyor (disposable_customer fixture'ı,
-    # bkz. steps/conftest.py). Bu, testleri birbirinden ve önceki
-    # çalıştırmalarda oluşabilecek herhangi bir yan etkiden tamamen
-    # bağımsız kılıyor.
     return UpdateCustomerPage(disposable_customer)
 
 
@@ -56,18 +50,8 @@ def save_button_disabled(update_customer_page):
 
 @when("Nationality ID, başka bir müşteriye zaten kayıtlı bir değerle değiştirilir")
 def user_sets_conflicting_nationality_id(update_customer_page, new_customer):
-    # Seed veriye (paylaşılan müşteri 1'in TC no'su) bağımlı kalmak
-    # yerine, testin KENDİSİ ikinci, bağımsız bir disposable müşteri (B)
-    # oluşturup GERÇEK/GÜNCEL bir "zaten kayıtlı" TC numarası elde
-    # ediyor - bu, çakışma senaryosunu seed veri değişse/silinse dahi
-    # her çalıştırmada güvenilir şekilde tekrarlanabilir kılıyor.
-    # Orchestration (iki page object'in birlikte kullanımı) bilinçli
-    # olarak burada, step katmanında tutuluyor - page object'lerin
-    # birbirini çağırmaması için.
     original_url = update_customer_page.get_detail_url()
 
-    # gender="Kadın": ikinci müşterinin ilkinden ayırt edilebilir olması
-    # için (orijinal implementasyondaki tercih korunuyor).
     _, _, _, other_identity_number = new_customer(gender="Kadın")
 
     update_customer_page.reopen_edit_form(original_url)
@@ -86,11 +70,6 @@ def user_saves_without_changing_nationality_id(update_customer_page):
 
 @then('"already exist" hatası tetiklenmez, güncelleme normal şekilde tamamlanır')
 def no_duplicate_nationality_error(update_customer_page):
-    # Kaydet sonrası gerçek bir PUT isteği + görüntüleme moduna dönüş
-    # asenkron - implicitly_wait kaldırıldıktan sonra kontrol çok daha
-    # hızlı çalıştığından, API yanıtı gelmeden anlık okuma yapmak
-    # yarış durumuna yol açıyordu. Görüntüleme moduna dönülene kadar
-    # bekleniyor.
     update_customer_page.wait.until(lambda d: update_customer_page.is_read_only_view_mode())
     assert not update_customer_page.is_save_error_displayed()
 
@@ -103,10 +82,6 @@ def user_changes_first_name_then_cancels(update_customer_page):
 
 @then("form kapanır, görüntüleme moduna dönülür")
 def form_returns_to_view_mode(update_customer_page):
-    # İptal sonrası görüntüleme moduna dönüş Angular'ın DOM'u güncellemesi
-    # için kısa bir change-detection cycle'ı gerektirebiliyor (diğer
-    # benzer asenkron durumlarla tutarlı olarak anlık kontrol yerine
-    # bekleniyor).
     update_customer_page.wait.until(lambda d: update_customer_page.is_read_only_view_mode())
 
 
@@ -136,7 +111,7 @@ def field_accepts_max_50_characters(typed_field_value):
     assert len(typed_field_value) == FIELD_LIMITS["first_name"]
 
 
-@when('Ad alanına "<script>alert(1)</script>" girilmeye çalışılıp kaydedilir', target_fixture="typed_field_value")
+@when('Ad alanına script etiketi içeren bir değer girilmeye çalışılıp kaydedilir', target_fixture="typed_field_value")
 def user_attempts_xss_in_first_name(update_customer_page):
     value = update_customer_page.attempt_xss_in_first_name()
     update_customer_page.click_save()

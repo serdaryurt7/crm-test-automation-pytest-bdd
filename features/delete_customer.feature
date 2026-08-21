@@ -33,23 +33,6 @@ Feature: Müşteri Bilgilerini Silme
     When kullanıcı "Evet" butonuna tıklar
     Then silinen müşterinin eski detay ekranına doğrudan gidildiğinde bir "bulunamadı" durumu görüntülenir
 
-  # KASITLI KIRMIZI (canlı doğrulandı, bkz. bugsbunny.txt madde 17): sistem
-  # şu an bu kuralı UYGULAMIYOR - aktif ürünü olan bir müşteri hiçbir
-  # engelleme olmadan silinebiliyor (customer 854 ile uçtan uca test
-  # edildi: silme başarıyla gerçekleşti, Müşteri Arama ekranına
-  # yönlendirildi). Bu senaryo spesifikasyonun DOĞRU davranışını izliyor;
-  # bilinen defekt düzelene kadar FAILED kalması beklenen sonuçtur - AYNI
-  # kök nedenin fatura-hesabı seviyesindeki (TC-012-03) tezahürüyle
-  # tutarlı bir karar (bkz. billing_account_delete.feature).
-  #
-  # DİLDEN BAĞIMSIZ (tek senaryo, TR/EN'i AYNI anda destekler): Then
-  # adımlarının hiçbiri literal TR/EN metin karşılaştırmıyor (yapısal -
-  # URL/durum kontrolü). Bunu SADECE teoride değil pratikte de kanıtlamak
-  # için akış BİLEREK arayüz dili İngilizce'ye çevrilmiş şekilde
-  # çalıştırılıyor - eğer kontrol gizliden Türkçe metne bağımlı olsaydı bu
-  # EN çalıştırmada kırılırdı. Aynı mekanizma varsayılan (TR) dilde de
-  # değişmeden çalışır - bu yüzden ayrı bir TR örneğine (Outline'a) gerek
-  # yok, tek senaryo her iki dili de kapsıyor.
   Scenario: TC-EACRML-005-03 - Aktif ürünü olan müşterinin silinememesi
     Given görüntülenen müşteriye ait, bir fatura hesabına bağlı en az bir aktif ürün kaydı vardır
     And kullanıcı arayüz dilini İngilizce olarak ayarlamıştır

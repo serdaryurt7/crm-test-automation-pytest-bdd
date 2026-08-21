@@ -13,12 +13,11 @@ class CreateCustomerPage(BasePage):
     STEPPER_STEP_2 = (By.CSS_SELECTOR, "[data-testid='stepper-step-2']")
     STEPPER_STEP_3 = (By.CSS_SELECTOR, "[data-testid='stepper-step-3']")
 
-    # --- Adım 1: Demografik Bilgi ---
     FIRST_NAME = (By.ID, "firstName")
     SECOND_NAME = (By.ID, "secondName")
     LAST_NAME = (By.ID, "lastName")
     BIRTH_DATE = (By.ID, "birthDate")
-    GENDER = (By.ID, "gender") # kullanılıyor mu ?
+    GENDER = (By.ID, "gender")
     GENDER_LIST = (By.ID, "gender-list")
     FATHER_NAME = (By.ID, "fatherName")
     MOTHER_NAME = (By.ID, "motherName")
@@ -26,7 +25,6 @@ class CreateCustomerPage(BasePage):
     DEMOGRAPHIC_CANCEL = (By.CSS_SELECTOR, "[data-testid='customer-create-cancel']")
     DEMOGRAPHIC_NEXT = (By.CSS_SELECTOR, "[data-testid='customer-create-demographic-next']")
 
-    # --- Adım 2: Adres ---
     ADD_ADDRESS_BUTTON = (By.CSS_SELECTOR, "[data-testid='customer-create-add-address']")
     ADDRESS_BACK = (By.CSS_SELECTOR, "[data-testid='customer-create-address-back']")
     ADDRESS_NEXT = (By.CSS_SELECTOR, "[data-testid='customer-create-address-next']")
@@ -46,7 +44,6 @@ class CreateCustomerPage(BasePage):
     ADDRESS_CARD_EDIT = (By.CSS_SELECTOR, "[data-testid='address-card-edit']")
     ADDRESS_CARD_DELETE = (By.CSS_SELECTOR, "[data-testid='address-card-delete']")
 
-    # --- Adım 3: İletişim Kanalı ---
     EMAIL = (By.ID, "new-contact-email")
     EMAIL_ERROR = (By.ID, "new-contact-email-error")
     HOME_PHONE_COUNTRY = (By.CSS_SELECTOR, "[data-testid='customer-create-home-phone-country']")
@@ -59,7 +56,6 @@ class CreateCustomerPage(BasePage):
     CONTACT_BACK = (By.CSS_SELECTOR, "[data-testid='customer-create-contact-back']")
     SUBMIT = (By.CSS_SELECTOR, "[data-testid='customer-create-submit']")
 
-    # --- Oluşturma sonrası: Customer Info ekranı ---
     CUSTOMER_DETAIL_HEADER = (By.CSS_SELECTOR, "[data-testid='customer-detail-header']")
     CUSTOMER_INFO_GENDER = (By.CSS_SELECTOR, "[data-testid='customer-info-value-gender']")
     CUSTOMER_INFO_SECOND_NAME = (By.CSS_SELECTOR, "[data-testid='customer-info-value-second-name']")
@@ -69,17 +65,8 @@ class CreateCustomerPage(BasePage):
     CONTACT_INFO_FAX = (By.CSS_SELECTOR, "[data-testid='customer-contact-value-fax']")
     TAB_CONTACT = (By.CSS_SELECTOR, "[data-testid='tab-contact']")
 
-    # Gender ve Adres Şehir alanları uygulama tarafında native <select>'ten
-    # role="combobox" olan <button> + açılır <ul role="listbox"> ikilisine
-    # geçirildi (bu oturum sırasında canlı doğrulandı - eski Select() tabanlı
-    # kod artık gerçek uygulamayla uyuşmuyordu). GENDER_VALUE_MAP görünen
-    # Türkçe metni listbox'taki data-value'ya çeviriyor.
     GENDER_VALUE_MAP = {"Erkek": "male", "Kadın": "female"}
 
-    # UpdateCustomerPage.REQUIRED_FIELD_LOCATORS ile AYNI desen - Gherkin
-    # Examples'taki okunabilir alan adını gerçek locator'a eşliyor, dinamik/
-    # tek bir Scenario Outline'ın 3 alanı da (Second/Father/Mother Name)
-    # kod tekrarı olmadan test edebilmesini sağlıyor.
     OPTIONAL_NAME_FIELD_LOCATORS = {
         "Second Name": SECOND_NAME,
         "Father Name": FATHER_NAME,
@@ -87,14 +74,10 @@ class CreateCustomerPage(BasePage):
     }
 
     def __init__(self, driver):
-        # Not: BasePage zaten ignored_exceptions=(StaleElementReferenceException,)
-        # kuruyor - bu sayfada ELDE EDİLEN davranış birebir aynı, yalnızca
-        # tanım tek yere taşındı.
         super().__init__(driver)
         self.wait.until(EC.visibility_of_element_located(self.FIRST_NAME))
         self._entered_addresses = []
 
-    # --- Adım 1: Demografik Bilgi ---
     def enter_first_name(self, value):
         field = self.driver.find_element(*self.FIRST_NAME)
         field.clear()
@@ -111,23 +94,12 @@ class CreateCustomerPage(BasePage):
         field.send_keys(value)
 
     def enter_birth_date(self, value):
-        # value: "DD/MM/YYYY". Alan artık native <input type="date"> DEĞİL,
-        # maskeli bir metin input'u (type="text", placeholder="gg/aa/yyyy") -
-        # rakamlar sırayla (GGAAYYYY) yazılınca "/" otomatik ekleniyor
-        # (ampirik doğrulandı: "15061990" -> "15/06/1990"). Önceki MM/DD/YYYY
-        # tuş sırası dönüşümüne artık gerek yok.
         day, month, year = value.split("/")
         field = self.driver.find_element(*self.BIRTH_DATE)
         field.clear()
         field.send_keys(f"{day}{month}{year}")
 
     def is_birth_date_masked_text_input(self):
-        # Birth Date bu oturum sırasında native <input type="date">'den
-        # (tarayıcı/OS takvimi açan) gg/aa/yyyy formatında maskeli bir
-        # <input type="text">'e geçirildi (canlı doğrulandı) - bu artık bir
-        # bug değil, kasıtlı bir tasarım değişikliği. Eski
-        # is_birth_date_native_date_picker() ismi yanıltıcı olacağından
-        # gerçek davranışı yansıtacak şekilde yeniden adlandırıldı.
         field = self.driver.find_element(*self.BIRTH_DATE)
         return field.get_attribute("type") == "text" and field.get_attribute("placeholder") == "gg/aa/yyyy"
 
@@ -138,8 +110,6 @@ class CreateCustomerPage(BasePage):
         return birth_date
 
     def get_birth_date_displayed_value(self):
-        # Artık native <input type="date"> olmadığı için değer ISO formatında
-        # (yyyy-mm-dd) DEĞİL, ekranda görünen gg/aa/yyyy formatında geliyor.
         return self.driver.find_element(*self.BIRTH_DATE).get_attribute("value")
 
     def is_birth_date_displayed_correctly(self):
@@ -154,10 +124,6 @@ class CreateCustomerPage(BasePage):
         self.wait.until(EC.visibility_of_element_located(self.GENDER_LIST))
 
     def get_gender_options(self):
-        # Bu metod hem liste ZATEN AÇIKKEN (ör. "kullanıcı Gender alanını
-        # açar" adımından hemen sonra) hem KAPALIYKEN çağrılabiliyor - her
-        # iki durumda da güvenli çalışması için önce açık olup olmadığı
-        # kontrol ediliyor.
         if not self._is_gender_list_open():
             self.click_gender_field()
         return [
@@ -170,9 +136,6 @@ class CreateCustomerPage(BasePage):
             self.click_gender_field()
         data_value = self.GENDER_VALUE_MAP[value]
         self.driver.find_element(By.CSS_SELECTOR, f"#gender-list li[data-value='{data_value}']").click()
-        # Secimden hemen sonra devam etmek (ör. form validity kontrolu)
-        # yuk altinda kacan bir race condition'a yol acabiliyordu - liste
-        # gercekten kapanip Angular'in secimi islemesini bekliyoruz.
         self.wait.until(EC.invisibility_of_element_located(self.GENDER_LIST))
 
     def enter_father_name(self, value):
@@ -186,24 +149,11 @@ class CreateCustomerPage(BasePage):
         field.send_keys(value)
 
     def attempt_to_type_long_value_in_optional_name_field(self, field_label, length):
-        # UpdateCustomerPage.attempt_to_type_long_value() ile AYNI desen:
-        # .clear() Angular'ın reaktif form durumunu güvenilir tetiklemediği
-        # için CTRL+A + BACKSPACE ile gerçek kullanıcı tuş vuruşu simüle
-        # edilerek alan önce temizleniyor.
         locator = self.OPTIONAL_NAME_FIELD_LOCATORS[field_label]
         field = self.fill(locator, "a" * length)
         return field.get_attribute("value")
 
     def type_valid_birth_date_digits(self, digits="15061990"):
-        # Canlı doğrulandı: Birth Date maskesi basit "ilk N rakamı al"
-        # mekanizması DEĞİL - gün/ay geçerliliğini ANLIK doğrulayan daha
-        # karmaşık bir maske (ör. "123456789" yazılınca ay basamağı
-        # geçersiz kaldığından bazı rakamlar sessizce filtreleniyor, sonuç
-        # girilen rakamların birebir ilk 8'i OLMUYOR). Bu yüzden GERÇEKTEN
-        # geçerli, belirsizlik yaratmayan bir tarih (15/06/1990) kasıtlı
-        # olarak sabit kullanılıyor - amaç maskenin gün/ay doğrulama
-        # detaylarını değil, yalnızca 10 karakterlik üst sınır kapasitesini
-        # test etmek.
         field = self.fill(self.BIRTH_DATE, digits)
         return field.get_attribute("value")
 
@@ -217,14 +167,6 @@ class CreateCustomerPage(BasePage):
         field.clear()
         field.send_keys(value)
         field.send_keys(Keys.TAB)
-        # Identity Number genelde demografik doldurma akışının SON alanı
-        # oluyor. Canlı olarak doğrulandı: TAB/blur sonrası bile DOM'daki
-        # değerler zaten doğruyken "Next" butonu ANLIK olarak hâlâ disabled
-        # dönebiliyor - Angular'ın form validity durumunu yeniden hesaplayıp
-        # butonu güncellemesi ayrı bir change-detection cycle'ında (~200ms)
-        # gerçekleşiyor. WebDriverWait ile "ne" bekleneceği duruma göre
-        # değiştiğinden (bazen disabled KALMALI) kısa sabit bir bekleme
-        # kullanılıyor.
         time.sleep(0.3)
         self._last_identity_number = value
 
@@ -240,17 +182,6 @@ class CreateCustomerPage(BasePage):
         self._last_gender = gender
 
     def fill_demographic_step_with_faker(self, gender):
-        # Gender parametre olarak dışarıdan (Scenario Outline Examples'tan)
-        # veriliyor, Faker ile rastgele SEÇİLMİYOR. GEÇMİŞ NOT: burada uzun
-        # süre gerçek bir bug vardı (ne seçilirse seçilsin sistem her zaman
-        # "Erkek" kaydediyordu) - Kadın/Erkek AYRI AYRI çalıştırılarak bu
-        # asimetrik davranış kanıtlanıyordu. Bu oturum sırasında (Gender/
-        # Birth Date alanlarının native kontrollerden özel widget'lara
-        # geçirildiği güncellemeyle birlikte) canlı olarak yeniden
-        # doğrulandı: bug artık YOK, "Kadın" seçilince gerçekten "Kadın"
-        # kaydediliyor. Senaryo hâlâ iki cinsiyeti de ayrı ayrı çalıştırıyor
-        # (regresyon guard'ı olarak DEĞERLİ), ama artık kasıtlı kırmızı
-        # değil - ikisi de PASS etmesi beklenen normal bir doğrulama.
         first_name = fake.first_name_female() if gender == "Kadın" else fake.first_name_male()
         last_name = fake.last_name()
         birth_date = fake.date_of_birth(minimum_age=18, maximum_age=90).strftime("%d/%m/%Y")
@@ -259,13 +190,6 @@ class CreateCustomerPage(BasePage):
         return first_name, last_name, birth_date, identity_number
 
     def fill_demographic_step_with_all_fields_via_faker(self, gender):
-        # fill_demographic_step_with_faker()'dan farklı olarak, OPSİYONEL
-        # alanları (Second Name, Father Name, Mother Name) da dolduruyor -
-        # "tüm alanlar (opsiyonel dahil) doldurulduğunda müşterinin
-        # eksiksiz oluşturulması" senaryosu için. Diğer tüm senaryoların
-        # kullandığı minimal disposable-customer akışı (fill_demographic_
-        # step_with_faker) BİLEREK değiştirilmedi - bu ayrı bir metot,
-        # sadece bu senaryoya özel.
         first_name = fake.first_name_female() if gender == "Kadın" else fake.first_name_male()
         second_name = fake.first_name()
         last_name = fake.last_name()
@@ -295,10 +219,6 @@ class CreateCustomerPage(BasePage):
         }
 
     def fill_demographic_step_without_last_name(self):
-        # Last Name (Soyad) BİLEREK boş bırakılıyor - "Next butonu pasif
-        # kalmalı" senaryosu için diğer tüm zorunlu alanlar (First Name,
-        # Birth Date, Gender, Nationality ID) doldurulup sadece Soyad
-        # atlanıyor.
         first_name = fake.first_name()
         birth_date = fake.date_of_birth(minimum_age=18, maximum_age=90).strftime("%d/%m/%Y")
         gender = fake.random_element(elements=("Kadın", "Erkek"))
@@ -311,8 +231,6 @@ class CreateCustomerPage(BasePage):
     def fill_missing_last_name(self):
         last_name = fake.last_name()
         self.enter_last_name(last_name)
-        # enter_identity_number()'daki aynı blur/change-detection gerekçesi
-        # - burada Soyad akışın son alanı oluyor.
         self.driver.find_element(*self.LAST_NAME).send_keys(Keys.TAB)
         time.sleep(0.3)
         return last_name
@@ -359,14 +277,10 @@ class CreateCustomerPage(BasePage):
     def wait_for_navigated_to_customer_list(self):
         self.wait.until(lambda d: d.current_url.rstrip("/").endswith("/customers"))
 
-    # --- Adım 2: Adres ---
     def click_add_address(self):
         self.wait.until(EC.element_to_be_clickable(self.ADD_ADDRESS_BUTTON)).click()
 
     def select_address_city(self, city_name):
-        # Şehir alanı native <select>'ten role="combobox" olan <button> +
-        # açılır <ul id="address-city-list" role="listbox"> ikilisine
-        # geçirildi (Gender ile aynı desen, bu oturumda canlı doğrulandı).
         city_field = self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY))
         city_field.click()
         self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY_LIST))
@@ -404,10 +318,6 @@ class CreateCustomerPage(BasePage):
         self._entered_addresses.append((city, street, building_no, description))
 
     def fill_address_form(self, city, street, building_no, description):
-        # add_address()'ten farklı olarak Save'e TIKLAMIYOR - manuel case'in
-        # "form doldurulmuştur" (Given) ile "Save'e tıklar" (When) adımlarını
-        # ayrı ayrı test edebilmesi için doldurma ve kaydetme birbirinden
-        # ayrıştırıldı.
         self.click_add_address()
         self.select_address_city(city)
         self.enter_address_street(street)
@@ -417,10 +327,6 @@ class CreateCustomerPage(BasePage):
         self._pending_address_is_edit = False
 
     def update_address_street(self, new_street):
-        # Var olan bir adresi Edit formunda güncellerken kullanılıyor - Save'e
-        # basılınca save_address_form() bunun YENİ bir adres değil, MEVCUT
-        # kaydın güncellemesi olduğunu self._pending_address_is_edit ile
-        # ayırt edip listeye APPEND etmek yerine son elemanı DEĞİŞTİRİYOR.
         self.enter_address_street(new_street)
         city, _, building_no, description = self._entered_addresses[-1]
         self._pending_address = (city, new_street, building_no, description)
@@ -434,11 +340,6 @@ class CreateCustomerPage(BasePage):
             self._entered_addresses.append(self._pending_address)
 
     def add_address_with_faker(self):
-        # Şehir Faker'dan DEĞİL, ekrandaki gerçek listbox seçeneklerinden
-        # rastgele seçiliyor: address-city alanı yalnızca kendi option
-        # listesindeki 81 il adından biriyle TAM eşleşirse kabul ediyor,
-        # Faker'ın ürettiği bir şehir adının bu listeyle birebir eşleşeceği
-        # garanti edilemez (örn. ilçe/kısaltma farkı).
         self.click_add_address()
         city = self.select_random_option(
             self.ADDRESS_CITY, self.ADDRESS_CITY_LIST, self.ADDRESS_CITY_OPTIONS, attribute="data-value"
@@ -458,9 +359,6 @@ class CreateCustomerPage(BasePage):
         self.wait.until(EC.visibility_of_element_located(self.ADDRESS_SAVE))
 
     def fill_address_form_without_city(self):
-        # Şehir (City) BİLEREK boş bırakılıyor - "Save butonu pasif kalmalı"
-        # senaryosu için diğer tüm zorunlu adres alanları (Street, Building
-        # No, Description) doldurulup sadece Şehir atlanıyor.
         street = fake.street_name()
         building_no = fake.building_number()
         description = fake.sentence(nb_words=4)
@@ -487,8 +385,6 @@ class CreateCustomerPage(BasePage):
 
     def is_address_edit_form_prefilled_correctly(self):
         city, street, building_no, description = self._entered_addresses[-1]
-        # Edit formu açılırken Şehir butonu (Angular render) hemen DOM'da
-        # olmayabiliyor - canlı olarak doğrulandı (NoSuchElementException).
         city_field = self.wait.until(EC.visibility_of_element_located(self.ADDRESS_CITY))
         city_value = city_field.text.strip()
         street_value = self.driver.find_element(*self.ADDRESS_STREET).get_attribute("value")
@@ -528,16 +424,12 @@ class CreateCustomerPage(BasePage):
                 return False
         return True
 
-    # --- Adım 3: İletişim Kanalı ---
     def enter_email(self, value):
         field = self.driver.find_element(*self.EMAIL)
         field.clear()
         field.send_keys(value)
 
     def enter_invalid_email_format(self):
-        # Hata mesajı sadece BLUR sonrası görünüyor (gerçek uygulamada
-        # doğrulandı) - Tab ile başka alana odak kaydırılarak blur
-        # tetikleniyor.
         invalid_email = "ahmet.yilmaz@"
         field = self.driver.find_element(*self.EMAIL)
         field.clear()
@@ -546,11 +438,6 @@ class CreateCustomerPage(BasePage):
         return invalid_email
 
     def is_email_error_displayed(self):
-        # Mesaj metni dile göre değişebileceğinden (gerçek uygulamada
-        # "Geçerli bir e-posta girin; adres .com ile bitmelidir." çıkıyor,
-        # manuel case'in paraphrase'i "Geçersiz email formatı" ile birebir
-        # aynı değil) yapısal olarak (hata elementinin görünürlüğü) kontrol
-        # ediliyor, literal metin karşılaştırılmıyor.
         errors = self.driver.find_elements(*self.EMAIL_ERROR)
         return bool(errors) and errors[0].is_displayed()
 
@@ -558,12 +445,6 @@ class CreateCustomerPage(BasePage):
         email = new_email()
         self.enter_email(email)
         self.driver.find_element(*self.EMAIL).send_keys(Keys.TAB)
-        # Sabit bir sleep süresi güvenilir değildi (canlı ölçümde gecikme
-        # ~0.3-0.6s arasında değişiyordu) - bunun yerine önceki hata
-        # elementinin GERÇEKTEN kaybolmasını bekliyoruz. Hiç hata
-        # gösterilmiyorsa (element DOM'da yok) EC.invisibility_of_element_
-        # located zaten anında True döner, bu yüzden "temiz" email girişini
-        # de güvenle kapsıyor.
         self.wait.until(EC.invisibility_of_element_located(self.EMAIL_ERROR))
         return email
 
@@ -573,13 +454,6 @@ class CreateCustomerPage(BasePage):
         return mobile_phone
 
     def enter_invalid_mobile_phone_format(self):
-        # 8 haneli değer BİLEREK kullanılıyor: gerçek uygulamada doğrulama
-        # kuralı "tam 10 hane olmalı" (hata: "Türkiye (+90) için telefon
-        # numarası 10 haneli olmalıdır.") ama 8 hanede GERÇEK BİR BUG var -
-        # bu tek uzunlukta hata gösterilmiyor ve Create aktif kalıyor
-        # (1/2/6/7/9 hane doğru şekilde reddediliyor). Bu senaryo BİLEREK
-        # doğru/beklenen davranışı iddia ediyor, bug düzelene kadar
-        # kasıtlı kırmızı kalacak.
         invalid_mobile = "05551234"
         field = self.driver.find_element(*self.MOBILE_PHONE)
         field.clear()
@@ -600,9 +474,6 @@ class CreateCustomerPage(BasePage):
         field = self.driver.find_element(*self.MOBILE_PHONE)
         field.clear()
         field.send_keys(value)
-        # Mobile Phone genelde İletişim Kanalı adımının SON alanı oluyor -
-        # enter_identity_number()'daki aynı gecikmeli form-validity
-        # gerekçesiyle blur + kısa bekleme ekleniyor.
         field.send_keys(Keys.TAB)
         time.sleep(0.3)
 
@@ -621,19 +492,6 @@ class CreateCustomerPage(BasePage):
         return self.driver.find_element(*self.MOBILE_PHONE).get_attribute("value")
 
     def fill_contact_step_with_faker(self):
-        # Email için domain BİLEREK "example.com" olarak sabitleniyor: gerçek
-        # uygulamada denendi, form validasyonu email'in ".com" ile bitmesini
-        # zorunlu kılıyor ("Geçerli bir e-posta girin; adres .com ile
-        # bitmelidir.") - fake.email()'in varsayılanı bazen .org/.net gibi
-        # başka TLD'ler üretip bu validasyona takılıyordu. Ayrıca backend
-        # email'in benzersiz olmasını zorunlu kılıyor (bkz. "Uçtan Uca Müşteri
-        # Yaratma" senaryosundaki 400 "already registered" bulgusu), bu yüzden
-        # rastgele bir sayı eklenerek çalıştırmalar arası çakışma riski
-        # azaltılıyor. Mobile Phone alanı yalnızca rakam kabul ediyor ve
-        # Türkiye GSM formatına (5 ile başlayan 10 hane) uygun olması
-        # gerekiyor - Faker'ın genel phone_number() sağlayıcısı boşluk/
-        # parantez içerdiğinden kullanılmıyor, bunun yerine numerify ile
-        # format zorlanıyor.
         email = new_email()
         mobile_phone = new_mobile_phone()
         self.enter_email(email)
@@ -643,10 +501,6 @@ class CreateCustomerPage(BasePage):
         return email, mobile_phone
 
     def fill_contact_step_with_all_fields_via_faker(self):
-        # fill_contact_step_with_faker()'dan farklı olarak, OPSİYONEL
-        # alanları (Home Phone, Fax) da dolduruyor - "tüm alanlar
-        # (opsiyonel dahil) doldurulduğunda müşterinin eksiksiz
-        # oluşturulması" senaryosuna özel.
         email = new_email()
         mobile_phone = new_mobile_phone()
         home_phone = fake.numerify("2#########")
@@ -699,12 +553,6 @@ class CreateCustomerPage(BasePage):
         return self.driver.find_element(*self.CONTACT_INFO_FAX).text.strip()
 
     def are_optional_fields_displayed_correctly(self, demographic_data, contact_data):
-        # Telefon değerleri görüntüleme modunda sabit "+90" öneki ile
-        # gösterildiğinden (canlı doğrulandı) tam eşitlik yerine substring
-        # kontrolü yapılıyor - address_update/contact_update'teki AYNI
-        # desen. Home Phone/Fax "İletişim Kanalı" sekmesinde olduğundan
-        # (varsayılan/iniş sekmesi "Müşteri Bilgisi") önce o sekmeye
-        # geçiliyor.
         demographic_ok = (
             self.get_customer_info_second_name_value() == demographic_data["second_name"]
             and self.get_customer_info_father_name_value() == demographic_data["father_name"]

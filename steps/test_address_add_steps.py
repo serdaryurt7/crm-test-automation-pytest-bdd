@@ -13,8 +13,6 @@ def user_on_address_tab(disposable_customer):
 
 @given("müşterinin zaten kayıtlı bir adresi vardır", target_fixture="address_page")
 def customer_already_has_one_address(disposable_customer):
-    # Fresh müşteri create_customer wizard'ı sırasında zaten TAM OLARAK
-    # 1 adresle oluşturuluyor - ek bir adım gerekmiyor.
     return AddressAddPage(disposable_customer)
 
 
@@ -48,12 +46,12 @@ def user_added_new_address(disposable_customer):
     return page
 
 
-@when("""kullanıcı "Yeni Adres Ekle" butonuna tıklayıp formu doldurup Save'e tıklar""")
+@when('kullanıcı "Yeni Adres Ekle" butonuna tıklayıp formu doldurup Save butonuna tıklar')
 def user_opens_fills_and_saves_new_address(address_page):
     address_page.add_new_address_and_wait_for_card(*new_address_args())
 
 
-@then("sistem gerçek bir POST isteğiyle (…/addresses) yeni adresi kaydeder")
+@then("sistem gerçek bir POST isteğiyle yeni adresi addresses endpoint'ine kaydeder")
 def system_persists_new_address_via_real_backend_call(address_page):
     assert address_page.wait_for_new_address_persisted_after_reload()
 
@@ -80,7 +78,7 @@ def save_button_stays_disabled(address_page):
     assert address_page.is_save_button_disabled()
 
 
-@when(parsers.parse('Bina No alanına "{value}" gibi harf+rakam karışık bir değer girilir'), target_fixture="building_no_test_value")
+@when(parsers.parse('Bina No alanına "{value}" gibi harf ve rakam karışık bir değer girilir'), target_fixture="building_no_test_value")
 def user_types_alphanumeric_building_no(address_page, value):
     address_page.type_into_building_no(value)
     return value

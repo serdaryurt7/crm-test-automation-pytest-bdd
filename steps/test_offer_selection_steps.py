@@ -22,15 +22,6 @@ def _open_offer_selection_screen(driver):
 
 
 def _fill_config_fields_and_proceed_to_summary(driver):
-    # SalesSetupPage'deki AYNI konfigürasyon doldurma mantığı - burada
-    # BİLEREK tekrarlanıyor, çünkü SalesSetupPage.purchase_simple_offer()
-    # hem teklif SEÇİMİNİ (bu senaryoda Given adımında ZATEN yapılmış)
-    # hem de NİHAİ gönderimi (bu senaryo göndermeden ÖNCEKİ Sipariş
-    # Özeti ekranını doğrulamak istiyor) tek bir akışta yapıyor - o
-    # metodu burada çağırmak teklifi İKİNCİ KEZ seçmeye çalışır ve
-    # nihai gönderimi de istemeden tetikler (KISS: zorla yeniden
-    # kullanmak yerine küçük, kendine özgü bir adım tekrarı tercih
-    # edildi).
     fields = driver.find_elements(By.CSS_SELECTOR, "[data-testid='sales-config-field']")
     for index, field in enumerate(fields):
         value = "5" + "".join(random.choices("0123456789", k=9)) if index == 0 else "".join(random.choices("0123456789", k=6))
@@ -88,9 +79,6 @@ def only_matching_offers_listed(search_context):
     offer_page, search_value = search_context
     names = offer_page.get_offer_names()
     assert names
-    # Karşılaştırma, uygulamanın kendi eşleştirme toleransıyla AYNI
-    # olmalı: düz .lower() Türkçe'ye özgü harflerde ("Ev İnterneti Fiber
-    # 1000") yanlış NEGATİF üretir - bkz. utils/text.py.
     unmatched = [n for n in names if turkish_fold(search_value) not in turkish_fold(n)]
     assert not unmatched, f"Arama '{search_value}' ile eşleşmeyen teklifler listelendi: {unmatched}"
 
@@ -199,7 +187,7 @@ def campaign_offers_shown_separately(offer_page):
     assert len(offer_page.get_campaign_rows()) > 0
 
 
-@given("sepette (Basket) en az bir ürün vardır", target_fixture="duplicate_add_context")
+@given("sepette en az bir ürün vardır", target_fixture="duplicate_add_context")
 def cart_has_one_product_for_duplicate_test(disposable_customer):
     offer_page = _open_offer_selection_screen(disposable_customer)
     name = offer_page.get_offer_names()[0]
@@ -212,12 +200,6 @@ def cart_has_one_product_for_duplicate_test(disposable_customer):
 
 @when('kullanıcı aynı ürünü tekrar "Sepete Ekle" ile eklemeyi dener')
 def attempt_duplicate_add(duplicate_add_context):
-    # Kasıtlı kırmızı (TC-014-13, canlı doğrulandı): mükerrer ekleme ŞU AN
-    # engellenmiyor - bu adım "değişiklik olmamalı" beklentisiyle KÖR bir
-    # sleep KULLANMIYOR, bunun yerine olası (buggy) bir satır artışını
-    # KISA bir üst sınırla dinamik olarak bekliyor; artış GERÇEKLEŞMEZSE
-    # (doğru davranışta olması gerektiği gibi) TimeoutException güvenle
-    # yutuluyor - "değişmedi" sonucunu Then adımı ayrıca doğruluyor.
     offer_page, name, _, _ = duplicate_add_context
     offer_page.select_offer_by_name(name)
     before_count = offer_page.get_cart_line_count()

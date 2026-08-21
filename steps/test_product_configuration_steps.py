@@ -12,15 +12,6 @@ scenarios("product_configuration.feature")
 
 
 def _open_config_screen_with_offers(driver, offer_names):
-    # Müşterinin ZATEN oluşturulmuş olduğunu varsayar (disposable_customer
-    # ya da new_customer fixture'ı ile) - yalnızca hesap + teklif seçimi
-    # adımlarını yürütür.
-    #
-    # "Mobil 20GB Paket" / "Superbox 50GB" gibi yalnızca <input> alanları
-    # içeren (dropdown/select alanı OLMAYAN) basit şablonlu teklifler
-    # kasıtlı seçiliyor - canlı doğrulandı (bkz. project_brain.txt UC-015
-    # keşfi): "Ev İnterneti Fiber 1000" gibi tekliflerde ek bir <app-select>
-    # bant genişliği alanı var, bu senaryoların kapsamı dışında (YAGNI).
     account_page = BillingAccountDeletePage(driver)
     account_page.create_account_and_wait()
     account_page.click_new_sale_on_row()
@@ -37,7 +28,7 @@ def cart_has_multiple_offers_on_config_screen(disposable_customer):
     return _open_config_screen_with_offers(disposable_customer, [SIMPLE_OFFER, SECOND_SIMPLE_OFFER])
 
 
-@then("sepetteki her teklif için ayrı bir konfigürasyon kartı (Ürün Teklif ID/Adı ile) görüntülenir")
+@then("sepetteki her teklif için Ürün Teklif ID, Adı ile ayrı bir konfigürasyon kartı görüntülenir")
 def each_cart_offer_has_own_config_card(config_page):
     names = config_page.get_config_card_offer_names()
     assert config_page.get_config_card_count() == 2
@@ -52,7 +43,6 @@ def user_on_product_configuration_screen(disposable_customer):
 
 @when("zorunlu konfigürasyon alanları boş bırakılır")
 def required_fields_left_empty(config_page):
-    # Given adımı zaten alanları BOŞ bırakıyor - ek bir aksiyon gerekmiyor.
     pass
 
 
@@ -63,8 +53,6 @@ def next_button_stays_disabled(config_page):
 
 @given("kullanıcının birden fazla kayıtlı adresi olduğu Ürün Konfigürasyonu ekranındadır", target_fixture="config_page")
 def user_on_config_screen_with_multiple_addresses(authenticated_driver, new_customer):
-    # Bu senaryo BİRDEN FAZLA kayıtlı adres gerektiriyor - ikinci adres
-    # create_customer sihirbazının kendi adres adımında ekleniyor.
     new_customer(extra_addresses=1)
     return _open_config_screen_with_offers(authenticated_driver, [SIMPLE_OFFER])
 
@@ -136,6 +124,6 @@ def click_next_button(config_page):
     config_page.click_next_and_wait_for_summary()
 
 
-@then("Sipariş Özeti (Sipariş Gönder) ekranına geçilir")
+@then("Sipariş Özeti ekranına geçilir")
 def navigated_to_order_summary(driver):
     assert driver.find_elements(By.CSS_SELECTOR, "[data-testid='sales-summary-total']")

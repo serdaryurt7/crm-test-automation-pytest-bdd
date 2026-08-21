@@ -1,27 +1,16 @@
 Feature: Dil Desteği
 
-  # TC-EACRML-017-04 ÜZERİNE NOT: Spesifikasyon, oturum kapatılıp tekrar
-  # giriş yapıldığında dilin varsayılan TR'ye DÖNMESİNİ bekliyordu -
-  # kullanıcının kendi notu bunun "hesaba değil oturuma bağlı" bir tasarım
-  # varsayımına dayandığını ve BA/UX ile teyit edilmesi gerektiğini
-  # belirtiyordu. Canlı doğrulandı: dil tercihi localStorage'da
-  # (`etiya.language`) saklanıyor - bu TAM bir çıkış/giriş döngüsünden
-  # BAĞIMSIZ olarak kalıcı, yani EN seçilip çıkış yapılıp tekrar giriş
-  # yapıldığında arayüz TR'ye DÖNMÜYOR, EN kalmaya devam ediyor. Kullanıcı
-  # kararıyla senaryo GERÇEK/çalışan davranışı doğrulayacak şekilde
-  # uyarlandı (aşağıda).
-
   Scenario: TC-EACRML-017-01 - Dil değiştirici (TR/EN) panelinin açılıp kapatılabilmesi
     Given kullanıcı uygulamada herhangi bir ekrandadır
     When dil değiştirici butonuna tıklanır
-    Then TR/EN seçenekleri içeren panel açılır
+    Then TR, EN seçenekleri içeren panel açılır
     When dil değiştirici butonuna tekrar tıklanır
     Then panel kapanır
 
   Scenario: TC-EACRML-017-02 - "EN" seçildiğinde arayüz metinlerinin İngilizce'ye çevrilmesi
     Given dil değiştirici panel açıktır
     When "EN" seçeneğine tıklanır
-    Then menü/buton/başlık gibi arayüz metinleri değişir (İngilizce'ye çevrilir)
+    Then menü, buton, başlık gibi arayüz metinleri İngilizce'ye çevrilir
     And bu tercih kullanıcı farklı ekranlara geçse dahi oturum boyunca korunur
 
   Scenario: TC-EACRML-017-03 - Dil değişikliğinin sayfa yenilense dahi korunması
@@ -40,14 +29,14 @@ Feature: Dil Desteği
     Then tüm data-testid değerleri dilden bağımsız aynı kalır, yalnızca görünen metin değişir
 
   Scenario: TC-EACRML-017-06 - İngilizce dilde iken doğrulama mesajlarının Türkçe'den farklı (İngilizce) dilde görüntülenmesi
-    Given dil "EN"dir
-    When bir doğrulama hatası tetiklenir (Kimlik No formatı)
+    Given dil "EN" dir
+    When Kimlik No formatı için bir doğrulama hatası tetiklenir
     Then mesaj Türkçe halinden farklı, İngilizce dilde görüntülenir
 
   Scenario: TC-EACRML-017-07 - Aktif dilin dil değiştirici buton üzerinde doğru şekilde vurgulanması
-    Given aktif dil "TR"dir
+    Given aktif dil "TR" dir
     When dil değiştirici panel görüntülenir
-    Then panelde aktif dil ("TR") vurgulanmış olarak işaretlenir
+    Then panelde aktif dil "TR" vurgulanmış olarak işaretlenir
 
   Scenario: TC-EACRML-017-08 - Dil seçeneğinin yalnızca TR ve EN ile sınırlı olması
     Given kullanıcı dil değiştirici paneli açmıştır

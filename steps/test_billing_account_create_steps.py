@@ -4,8 +4,6 @@ from pages.billing_account_create_page import BillingAccountCreatePage
 
 scenarios("billing_account_create.feature")
 
-# Canlı doğrulandı: fatura hesapları sayfa başına 4 kayıt gösteriyor -
-# sayfalama kontrollerini tetiklemek için bu limiti aşan bir sayı gerekiyor.
 PAGE_SIZE = 4
 
 
@@ -14,31 +12,24 @@ def user_on_account_tab(disposable_customer):
     return BillingAccountCreatePage(disposable_customer)
 
 
-@when('kullanıcı "Yeni Hesap Oluştur" butonuna tıklayıp Hesap Adı ve Adres (hizmet adresi) alanlarını doldurup Oluştur\'a tıklar', target_fixture="created_account_name")
+@when('kullanıcı "Yeni Hesap Oluştur" butonuna tıklayıp Hesap Adı ve Adres alanlarını doldurup Oluştur\'a tıklar', target_fixture="created_account_name")
 def user_creates_account_with_name_and_address(account_page):
     return account_page.create_account_and_wait()
 
 
-@then("sistem fatura hesabını kalıcı olarak oluşturur (sayfa yenilense dahi listede görünür)")
+@then("sistem fatura hesabını kalıcı olarak oluşturur, sayfa yenilense dahi listede görünür")
 def system_persists_account(account_page, created_account_name):
     assert account_page.wait_for_account_persisted_after_reload(created_account_name)
 
 
 @given("müşterinin hiç kayıtlı fatura hesabı yoktur", target_fixture="account_page")
 def customer_has_no_billing_accounts(disposable_customer):
-    # Fresh müşteri hiçbir fatura hesabı OLMADAN oluşturuluyor - ek bir
-    # adım gerekmiyor.
     return BillingAccountCreatePage(disposable_customer)
 
 
 @when("Müşteri Hesabı sekmesi açılır")
 @when("Müşteri Hesabı sekmesi görüntülenir")
 def account_tab_is_opened():
-    # BillingAccountCreatePage.__init__ zaten sekmeyi açıyor - bu adımda
-    # ek bir aksiyon gerekmiyor, sadece durum doğrulanıyor. Fixture'a
-    # kasıtlı olarak bağlanmıyor - farklı senaryolarda Given adımı
-    # farklı fixture'lar üretiyor (account_page / account_context), bu
-    # adım her ikisiyle de uyumlu kalması için parametresiz bırakıldı.
     pass
 
 

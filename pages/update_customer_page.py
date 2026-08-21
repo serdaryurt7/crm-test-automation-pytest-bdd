@@ -48,11 +48,6 @@ class UpdateCustomerPage(BasePage):
         return self._detail_url
 
     def reopen_edit_form(self, detail_url):
-        # driver.get ile baska bir sayfaya (ör. yeni bir musteri
-        # olusturma akisina) gidip geri donuldukten sonra duzenleme
-        # formunu tekrar acmak icin kullaniliyor - navigasyon, devam eden
-        # herhangi bir edit-mode durumunu sifirladigindan Edit'e tekrar
-        # tiklanmasi gerekiyor.
         self.driver.get(detail_url)
         self.wait.until(EC.visibility_of_element_located(self.DETAIL_HEADER))
         self.click_edit()
@@ -76,11 +71,6 @@ class UpdateCustomerPage(BasePage):
         self.wait.until(EC.visibility_of_element_located(self.FIRST_NAME_INPUT))
 
     def is_form_prefilled_correctly(self):
-        # Gender ve Birth Date bu oturum sirasinda native <select>/<input
-        # type="date">'den role="combobox" olan <button> ve gg/aa/yyyy
-        # formatinda maskeli <input type="text">'e gecirildi (canli
-        # dogrulandi) - goruntuleme modu ile ayni format/metni kullaniyorlar,
-        # ayrica bir format donusumune gerek yok.
         actual_birth_date = self.driver.find_element(*self.BIRTH_DATE_INPUT).get_attribute("value")
         selected_gender_text = self.driver.find_element(*self.GENDER_SELECT).text.strip()
         return (
@@ -119,13 +109,6 @@ class UpdateCustomerPage(BasePage):
         self.fill(self.IDENTITY_NUMBER_INPUT, new_value, blur=True)
 
     def is_identity_number_error_displayed(self):
-        # Canli dogrulandi: Nationality ID baska bir musteriye ait bir
-        # degerle degistirildiginde sistem ANLIK (client-side) bir
-        # benzersizlik hatasi gosteriyor ve Kaydet butonu bu yuzden hic
-        # enabled olmuyor - Save'e basmaya/backend'e istek gitmesine hic
-        # gerek kalmiyor. Mesaj metni dile gore degisebilecegi icin
-        # (TR/EN) yapisal olarak (hata elementinin gorunurlugu) kontrol
-        # ediliyor, literal metin karsilastirilmiyor.
         self.wait.until(EC.visibility_of_element_located(self.IDENTITY_NUMBER_ERROR))
         return self.driver.find_element(*self.IDENTITY_NUMBER_ERROR).is_displayed()
 
@@ -133,26 +116,9 @@ class UpdateCustomerPage(BasePage):
         return self.driver.find_element(*self.IDENTITY_NUMBER_INPUT).get_attribute("value")
 
     def wait_for_identity_number_length_error(self):
-        # Dilden bağımsız: TR ("...11 haneli olmalı...") ve EN ("...exactly
-        # 11 digits...") mesajları farklı kelimelerle yazılsa da İKİSİNDE DE
-        # ORTAK olan tek değişmez unsur "11" rakamının kendisi (bu iki dil
-        # metni UC-017/TC-017-06 keşfinde canlı doğrulanmıştı - bkz.
-        # search_customers_page.py'deki wait_for_identity_number_length_
-        # validation_error() ile AYNI desen). is_identity_number_error_
-        # displayed()'ten farkı: yalnızca "bir hata var mı" değil,
-        # SPESİFİK OLARAK 11-hane uzunluk hatası mı olduğunu doğruluyor -
-        # aynı hata elementi TC-004-03'teki benzersizlik hatası için de
-        # kullanılıyor, "boş değil" kontrolü tek başına ayırt edici olmazdı.
         self.wait.until(lambda d: "11" in d.find_element(*self.IDENTITY_NUMBER_ERROR).text)
 
     def wait_for_save_enabled_with_no_identity_number_error(self):
-        # "herhangi bir doğrulama hatası gösterilmez" negatif bir durumu
-        # doğrudan kanıtlamaya çalışmak (erken/yarış durumuna açık) yerine -
-        # TC-004-03b'deki AYNI desen: önce POZİTİF/nihai durumu (Kaydet
-        # butonunun GERÇEKTEN enabled olması, ki bu zaten Angular'ın form
-        # geçerlilik hesaplamasının hata bulmadığını kanıtlar) bekliyoruz,
-        # sonra o ANDAKİ hata elementinin durumunu ek bir doğrulama olarak
-        # okuyoruz.
         self.wait.until(lambda d: not self.is_save_button_disabled())
         errors = self.driver.find_elements(*self.IDENTITY_NUMBER_ERROR)
         assert not errors or not errors[0].is_displayed(), (
@@ -160,21 +126,11 @@ class UpdateCustomerPage(BasePage):
         )
 
     def update_identity_number_with_random_unique_value(self):
-        # Faker ile rastgele 11 haneli bir TC no üretiliyor - collision
-        # riski ihmal edilebilir (create_customer_page.py'deki fill_
-        # demographic_step_with_faker() ile AYNI yöntem, projenin genelinde
-        # "pratikte eşsiz" Faker değerlerine güvenme konvansiyonuyla
-        # tutarlı - ör. contact_update'teki email benzersizliği testleri).
         new_value = fake.numerify("###########")
         self.update_identity_number(new_value)
         return new_value
 
     def attempt_to_type_long_identity_number(self, length):
-        # maxlength=11 gerçek bir HTML özniteliği (Birth Date maskesinin
-        # aksine JS ile gün/ay geçerliliği filtrelemiyor - canlı doğrulandı,
-        # bkz. create_customer.md notları) - bu yüzden hangi rakamla
-        # doldurulursa doldurulsun tarayıcı tarafından güvenilir şekilde
-        # ilk 11 karaktere kesilmesi beklenir.
         field = self.fill(self.IDENTITY_NUMBER_INPUT, "1" * length)
         return field.get_attribute("value")
 
@@ -185,10 +141,6 @@ class UpdateCustomerPage(BasePage):
         return bool(self.driver.find_elements(*self.SAVE_ERROR)) and self.driver.find_element(*self.SAVE_ERROR).is_displayed()
 
     def attempt_xss_in_first_name(self):
-        # Not: login.feature'daki SQL Injection/XSS senaryosunda oldugu gibi
-        # native alert() gorulmesi tek basina yeterli degil - bu alanda
-        # gozlenen ASIL davranis input'un ozel karakterleri (< > ( ) / 1 vb.)
-        # yaziliken FILTRELEMESI, HTML kacislama degil.
         field = self.fill(self.FIRST_NAME_INPUT, "<script>alert(1)</script>")
         return field.get_attribute("value")
 
@@ -201,10 +153,6 @@ class UpdateCustomerPage(BasePage):
             return False
 
     def clear_required_field(self, field_label):
-        # Not: .clear() Angular'in reaktif form durumunu (ve dolayisiyla
-        # Kaydet butonunun disabled durumunu) guvenilir tetiklemiyor -
-        # gercek kullanici tus vurusunu simule etmek icin CTRL+A + BACKSPACE
-        # kullaniliyor (projenin genel .clear() pitfall konvansiyonuyla tutarli).
         locator = self.REQUIRED_FIELD_LOCATORS[field_label]
         self.fill(locator)
 
@@ -225,14 +173,6 @@ class UpdateCustomerPage(BasePage):
         return self._new_first_name in self.get_displayed_full_name()
 
     def reload_and_verify_first_name_persisted(self):
-        # Zone.js, Angular'in kendi XHR/fetch sarmalayicisini bizim
-        # execute_script ile enjekte ettigimiz interceptor'dan ONCE
-        # kuruyor - bu yuzden PUT isteginin govdesini/URL'ini dogrudan
-        # yakalamak guvenilir calismiyor. Bunun yerine gercek backend
-        # kalicilik kaniti olarak TAMAMEN YENI bir navigasyonla (hard
-        # reload) sayfayi yeniden yukleyip degerin hala orada olup
-        # olmadigini kontrol ediyoruz - sadece client-side state olsaydi
-        # bu reload'da kaybolurdu.
         self.driver.get(self._detail_url)
         self.wait.until(EC.visibility_of_element_located(self.DETAIL_HEADER))
         return self._new_first_name in self.get_displayed_full_name()

@@ -9,18 +9,6 @@ from utils.test_data import SIMPLE_OFFER_SEARCH_TERM
 
 
 class SalesSetupPage(BasePage):
-    # Bu sayfa BİLEREK test EDİLMİYOR - "Yeni Satış" akışının kendisi
-    # (Katalog -> Teklif Seçimi -> Ürün Konfigürasyonu -> Sipariş Gönder)
-    # UC-EACRML 012'nin kapsamı dışında, kendi başına büyük ayrı bir
-    # özellik alanı. Burada SADECE TC-EACRML-012-03'ün "hesaba bağlı en
-    # az bir aktif ürün vardır" önkoşulunu karşılamak için MİNİMAL bir
-    # satın alma akışı sağlanıyor - canlı olarak uçtan uca doğrulandı.
-    #
-    # "Teklif Seçimi" ekranının kendisi artık UC-EACRML 014 kapsamında
-    # AYRICA ve DERİNLEMESİNE test edildiğinden (bkz. OfferSelectionPage),
-    # buradaki seçim/sepet mantığı KOD TEKRARI olmasın diye o sayfayla
-    # COMPOSE ediliyor - bu sınıf sadece KENDİNE ÖZGÜ olan Konfigürasyon/
-    # Gönder adımlarına odaklanıyor (SRP).
 
     CONFIG_TARGET = (By.CSS_SELECTOR, "[data-testid='sales-config-target']")
     CONFIG_FIELD = (By.CSS_SELECTOR, "[data-testid='sales-config-field']")
@@ -29,10 +17,6 @@ class SalesSetupPage(BasePage):
     SUCCESS_TITLE = (By.CSS_SELECTOR, "[data-testid='sales-success-title']")
 
     def purchase_simple_offer(self, offer_name_contains=SIMPLE_OFFER_SEARCH_TERM):
-        # "Mobil 20GB Paket" bilerek seçiliyor - donanım gerektiren
-        # tekliflerin (ör. "Ev İnterneti Fiber 100") aksine zorunlu bir
-        # tamamlayıcı ürün istemiyor, bu yüzden minimal kurulum için en
-        # az adım gerektiren teklif (canlı doğrulandı).
         offer_page = OfferSelectionPage(self.driver)
         for row in offer_page.get_offer_rows():
             if offer_name_contains in row.text:

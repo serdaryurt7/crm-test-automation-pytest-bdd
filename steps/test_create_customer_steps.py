@@ -10,11 +10,6 @@ scenarios("create_customer.feature")
 
 @given("kullanıcı müşteri oluşturma sayfasındadır", target_fixture="create_customer_page")
 def user_on_create_customer_page(authenticated_driver):
-    # Manuel test case'in 1. adımıyla birebir: "No customer found" mesajının
-    # altındaki Create Customer butonuna tıklanarak gerçek kullanıcı yolculuğu
-    # ile ulaşılıyor (var olan search_customers.feature'daki "No Customer
-    # Found" senaryosuyla aynı, doğrulanmış page object metotları tekrar
-    # kullanılıyor).
     search_page = SearchCustomersPage(authenticated_driver)
     search_page.enter_identity_number("00000000000")
     search_page.submit_search()
@@ -62,12 +57,6 @@ def contact_step_opened(create_customer_page):
 
 @then("Create butonu aktif hale gelir")
 def submit_button_enabled(create_customer_page):
-    # Form-level gecerlilik durumu (Angular change-detection) DOM'daki
-    # deger degisikliginden hemen sonra degil, kisa bir gecikmeyle
-    # guncelleniyor (canli olcumde ~0.3-0.6s arasi degisken cikti) - bu
-    # yuzden sabit bir sleep yerine "aktif olana kadar" bekleniyor. Bu
-    # step yalnizca aktif OLMASI beklenen yerlerde kullanildigindan
-    # (pasif kalmasi beklenen durumlar icin ayri bir step var) guvenli.
     create_customer_page.wait.until(lambda d: not create_customer_page.is_submit_disabled())
 
 
@@ -223,10 +212,6 @@ def user_on_contact_medium_screen(create_customer_page):
     create_customer_page.wait_for_address_saved()
     create_customer_page.click_address_next()
     create_customer_page.wait_for_contact_step()
-    # Create butonunun diğer zorunlu alanın kontrolünden BAĞIMSIZ olarak
-    # pasif kalmaması için hem Email hem Mobile Phone önceden geçerli
-    # değerlerle dolduruluyor - her senaryo kendi test ettiği alanı
-    # (email veya mobile) sonradan geçersiz bir değerle EZİYOR.
     create_customer_page.fix_email_with_faker()
     create_customer_page.fill_mobile_phone_with_faker()
 
@@ -321,7 +306,7 @@ def address_next_disabled_after_delete(create_customer_page):
     assert create_customer_page.is_address_next_disabled()
 
 
-@given('kullanıcı "Adres Bilgi" ekranında Şehir "İstanbul", Sokak "Bağdat Caddesi", No "45/2" ile bir adres formu doldurmuştur')
+@given('kullanıcı "Adres Bilgi" ekranında Şehir, Sokak ve No alanlarını doldurmuştur')
 def user_filled_address_form_with_literal_values(create_customer_page):
     create_customer_page.fill_demographic_step_with_faker(gender="Kadın")
     create_customer_page.click_demographic_next()
@@ -424,12 +409,8 @@ def type_valid_birth_date(create_customer_page):
     create_customer_page._birth_date_after_8_digits = create_customer_page.type_valid_birth_date_digits()
 
 
-@then('alan "gg/aa/yyyy" formatında, tam 10 karakter uzunluğunda bir değer gösterir')
+@then('alan gün, ay, yıl biçiminde tam 10 karakter uzunluğunda bir değer gösterir')
 def birth_date_shows_10_char_formatted_value(create_customer_page):
-    # Dilden bağımsız: format ayraçlarının POZİSYONUNU (2. ve 5. index'te
-    # "/") ve TOPLAM uzunluğu doğruluyor - placeholder metni (gg/aa/yyyy
-    # veya dd/mm/yyyy) hangi dilde olursa olsun aynı maske/uzunluk kuralı
-    # geçerli (canlı doğrulandı).
     value = create_customer_page._birth_date_after_8_digits
     assert len(value) == FIELD_LIMITS["birth_date_formatted"], f"Beklenen 10 karakter, gelen: {value!r} ({len(value)} karakter)"
     assert value[2] == "/" and value[5] == "/", f"Beklenen gg/aa/yyyy formatı, gelen: {value!r}"

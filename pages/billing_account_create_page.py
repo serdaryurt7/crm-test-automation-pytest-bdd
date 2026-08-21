@@ -14,13 +14,6 @@ from utils.test_data import fake
 
 
 class BillingAccountCreatePage(BasePage):
-    # "Fatura Hesabı Oluştur" formu (panel-heading canlı doğrulandı), Adres
-    # sekmesindeki adres ekleme formuyla AYNI alt-bileşeni ("Yeni Adres
-    # Ekle") gömülü olarak kullanıyor - bu yüzden NEW_ADDRESS_* locator'ları
-    # pages/address_add_page.py'deki karşılıklarıyla BİREBİR aynı CSS
-    # değerlerine sahip (kasıtlı küçük bir tekrar - bu sayfa kavramsal
-    # olarak bir "adres sayfası" DEĞİL, inheritance burada "is-a" ilişkisini
-    # bozacağından tercih edilmedi).
 
     TAB_ACCOUNT = (By.CSS_SELECTOR, "[data-testid='tab-account']")
     CREATE_BUTTON = (By.CSS_SELECTOR, "[data-testid='customer-account-create']")
@@ -34,9 +27,6 @@ class BillingAccountCreatePage(BasePage):
 
     ADDRESS_CARD = (By.CSS_SELECTOR, "[data-testid='address-card']")
     ADDRESS_CARD_TITLE = (By.CSS_SELECTOR, "[data-testid='address-card-title']")
-    # Bu formda ayni radio bileseni "hizmet adresi secimi" anlaminda
-    # kullaniliyor (Adres sekmesindeki "Primary" anlaminin AKSINE - canli
-    # dogrulandi, ayni testid farkli baglamda tekrar kullaniliyor).
     ADDRESS_SERVICE_SELECT = (By.CSS_SELECTOR, "[data-testid='address-card-primary']")
     ADD_ADDRESS_BUTTON = (By.CSS_SELECTOR, "[data-testid='account-add-address']")
 
@@ -67,15 +57,6 @@ class BillingAccountCreatePage(BasePage):
         return len(self.driver.find_elements(*self.ACCOUNT_ROW))
 
     def is_empty_state_displayed(self):
-        # Mesaj metni dile göre değişebileceğinden yapısal olarak (mesaj
-        # elementinin görünür VE dolu olması) kontrol ediliyor - projedeki
-        # diğer empty-state kontrolleriyle (search/delete_customer) tutarlı.
-        # Bir silme işleminin HEMEN ardından çağrıldığında Angular'ın
-        # DOM'u yeniden render etmesiyle (boş durum bileşeninin
-        # oluşturulmasıyla) yarışabiliyor (canlı doğrulandı - ara sıra
-        # StaleElementReferenceException) - bu yüzden anlık tek bir
-        # find_elements yerine, stale durumunu KENDİ İÇİNDE tolere edip
-        # yeniden deneyen dinamik bir WebDriverWait predicate'i kullanılıyor.
         def _message_visible_and_filled(driver):
             try:
                 message = driver.find_element(*self.EMPTY_STATE_MESSAGE)
@@ -107,10 +88,6 @@ class BillingAccountCreatePage(BasePage):
         return name, description
 
     def fill_required_fields_with_faker(self):
-        # Adres alanı dışarıda bırakılıyor - müşterinin en az 1 kayıtlı
-        # adresi her zaman olduğundan (create_customer akışının garantisi)
-        # ve formda İLK adres varsayılan olarak zaten seçili geldiğinden
-        # (canlı doğrulandı) ayrıca bir seçim yapmaya gerek yok.
         name, description = self._generate_account_name_and_description()
         self.fill_account_name(name)
         self.fill_account_description(description)
@@ -145,9 +122,6 @@ class BillingAccountCreatePage(BasePage):
         return [e.text for e in self.driver.find_elements(*self.ADDRESS_CARD_TITLE)]
 
     def select_service_address_by_index(self, index):
-        # Radio görsel olarak gizli (Adres sekmesindeki Primary radio ile
-        # aynı bileşen/desen) - native .click() ElementClickIntercepted
-        # veriyor, JS click kullanılıyor (canlı doğrulandı).
         radios = self.driver.find_elements(*self.ADDRESS_SERVICE_SELECT)
         self.driver.execute_script("arguments[0].click();", radios[index])
         self.wait.until(lambda d: d.find_elements(*self.ADDRESS_SERVICE_SELECT)[index].is_selected())
@@ -170,8 +144,6 @@ class BillingAccountCreatePage(BasePage):
         self._new_address_building_no = building_no
 
     def is_newest_address_selected_as_service_address(self):
-        # Canlı doğrulandı: yeni eklenen adres listenin SONUNA ekleniyor
-        # VE otomatik olarak hizmet adresi olarak seçili hale geliyor.
         titles = self.get_address_card_titles()
         states = self.get_address_selection_states()
         last_title = titles[-1]
@@ -188,13 +160,6 @@ class BillingAccountCreatePage(BasePage):
         self.wait.until(EC.element_to_be_clickable(self.CANCEL_BUTTON)).click()
 
     def create_account_and_wait(self, name=None, description=None):
-        # name/description BAĞIMSIZ olarak varsayılana düşer - önceki
-        # sürümde "ikisinden biri eksikse İKİSİNİ DE Faker'a ez" gibi
-        # yanlış bir "or" mantığı vardı: sadece name verilip description
-        # verilmediğinde name'in KENDİSİ de rastgele bir değerle
-        # değiştiriliyordu (canlı çalıştırmada AttributeError/satır
-        # bulunamama olarak ortaya çıktı - gerçek bir bug, sahte-PASS
-        # değil ama sessizce yanlış veri üretiyordu).
         self.click_create_account()
         faker_name, faker_description = self._generate_account_name_and_description()
         used_name = name if name is not None else faker_name
@@ -207,16 +172,6 @@ class BillingAccountCreatePage(BasePage):
         return used_name
 
     def find_account_row_by_name(self, name):
-        # Bir silme/oluşturma işleminin HEMEN ardından çağrıldığında,
-        # Angular listeyi yeniden render ederken (satır ekleniyor/
-        # kaldırılıyorken) find_elements ile toplanan satır referansları
-        # ARALARINDA stale kalabiliyor (canlı doğrulandı - ara sıra
-        # StaleElementReferenceException). Bu, "satır bulunamadı" (None)
-        # durumundan YAPISAL OLARAK FARKLI bir durum - bu yüzden sadece
-        # GEÇİCİ stale hatasında taramanın TAMAMI (sabit, küçük bir üst
-        # sınırla) yeniden deneniyor; "gerçekten bulunamadı" sonucu
-        # (None) beklenmeden hemen döndürülüyor (absence testleri için
-        # yanlışlıkla sonsuz beklemeye girmemek adına).
         for _ in range(5):
             try:
                 for row in self.driver.find_elements(*self.ACCOUNT_ROW):
@@ -233,18 +188,9 @@ class BillingAccountCreatePage(BasePage):
             return False
         number_text = row.find_element(*self.ACCOUNT_ROW_NUMBER).text.strip()
         status_text = row.find_element(*self.ACCOUNT_ROW_TOGGLE).text.strip()
-        # Hesap numarasının GERÇEKTEN otomatik/dinamik üretildiğini (sabit/
-        # hardcoded bir değer olmadığını) doğrulamak için sayısal karakter
-        # içerdiği kontrol ediliyor - "Aktif" gibi dile bağlı bir literal
-        # metinle KARŞILAŞTIRILMIYOR, sadece durum bilgisinin dolu/
-        # görüntüleniyor olması yeterli sayılıyor.
         return bool(number_text) and any(ch.isdigit() for ch in number_text) and bool(status_text)
 
     def wait_for_account_persisted_after_reload(self, name):
-        # address_add/address_delete'teki reload-tabanlı kalıcılık
-        # deseniyle tutarlı: gerçek bir backend yazımının kanıtı olarak
-        # sayfa TAMAMEN yenilendikten SONRA da hesabın hâlâ listede
-        # olduğu dinamik WebDriverWait polling ile doğrulanıyor.
         detail_url = self.driver.current_url
 
         def account_present_after_reload(driver):
@@ -261,9 +207,6 @@ class BillingAccountCreatePage(BasePage):
             return False
 
     def type_long_account_name(self, length):
-        # Adres Açıklaması alanında daha önce kullanılan JS native
-        # value-setter tekniğinin AYNISI - klavye ile binlerce karakter
-        # yazmak yerine performans için tercih ediliyor.
         field = self.driver.find_element(*self.ACCOUNT_NAME_INPUT)
         self.driver.execute_script(
             "const el = arguments[0];"
@@ -276,9 +219,6 @@ class BillingAccountCreatePage(BasePage):
         return field.get_attribute("value")
 
     def has_defined_columns_for_row(self, name):
-        # "Sütunlar" yapısal olarak doğrulanıyor (dilden bağımsız): ilgili
-        # satırda Hesap Adı/Numarası/Tipi/Durum alanlarının HEPSİNİN
-        # görüntülenir olması, tablo başlığı metnine bakılmıyor.
         row = self.find_account_row_by_name(name)
         if row is None:
             return False

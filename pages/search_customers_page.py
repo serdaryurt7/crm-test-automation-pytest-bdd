@@ -13,11 +13,9 @@ from utils.waits import poll_until
 
 
 class CustomersPage(BasePage):
-    # Sayfa başlığı
     PAGE_TITLE = (By.CSS_SELECTOR, "[data-testid='page-title']")
     PAGE_SUBTITLE = (By.CSS_SELECTOR, "[data-testid='page-subtitle']")
 
-    # Arama formu (gerçek HTML id'si olanlar By.ID, olmayanlar data-testid CSS selector)
     SEARCH_FORM = (By.CSS_SELECTOR, "[data-testid='customer-search-form']")
     TYPE_B2C = (By.CSS_SELECTOR, "[data-testid='customer-type-b2c']")
     TYPE_B2B = (By.CSS_SELECTOR, "[data-testid='customer-type-b2b']")
@@ -42,7 +40,6 @@ class CustomersPage(BasePage):
         ORDER_NUMBER,
     )
 
-    # Sonuç tablosu
     RESULTS_TABLE = (By.CSS_SELECTOR, "[data-testid='customer-results']")
     RESULTS_COUNT = (By.CSS_SELECTOR, "[data-testid='customer-results-count']")
     RESULTS_RANGE = (By.CSS_SELECTOR, "[data-testid='customer-results-range']")
@@ -56,15 +53,10 @@ class CustomersPage(BasePage):
     SORT_ROLE = (By.CSS_SELECTOR, "[data-testid='customer-results-sort-role']")
     SORT_NATIONALITY_ID = (By.CSS_SELECTOR, "[data-testid='customer-results-sort-nationalityId']")
 
-    # Sayfalama (sayfa numarası butonları sonuç sayısına göre değiştiği için
-    # sabit locator yerine page_button(n) metoduyla dinamik üretiliyor)
     PAGINATION = (By.CSS_SELECTOR, "[data-testid='customer-results-pagination']")
     PREV_PAGE = (By.CSS_SELECTOR, "[data-testid='customer-results-prev-page']")
     NEXT_PAGE = (By.CSS_SELECTOR, "[data-testid='customer-results-next-page']")
 
-    # Satır şablonu: DOM'da her biri sayfadaki satır sayısı kadar (15x) tekrar
-    # ediyor, TEK BAŞINA unique DEĞİL - find_elements ile veya bir <tr>
-    # WebElement'i üzerinden relative aramada kullanılmalı.
     ROW = (By.CSS_SELECTOR, "[data-testid='customer-row']")
     ROW_LINK = (By.CSS_SELECTOR, "[data-testid='customer-row-link']")
     ROW_FIRST_NAME = (By.CSS_SELECTOR, "[data-testid='customer-row-first-name']")
@@ -73,14 +65,6 @@ class CustomersPage(BasePage):
     ROW_ROLE = (By.CSS_SELECTOR, "[data-testid='customer-row-role']")
     ROW_IDENTITY = (By.CSS_SELECTOR, "[data-testid='customer-row-identity']")
 
-    # Sıralanabilir sütun etiketi -> (sort header locator / satır değeri
-    # locator) eşlemesi. Etiketler ekrandaki o an aktif dilin metnine değil
-    # sabit bir Python sözlüğüne bağlı (create_customer_page.py'deki
-    # GENDER_VALUE_MAP ile aynı desen) - hangi UI dili aktifken koşulursa
-    # koşulsun aynı data-testid'ler tıklanır/okunur, dilden bağımsız.
-    # "Rol" kasıtlı olarak dahil edilmedi - bkz. search_customers.feature
-    # üst yorumu (mevcut veride tüm kayıtların Role'ü aynı, sıra değişikliği
-    # gözlemlenemez).
     SORT_LOCATORS = {
         "Customer ID": SORT_CUSTOMER_ID,
         "Ad": SORT_FIRST_NAME,
@@ -96,13 +80,9 @@ class CustomersPage(BasePage):
         "Kimlik No": ROW_IDENTITY,
     }
 
-    # Müşteri Detayı (Customer Info) ekranı
     CUSTOMER_DETAIL_HEADER = (By.CSS_SELECTOR, "[data-testid='customer-detail-header']")
 
     def __init__(self, driver):
-        # Not: BasePage zaten ignored_exceptions=(StaleElementReferenceException,)
-        # kuruyor - bu sayfada ELDE EDİLEN davranış birebir aynı, yalnızca
-        # tanım tek yere taşındı.
         super().__init__(driver)
         self.wait.until(EC.visibility_of_element_located(self.SEARCH_SUBMIT))
         self._last_identity_number = None
@@ -159,22 +139,6 @@ class CustomersPage(BasePage):
         self.wait.until(lambda d: d.find_element(*self.EMPTY_STATE_MESSAGE).text == expected_text)
 
     def wait_for_identity_number_length_validation_error(self):
-        # Dilden bağımsız: TR ("...11 haneli...") ve EN (muhtemelen
-        # "...11-digit...") mesaj metinleri farklı kelimelerle yazılsa da
-        # İKİSİNDE DE ORTAK olan tek değişmez unsur "11" rakamının kendisi -
-        # literal kelime karşılaştırması yerine bu doğrulanıyor. Aynı
-        # EMPTY_STATE_MESSAGE elementi "sonuç bulunamadı" durumuyla da
-        # paylaşıldığından ("Arama kriterlerine uygun müşteri bulunamadı."
-        # mesajında "11" GEÇMİYOR), yalnızca "boş değil" kontrolü yeterince
-        # ayırt edici olmazdı - "11" içeriği bu iki durumu güvenle ayırıyor.
-        # Not: EC.visibility_of_element_located() ile elementi BULUP sonra
-        # ayrı bir adımda .text okumak, Angular'ın ilk render'dan hemen
-        # sonra elementi yeniden oluşturması durumunda StaleElementReference
-        # Exception'a yakalanabiliyor (canlı olarak görüldü) - find_element +
-        # .text okumasının TAMAMI, self.wait'in zaten ignore ettiği
-        # StaleElementReferenceException'ı her pollingde TAZE bir sorguyla
-        # otomatik yeniden deneyecek şekilde TEK BİR lambda içine alındı
-        # (wait_for_empty_state_message ile aynı desen).
         self.wait.until(lambda d: "11" in d.find_element(*self.EMPTY_STATE_MESSAGE).text)
 
     def wait_for_no_results_state(self):
@@ -182,18 +146,6 @@ class CustomersPage(BasePage):
         assert self.get_row_count() == 0, "Sonuç bulunamadı durumu beklenirken hâlâ satırlar görüntüleniyor"
 
     def wait_for_customer_id_search_to_show_no_results(self, customer_id, max_attempts=6, poll_interval_seconds=2):
-        # DÜZELTME (canlı olarak yakalanan bir yarış durumu -
-        # delete_customer_page.py'deki wait_for_deleted_customer_not_
-        # found_after_reload() ile AYNI kök neden): silme işlemi HER
-        # müşteri için ASENKRON tamamlanıyor - yönlendirme HEMEN oluyor
-        # ama backend'deki gerçek silme birkaç saniye sürebiliyor. TEK
-        # BİR arama denemesi bu gecikmeyi kaçırıp az önce silinen
-        # müşteriyi HÂLÂ sonuçlarda gösterebiliyordu. Bu yüzden arama
-        # BİLEREK SEYREK aralıklarla (varsayılan 2sn, en fazla 6 deneme)
-        # tekrar deneniyor - delete_customer_page.py'de hızlı ardışık
-        # driver.get() denemesinin oturumu düşürdüğü (ayrı bir yan etki)
-        # keşfedildiğinden, burada da AYNI temkinli/seyrek kadans tercih
-        # edildi.
         def _search_again():
             self.enter_customer_id(customer_id)
             self.submit_search()
@@ -315,11 +267,6 @@ class CustomersPage(BasePage):
         return [e.text.strip() for e in self.driver.find_elements(*self.ROW_LINK)]
 
     def is_customer_id_column_sorted_ascending(self):
-        # Satırların yüklenmesini bekle - beklemeden hemen okunursa DOM
-        # henüz boşken kontrol edilebilir, bu da BOŞ liste için
-        # "ids == sorted(ids)" her zaman True döndüğünden testi
-        # SESSİZCE ve YANLIŞLIKLA PASS ettirir (hiçbir şeyi
-        # doğrulamadan). Boş liste EXPLICIT olarak reddediliyor.
         self.wait.until(lambda d: bool(d.find_elements(*self.ROW_LINK)))
         ids = [int(value) for value in self.get_result_customer_ids()]
         assert ids, "Sıralama kontrol edilirken sonuç listesi boştu - hiçbir kayıt doğrulanamadı"
@@ -337,21 +284,11 @@ class CustomersPage(BasePage):
         self.wait.until(EC.element_to_be_clickable(self.NEXT_PAGE)).click()
 
     def get_next_page_record_comparison(self):
-        # Not: sayfa gecisi sirasinda Angular DOM'u ANLIK olarak
-        # bosaltabiliyor (*ngFor yeniden render edilirken) - "kume eskisinden
-        # FARKLI mi" kontrolu tek basina BOS kumeyi de "farkli" say(iyord)u,
-        # bu da wait.until'in yeni sayfa GERCEKTEN yuklenmeden ERKEN
-        # tatmin olmasina ve testin BOS bir sayfayla YANLIS-POZITIF/gecici
-        # FAIL vermesine yol aciyordu (canli olarak yakalandi). Artik hem
-        # BOS OLMAMASI hem eskisinden FARKLI OLMASI birlikte bekleniyor.
         self.wait.until(
             lambda d: (ids := {e.text.strip() for e in d.find_elements(*self.ROW_LINK)})
             and ids != self._first_page_ids
         )
         next_page_ids = set(self.get_result_customer_ids())
-        # İddia BİLEREK burada yapılmıyor: page object durumu döndürür,
-        # step katmanı iddia eder. Böylece bu metot "kayıtlar tekrarlanMALI"
-        # gibi ters bir senaryoda da yeniden kullanılabilir.
         return {
             "next_page_ids": next_page_ids,
             "overlapping_ids": next_page_ids & self._first_page_ids,
@@ -365,10 +302,6 @@ class CustomersPage(BasePage):
         self.wait.until(EC.element_to_be_clickable(self.CREATE_CUSTOMER_BUTTON)).click()
 
     def click_customer_row_link(self):
-        # Not: sticky topbar (position: sticky, top: 0) satırın üzerine
-        # binip normal .click()'i ElementClickIntercepted ile engelliyor -
-        # elementi viewport ortasına kaydırıp (topbar'ın arkasından çıkararak)
-        # sonra normal .click() ile tıklıyoruz.
         self._window_handle_count_before_click = len(self.driver.window_handles)
         link = self.wait.until(EC.element_to_be_clickable(self.ROW_LINK))
         self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", link)
@@ -392,14 +325,14 @@ class CustomersPage(BasePage):
         identity_number = "".join(random.choices("0123456789", k=FIELD_LIMITS["identity_number"]))
         self.driver.find_element(*self.IDENTITY_NUMBER).click()
         actions = ActionChains(self.driver)
-        actions.send_keys(identity_number).send_keys(Keys.TAB)  # identityNumber
-        actions.send_keys("5").send_keys(Keys.TAB)  # customerId
-        actions.send_keys("1234567890").send_keys(Keys.TAB)  # accountNumber
-        actions.send_keys(Keys.TAB)  # gsm-country butonu - metin girilmiyor
-        actions.send_keys("5551234567").send_keys(Keys.TAB)  # gsm
-        actions.send_keys("Ahmet").send_keys(Keys.TAB)  # firstName
-        actions.send_keys("Yilmaz").send_keys(Keys.TAB)  # lastName
-        actions.send_keys("12345678")  # orderNumber
+        actions.send_keys(identity_number).send_keys(Keys.TAB)
+        actions.send_keys("5").send_keys(Keys.TAB)
+        actions.send_keys("1234567890").send_keys(Keys.TAB)
+        actions.send_keys(Keys.TAB)
+        actions.send_keys("5551234567").send_keys(Keys.TAB)
+        actions.send_keys("Ahmet").send_keys(Keys.TAB)
+        actions.send_keys("Yilmaz").send_keys(Keys.TAB)
+        actions.send_keys("12345678")
         actions.perform()
 
     def click_clear_button(self):
@@ -416,21 +349,12 @@ class CustomersPage(BasePage):
         self.wait.until(lambda d: len(d.find_elements(*self.ROW)) == 15)
 
     def get_results_count_number(self):
-        # "822 kayıt" / olası "822 records" gibi dile göre değişen bir
-        # metinden SADECE sayıyı çıkarıyor - literal kelime karşılaştırması
-        # yok, dilden bağımsız.
         el = self.wait.until(EC.visibility_of_element_located(self.RESULTS_COUNT))
         match = re.search(r"\d+", el.text)
         assert match, f"RESULTS_COUNT metninde sayı bulunamadı: {el.text!r}"
         return int(match.group())
 
     def get_results_range_bounds(self):
-        # "822 kayıttan 1–15 arası" / olası EN karşılığı "1-15 of 822
-        # records" gibi FARKLI kelime/sayı sırasına sahip olabilecek bir
-        # metinden, sayıların METİNDEKİ POZİSYONUNA güvenmeden (dilden
-        # bağımsız) alt/üst sınırı çıkarıyor: toplam sayı zaten
-        # get_results_count_number()'dan biliniyor, metindeki sayılardan ona
-        # eşit OLMAYAN ikisinin küçüğü=alt, büyüğü=üst sınırdır.
         total = self.get_results_count_number()
         range_el = self.wait.until(EC.visibility_of_element_located(self.RESULTS_RANGE))
         numbers = [int(n) for n in re.findall(r"\d+", range_el.text)]

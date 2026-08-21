@@ -59,14 +59,6 @@ def account_has_active_product(disposable_customer):
     page.click_new_sale_on_row()
     sales_page = SalesSetupPage(disposable_customer)
     sales_page.purchase_simple_offer()
-    # Canlı doğrulandı: sipariş tamamlandığında OTOMATİK olarak Müşteri
-    # Hesabı sekmesine DÖNÜLMÜYOR - kullanıcı "Sipariş oluşturuldu!"
-    # başarı ekranında (sadece "Müşteri Aramaya Dön" linkiyle) kalıyor.
-    # Bu yüzden müşteri detay URL'ine AÇIKÇA geri navigasyon gerekiyor -
-    # BillingAccountDeletePage.__init__ tab-account'a hemen tıklamaya
-    # çalıştığından, önce sayfanın (hard navigasyon sonrası) GERÇEKTEN
-    # yüklendiği (customer-detail-header görünür) dinamik olarak
-    # bekleniyor.
     disposable_customer.get(customer_url)
     WebDriverWait(disposable_customer, 10).until(
         EC.visibility_of_element_located((By.CSS_SELECTOR, "[data-testid='customer-detail-header']"))
@@ -85,15 +77,8 @@ def account_not_removed_from_list(account_page):
     assert account_page.is_account_still_listed()
 
 
-@then("sistem doğrudan silmek yerine bir uyarı/engelleme mesajı gösterir")
+@then("sistem doğrudan silmek yerine bir uyarı, engelleme mesajı gösterir")
 def system_shows_warning_instead_of_deleting(account_page):
-    # Canlı doğrulandı: "The billing account cannot be deleted because it
-    # has active products." mesajı bir toast olarak gösteriliyor - ama bu
-    # toast'ın kendi bir data-testid'i YOK (dilden bağımsız/güvenilir bir
-    # locator ile yakalanamıyor). Bu yüzden dil-bağımsız, GÜVENİLİR olan
-    # yapısal sonuç doğrulanıyor: hesap silinmedi/Aktif kaldı - toast'ın
-    # kendisi doğrulanamıyor olsa da işlemin GERÇEKTEN reddedildiği
-    # (bir önceki Then adımında zaten) kanıtlanmış durumda.
     assert account_page.is_account_still_listed()
 
 
@@ -109,8 +94,6 @@ def a_billing_account_has_been_deleted(disposable_customer):
 
 @when("Müşteri Hesabı sekmesindeki hesap listesi görüntülenir")
 def account_list_is_displayed(account_page):
-    # Given adımı zaten Müşteri Hesabı sekmesinde - bu adımda ek bir
-    # aksiyon gerekmiyor, sadece durum doğrulanıyor.
     pass
 
 
@@ -148,7 +131,7 @@ def an_account_has_been_deleted(disposable_customer):
 
 
 @when(
-    "kullanıcı aynı hesabı (artık silinmiş, stale bir referansla) tekrar silmeyi dener",
+    "kullanıcı aynı hesabı artık silinmiş, stale bir referansla tekrar silmeyi dener",
     target_fixture="duplicate_delete_result",
 )
 def user_attempts_duplicate_delete(stale_delete_context):

@@ -11,22 +11,8 @@ from utils import config
 
 scenarios("language_support.feature")
 
-# DİL BAŞLANGIÇ DURUMU: her test YENİ bir tarayıcı profiliyle başladığından
-# (conftest.py'deki driver fixture'ı) localStorage HER ZAMAN boş - dil
-# varsayılan olarak TR ile başlıyor (canlı doğrulandı, testler arası
-# kirlenme riski yok). authenticated_driver bu garantiyi değiştirmez:
-# yalnızca giriş yapar, profil yine testin kendi profilidir.
-
 
 def _get_testid_set(driver, attempts=5):
-    # Sayfa navigasyon/dil değişimi sonrası Angular bazı elemanları
-    # YENİDEN OLUŞTURABİLİYOR (özellikle ilk yüklemede) - find_elements ile
-    # toplanan referanslardan biri, set comprehension TAMAMLANMADAN
-    # ARADA stale kalabiliyor (canlı doğrulandı). billing_account_create_
-    # page.py'deki find_account_row_by_name() ile AYNI desen: sadece
-    # GEÇİCİ stale hatasında (gerçek bir "eksik/hatalı" sonuçtan YAPISAL
-    # OLARAK ayrı tutularak) tüm tarama sabit, küçük bir üst sınırla
-    # yeniden deneniyor.
     for _ in range(attempts):
         try:
             return {e.get_attribute("data-testid") for e in driver.find_elements(By.CSS_SELECTOR, "[data-testid]")}
@@ -57,7 +43,7 @@ def click_language_toggle(lang_page):
     lang_page.open_panel()
 
 
-@then("TR/EN seçenekleri içeren panel açılır")
+@then("TR, EN seçenekleri içeren panel açılır")
 def panel_with_tr_en_options_opens(lang_page):
     assert lang_page.is_panel_open()
     assert set(lang_page.get_option_codes()) == {"tr", "en"}
@@ -85,7 +71,7 @@ def select_en_option(lang_page):
     lang_page.select_language("en")
 
 
-@then("menü/buton/başlık gibi arayüz metinleri değişir (İngilizce'ye çevrilir)")
+@then("menü, buton, başlık gibi arayüz metinleri İngilizce'ye çevrilir")
 def ui_texts_change_after_language_switch(driver, lang_page):
     assert lang_page.get_current_language_code() == "EN"
     assert driver.find_element(By.CSS_SELECTOR, "[data-testid='page-title']").text.strip()
@@ -137,10 +123,6 @@ def user_logs_out_and_logs_back_in(driver):
 
 @then("arayüz EN olarak kalmaya devam eder, TR'ye dönmez")
 def ui_stays_english_after_relogin(lang_page):
-    # Canlı doğrulandı: dil tercihi localStorage tabanlı, oturum
-    # kapatma/açmadan BAĞIMSIZ olarak kalıcı - spesifikasyonun "TR'ye
-    # döner" varsayımı gerçek davranışla çelişiyordu, kullanıcı kararıyla
-    # gerçek/çalışan davranışı doğrulayacak şekilde uyarlandı.
     assert lang_page.get_current_language_code() == "EN"
 
 
@@ -165,11 +147,8 @@ def testid_values_remain_stable_across_languages(driver, testid_snapshot_context
     assert testids_before == testids_after
 
 
-@given('dil "EN"dir', target_fixture="validation_language_context")
+@given('dil "EN" dir', target_fixture="validation_language_context")
 def language_is_en_with_known_turkish_baseline(authenticated_driver):
-    # Karşılaştırmalı (dilden bağımsız) doğrulama için TR mesajı ÖNCE,
-    # EN'e geçmeden hemen önce yakalanıyor - "mesaj değişti mi" kontrolü
-    # literal bir dile (ne TR ne EN) bağımlı kalmadan yapılabiliyor.
     lang_page = LanguageSwitcherPage(authenticated_driver)
     turkish_message = _trigger_identity_number_validation_error(authenticated_driver)
     lang_page.open_panel()
@@ -177,7 +156,7 @@ def language_is_en_with_known_turkish_baseline(authenticated_driver):
     return turkish_message
 
 
-@when("bir doğrulama hatası tetiklenir (Kimlik No formatı)", target_fixture="validation_messages")
+@when("Kimlik No formatı için bir doğrulama hatası tetiklenir", target_fixture="validation_messages")
 def validation_error_is_triggered(driver, validation_language_context):
     turkish_message = validation_language_context
     english_message = _trigger_identity_number_validation_error(driver)
@@ -191,7 +170,7 @@ def message_differs_from_turkish_version(validation_messages):
     assert english_message != turkish_message
 
 
-@given('aktif dil "TR"dir', target_fixture="lang_page")
+@given('aktif dil "TR" dir', target_fixture="lang_page")
 def active_language_is_tr(authenticated_driver):
     return LanguageSwitcherPage(authenticated_driver)
 
@@ -201,7 +180,7 @@ def language_switcher_panel_displayed(lang_page):
     lang_page.open_panel()
 
 
-@then('panelde aktif dil ("TR") vurgulanmış olarak işaretlenir')
+@then('panelde aktif dil "TR" vurgulanmış olarak işaretlenir')
 def active_language_is_highlighted(lang_page):
     assert lang_page.is_language_highlighted_as_active("tr")
 

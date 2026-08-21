@@ -5,12 +5,6 @@ from pages.billing_account_create_page import BillingAccountCreatePage
 
 
 class BillingAccountUpdatePage(BillingAccountCreatePage):
-    # "Fatura Hesabını Düzenle" formu, "Fatura Hesabı Oluştur" formuyla
-    # BİREBİR AYNI bileşeni kullanıyor (canlı doğrulandı: aynı account-name/
-    # -description/address-card* locator'ları, tek fark Kaydet butonunun
-    # metni ve alanların önceden dolu gelmesi) - gerçek bir "is-a" ilişkisi
-    # olduğundan BillingAccountCreatePage'den türetildi (AddressUpdatePage/
-    # AddressAddPage zincirindeki AYNI mantık).
 
     ACCOUNT_ROW_EDIT = (By.CSS_SELECTOR, "[data-testid='account-row-edit']")
 
@@ -23,10 +17,6 @@ class BillingAccountUpdatePage(BillingAccountCreatePage):
         return None
 
     def is_edit_form_open(self):
-        # Temel sınıftaki is_create_form_open() ile AYNI DOM kontrolünü
-        # (account-name input varlığı) yapıyor - Create/Edit ayrımı sadece
-        # HANGİ butonla açıldığına bağlı, form bileşeni aynı olduğundan
-        # mantığı TEKRARLAMADAN sadece daha okunur bir isimle sarmalıyor.
         return self.is_create_form_open()
 
     def click_edit_on_row(self, name=None):
@@ -53,19 +43,12 @@ class BillingAccountUpdatePage(BillingAccountCreatePage):
         self._switch_to_first_unselected_address()
 
     def switch_to_alternate_address(self):
-        # Hesap Adı'na DOKUNMUYOR - sadece hizmet adresi değiştiriliyor
-        # (TC-011-04, isim değişikliğinden bağımsız olarak test ediyor).
         self._switch_to_first_unselected_address()
 
     def _switch_to_first_unselected_address(self):
         states = self.get_address_selection_states()
         target_index = states.index(False)
         self.select_service_address_by_index(target_index)
-        # click_edit_on_row() TEKRAR çağrıldığında (verify_new_address_
-        # persisted içinde, kalıcılığı doğrulamak için) _pre_edit_* alanları
-        # EZİLİYOR - bu yüzden "beklenen" değer AYRI bir isimde (_expected_
-        # service_address_title) saklanıyor, reopen sonrası karşılaştırma
-        # kendi kendiyle değil GERÇEK beklenenle yapılabilsin diye.
         self._expected_service_address_title = self.get_address_card_titles()[target_index]
 
     def click_save_and_wait_for_form_close(self):
@@ -79,10 +62,5 @@ class BillingAccountUpdatePage(BillingAccountCreatePage):
         return self.find_account_row_by_name(self._pre_edit_name) is not None
 
     def verify_new_address_persisted(self):
-        # Hizmet adresi satırda GÖRÜNTÜLENMİYOR (canlı doğrulandı, UC-010
-        # keşfinde) - bu yüzden kalıcılığı, formu TEKRAR açıp seçili
-        # adresin GERÇEKTEN yeni adres olduğunu kontrol ederek doğruluyoruz
-        # (address_add/address_delete'teki reload-tabanlı kalıcılık
-        # deseniyle AYNI mantık: gözlemlenebilir sonucu doğrula).
         self.click_edit_on_row(self._current_account_name)
         return self._get_selected_address_title() == self._expected_service_address_title

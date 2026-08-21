@@ -12,9 +12,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# BASE_URL geri uyumluluk için OLDUĞU GİBİ korunuyor - .env'de login
-# yolunu da içeriyor (http://localhost:4200/login) ve LoginPage.open()
-# ile test_login_steps.py bu davranışa bağlı.
 BASE_URL = os.getenv("BASE_URL", "http://localhost:4200/login")
 
 USERNAME = os.getenv("CRM_USERNAME", "demo")
@@ -26,12 +23,6 @@ def _origin_of(url):
     return f"{parts.scheme}://{parts.netloc}"
 
 
-# DAVRANIŞ NOTU (bilinçli, küçük bir değişiklik): eskiden origin, login
-# SONRASINDAKİ canlı `driver.current_url`den türetiliyordu. Bu, BASE_URL'in
-# login yolunu da içermesinin yan etkisiydi - tasarım tercihi değil. Artık
-# origin yapılandırmadan DETERMİNİSTİK olarak türetiliyor; uygulama testi
-# beklenmedik bir host'a yönlendirse dahi istekler yapılandırılan origin'e
-# gider. localhost:4200 kurulumunda iki yol da aynı sonucu verir.
 APP_ORIGIN = os.getenv("APP_ORIGIN") or _origin_of(BASE_URL)
 
 

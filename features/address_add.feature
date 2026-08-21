@@ -2,8 +2,8 @@ Feature: Yeni Müşteri Adresinin Eklenmesi
 
   Scenario: TC-EACRML-007-01 - Adres sekmesinde "Yeni Adres Ekle" ile mevcut müşteriye ek bir adres kaydedilmesi
     Given kullanıcı bir müşterinin Adres sekmesindedir
-    When kullanıcı "Yeni Adres Ekle" butonuna tıklayıp formu doldurup Save'e tıklar
-    Then sistem gerçek bir POST isteğiyle (…/addresses) yeni adresi kaydeder
+    When kullanıcı "Yeni Adres Ekle" butonuna tıklayıp formu doldurup Save butonuna tıklar
+    Then sistem gerçek bir POST isteğiyle yeni adresi addresses endpoint'ine kaydeder
 
   Scenario: TC-EACRML-007-02 - Eklenen yeni adresin mevcut adres(ler)i silmeden ayrı bir kart olarak listeye eklenmesi
     Given müşterinin zaten kayıtlı bir adresi vardır
@@ -24,7 +24,7 @@ Feature: Yeni Müşteri Adresinin Eklenmesi
 
   Scenario: TC-EACRML-007-04 - Bina/Daire No alanının alfanumerik değer kabul etmesi
     Given kullanıcı yeni adres formundadır
-    When Bina No alanına "12 D:4" gibi harf+rakam karışık bir değer girilir
+    When Bina No alanına "12 D:4" gibi harf ve rakam karışık bir değer girilir
     Then değer sorunsuz kabul edilir
 
   Scenario: TC-EACRML-007-05 - Adres ekleme formu iptal edilirse hiçbir adresin kaydedilmemesi

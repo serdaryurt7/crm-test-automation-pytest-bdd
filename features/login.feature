@@ -29,9 +29,6 @@ Feature: Login
       | demo     |             |
       |          | Password123 |
 
-  # Bu senaryo "admin-crm" hesabını GERÇEKTEN 15 dakika kilitler.
-  # pytest.ini'deki `-m "not lockout"` sayesinde varsayılan koşumdan
-  # hariç tutulur; bilinçli olarak çalıştırmak için: pytest -m lockout
   @lockout
   Scenario: 5 Başarısız Giriş Denemesi Sonrası Hesabın 15 Dakika Kilitlenmesi
     When kullanıcı art arda 5 kez hatalı bilgilerle giriş dener
@@ -127,4 +124,3 @@ Feature: Login
     When "demo" kullanıcı adı ve "Password123" şifresi ile giriş yapar
     And kullanıcı tarayıcıdan doğrudan login adresine gitmeyi dener
     Then kullanıcı login formu gösterilmeden Müşteri Arama ekranına yönlendirilir
-

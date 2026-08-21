@@ -9,7 +9,7 @@ Feature: Müşteri Adresinin Güncellenmesi
 
   Scenario: TC-EACRML-006-02 - Şehir/Sokak/Bina No alanları güncellenip kaydedildiğinde kartın yeni bilgilerle yenilenmesi
     Given kullanıcı adres düzenleme formundadır
-    When Sokak/Bina No alanları değiştirilip Kaydet'e tıklanır
+    When Sokak, Bina No alanları değiştirilip Kaydet'e tıklanır
     Then kart yeni bilgilerle güncellenir
 
   Scenario Outline: TC-EACRML-006-03 - Güncelleme formunda zorunlu alan boşaltıldığında Kaydet butonunun pasif kalması
@@ -38,13 +38,6 @@ Feature: Müşteri Adresinin Güncellenmesi
     When Açıklama alanına 3000 karakterlik bir metin girilir
     Then alan tanımlı karakter sınırını aşan girişi kabul etmez
 
-  # Canlı doğrulandı: address-street/address-building input'larının HTML
-  # maxlength özniteliği yok - 500 karakterlik bir değer (native
-  # value-setter ile) tam olarak kabul ediliyor. Bina No'nun ayrıca
-  # serbest biçimli (alfanümerik + özel karakter) olduğu TC-EACRML-007-04
-  # ile zaten doğrulanmış durumda. Dilden bağımsız: kontrol yapısal
-  # (girilen değerin uzunluğu), literal metin/mesaj karşılaştırmıyor - TR
-  # veya EN arayüzde aynı şekilde çalışır.
   Scenario Outline: TC-EACRML-006-09/006-10 - Sokak/Bina No Alanlarının Herhangi Bir Üst Karakter Sınırı Olmadan Uzun Metni Kabul Etmesi
     Given kullanıcı adres düzenleme formundadır
     When "<alan>" alanına 500 karakterlik bir metin girilir

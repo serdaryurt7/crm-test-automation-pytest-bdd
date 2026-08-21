@@ -7,13 +7,6 @@ from utils.waits import poll_until
 
 
 class BillingAccountProductsPage(BillingAccountDeletePage):
-    # Hesap satırı/listesi bileşeni "Fatura Hesabı Sil" ile AYNI sayfa/
-    # component - gerçek bir "is-a" ilişkisi olduğundan BillingAccount
-    # DeletePage'den türetildi (projedeki diğer hesap alt-sayfaları
-    # zincirindeki AYNI mantık). Canlı DOM incelemesiyle doğrulandı:
-    # "Hesap Ürünleri" paneli account-row-toggle ile AÇILAN bir şey
-    # DEĞİL, hesap oluşturulduğunda VARSAYILAN OLARAK ZATEN AÇIK
-    # (aria-expanded="true") - toggle'a tıklamak paneli KAPATIYOR.
 
     PRODUCT_ROW = (By.CSS_SELECTOR, "[data-testid='product-row']")
     PRODUCT_ROW_ID = (By.CSS_SELECTOR, "[data-testid='product-row-id']")
@@ -32,10 +25,6 @@ class BillingAccountProductsPage(BillingAccountDeletePage):
     PRODUCT_PREVIEW_CLOSE = (By.CSS_SELECTOR, "[data-testid='product-preview-close']")
 
     def get_products_panel_id(self):
-        # Her senaryo fresh, tek kullanımlık bir müşteri/hesapla
-        # çalıştığından (bu projedeki diğer *_delete.feature'larla
-        # tutarlı) her zaman TEK bir account-row/toggle var - global
-        # bir sorgu bu yüzden güvenli.
         toggle = self.wait.until(EC.visibility_of_element_located(self.ACCOUNT_ROW_TOGGLE))
         return toggle.get_attribute("aria-controls")
 
@@ -56,26 +45,11 @@ class BillingAccountProductsPage(BillingAccountDeletePage):
         return [row.find_element(*self.PRODUCT_ROW_NAME).text.strip() for row in self.get_product_rows(panel_id)]
 
     def wait_for_products_persisted_after_reload(self, customer_url, minimum_count=1):
-        # DÜZELTME (bugsbunny.txt madde 20 - flaky olarak yakalandı, izole
-        # koşumda 3 denemede 1 FAILED): sipariş gönderimi ile ürünün fatura
-        # hesabında GÖRÜNMESİ arasında asenkron bir gecikme var. Eski
-        # implementasyon müşteri detayına dönüp ürün satırlarını HEMEN
-        # sayıyordu; backend henüz yazmamışsa 0 görüyordu.
-        #
-        # Bu, TC-005-03 / TC-012-03 / TC-006-06b ile AYNI aile: "backend
-        # mutasyonu kabul ediliyor ama saniyeler sonra tamamlanıyor".
-        # Çözüm de aynı ve kanıtlanmış: reload'ı tekrarlayan seyrek bir
-        # yoklama döngüsü. Tek bir DOM beklemesi yetmez - veri ancak yeni
-        # bir sayfa yüklemesiyle geliyor.
         def _reload_account_tab():
             self.driver.get(customer_url)
             self.wait.until(EC.element_to_be_clickable(self.TAB_ACCOUNT)).click()
 
         def _products_visible():
-            # Global sorgu: her senaryo fresh, tek kullanımlık bir
-            # müşteri/hesapla çalıştığından TEK bir hesap var
-            # (get_products_panel_id'deki AYNI gerekçe). Panel, hesap
-            # oluşturulduğunda varsayılan olarak zaten açık.
             return len(self.driver.find_elements(*self.PRODUCT_ROW)) >= minimum_count
 
         return poll_until(condition=_products_visible, action=_reload_account_tab)
@@ -88,10 +62,6 @@ class BillingAccountProductsPage(BillingAccountDeletePage):
             return False
 
     def has_no_campaign_fields_displayed(self, panel_id, row_index=0):
-        # Kampanyasız bir üründe kampanya alanlarının dile bağlı bir
-        # literal ("—", "-", "N/A"...) yerine YAPISAL olarak "dolu ama
-        # ürün/kampanya adından FARKLI kısa bir yer tutucu" olduğu
-        # kontrol ediliyor - canlı doğrulandı: em-dash ("—") gösteriliyor.
         row = self.get_product_rows(panel_id)[row_index]
         campaign_name = row.find_element(*self.PRODUCT_ROW_CAMPAIGN_NAME).text.strip()
         campaign_id = row.find_element(*self.PRODUCT_ROW_CAMPAIGN_ID).text.strip()
@@ -112,8 +82,6 @@ class BillingAccountProductsPage(BillingAccountDeletePage):
         self.wait.until(EC.visibility_of_element_located(self.PRODUCT_PREVIEW))
 
     def is_preview_displayed_readonly_with_offer_fields(self):
-        # "Salt okunur" yapısal olarak doğrulanıyor: alanlar <dd>/<p>
-        # metin elemanları (input/textarea DEĞİL) ve hepsi dolu.
         preview = self.driver.find_element(*self.PRODUCT_PREVIEW)
         if preview.find_elements(By.CSS_SELECTOR, "input, textarea, select"):
             return False
@@ -137,9 +105,6 @@ class BillingAccountProductsPage(BillingAccountDeletePage):
         return deleted_product_name
 
     def is_delete_action_ineffective(self, panel_id, before_count, before_names):
-        # Delete ikonu tıklamasının HERHANGİ bir gözlemlenebilir etkisi
-        # olmadığı doğrulanıyor: onay penceresi YOK, satır sayısı/isim
-        # listesi DEĞİŞMEDİ - canlı doğrulandı (013-04, "işlevsiz" davranış).
         no_confirm_dialog = not self.is_confirm_dialog_present()
         same_count = self.get_product_row_count(panel_id) == before_count
         same_names = self.get_product_row_names(panel_id) == before_names

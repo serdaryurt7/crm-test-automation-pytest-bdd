@@ -32,9 +32,6 @@ def _reach_submission_screen(driver, offer_name=SIMPLE_OFFER):
 
 
 def _place_order_from_account_page(driver, offer_name=SIMPLE_OFFER):
-    # UC-014/UC-015'te kurulan AYNI akış - hesap sayfasından başlayıp
-    # tam bir sipariş tamamlıyor, benzersizlik gibi tekrarlı senaryolar
-    # (TC-016-08) için DRY bir yapı taşı.
     account_page = BillingAccountProductsPage(driver)
     account_page.click_new_sale_on_row()
     offer_page = OfferSelectionPage(driver)
@@ -79,12 +76,6 @@ def cart_has_single_offer_added_once(disposable_customer):
 
 @then("özet listesinde bu teklif TAM 1 KEZ, doğru toplam tutarla görüntülenmelidir")
 def offer_appears_exactly_once_with_correct_total(submission_context):
-    # Canlı doğrulandı (UC-014-08 keşfi + bu UC'de 2 ayrı tekrar): "Mobil
-    # 20GB Paket" TEK BİR kez sepete eklenip Sipariş Gönder ekranına
-    # ilerlendiğinde her seferinde doğru şekilde tek satır/199.90 TL
-    # görüntüleniyor - kullanıcının belgelediği "3 kez tekrarlanma" bug'ı
-    # bu ortamda 5 denemede de yeniden üretilemedi. Spesifikasyonun DOĞRU/
-    # beklenen davranışını assert ediyor - regresyon net'i.
     submission_page, _ = submission_context
     assert submission_page.get_summary_line_count() == 1
     assert submission_page.get_summary_total_value() == 199.90
@@ -146,14 +137,8 @@ def order_id_is_displayed(submission_page):
     assert submission_page.get_order_id()
 
 
-@when('"Gönder" isteği sırasında bir sunucu/ağ hatası simüle edilir')
+@when('"Gönder" isteği sırasında bir sunucu, ağ hatası simüle edilir')
 def simulate_server_error_during_submit(driver, submission_context):
-    # Uygulamanın gerçek bir 500 yanıtını taklit etmek yerine (CDP Fetch
-    # domain ile request interception bu proje için gereksiz bir karmaşıklık
-    # eklerdi - YAGNI), Chrome DevTools Protocol ile ağ bağlantısı GEÇİCİ
-    # olarak kesiliyor - canlı doğrulandı: uygulama bunu da bir gönderim
-    # hatası olarak ele alıyor ve "Sipariş gönderilemedi. Lütfen tekrar
-    # deneyin." mesajını gösteriyor (sales-submit-error testid'i).
     submission_page, _ = submission_context
     driver.execute_cdp_cmd("Network.enable", {})
     driver.execute_cdp_cmd(

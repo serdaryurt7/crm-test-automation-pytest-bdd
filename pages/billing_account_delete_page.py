@@ -11,10 +11,6 @@ from pages.billing_account_create_page import BillingAccountCreatePage
 
 
 class BillingAccountDeletePage(BillingAccountCreatePage):
-    # Hesap satırı/listesi bileşeni "Fatura Hesabı Oluştur" ile AYNI
-    # sayfa/component - gerçek bir "is-a" ilişkisi olduğundan
-    # BillingAccountCreatePage'den türetildi (AddressUpdatePage/
-    # AddressAddPage/AddressDeletePage zincirindeki AYNI mantık).
 
     ACCOUNT_ROW_DELETE = (By.CSS_SELECTOR, "[data-testid='account-row-delete']")
     NEW_SALE_BUTTON = (By.CSS_SELECTOR, "[data-testid='account-new-sale']")
@@ -25,15 +21,6 @@ class BillingAccountDeletePage(BillingAccountCreatePage):
     CONFIRM_DIALOG_CONFIRM = (By.CSS_SELECTOR, "[data-testid='confirm-dialog-confirm']")
 
     def click_new_sale_on_row(self):
-        # ÖNEMLİ (canlı DOM incelemesiyle doğrulandı): "Yeni Satış Başlat"
-        # butonu account-row <tr>'ının İÇİNDE DEĞİL, ayrı/genişletilmiş
-        # bir panel satırında render ediliyor (aria-controls="account-
-        # products-...") - satıra scope'lanmış bir find_element bu yüzden
-        # HİÇBİR ZAMAN bulamıyordu (satır referansı stale değildi, sadece
-        # yanlış DOM alt-ağacında aranıyordu). Bu metodun tek kullanıldığı
-        # senaryoda (TC-012-03) her zaman TEK bir hesap olduğundan global
-        # bir sorgu güvenli - `name` parametresi bu yüzden KALDIRILDI
-        # (YAGNI: hiçbir çağıran zaten kullanmıyordu).
         self.wait.until(EC.element_to_be_clickable(self.NEW_SALE_BUTTON)).click()
 
     def click_delete_on_row(self, name=None):
@@ -60,11 +47,6 @@ class BillingAccountDeletePage(BillingAccountCreatePage):
         return confirm_button
 
     def click_confirm_yes_expecting_block(self):
-        # Aktif ürünü olan bir hesap silinmeye çalışıldığında satır sayısı
-        # DEĞİŞMİYOR (canlı doğrulandı: sistem bir hata/uyarı mesajı
-        # gösterip işlemi reddediyor) - bu yüzden "azalma" beklemek yerine
-        # onay penceresinin KAPANMASINI (isteğin işlendiğinin işareti)
-        # bekliyoruz, ardından engelleme durumunu ayrıca doğruluyoruz.
         self.wait.until(EC.element_to_be_clickable(self.CONFIRM_DIALOG_CONFIRM)).click()
         self.wait.until(EC.invisibility_of_element_located(self.CONFIRM_DIALOG))
 
@@ -77,15 +59,6 @@ class BillingAccountDeletePage(BillingAccountCreatePage):
         return self.find_account_row_by_name(target) is None
 
     def wait_for_account_removal_persisted_after_reload(self, name=None):
-        # address_add/address_delete/billing_account_update'teki AYNI
-        # reload-tabanlı kalıcılık deseni: gerçek bir backend yazımının
-        # kanıtı olarak sayfa TAMAMEN yenilendikten SONRA da hesabın
-        # listede OLMADIĞI dinamik WebDriverWait polling ile doğrulanıyor.
-        # NOT: Bu, hesabın "Passive" durumuna mı yoksa fiziksel olarak mı
-        # silindiğini AYIRT ETMİYOR - uygulamada Passive hesapları
-        # görüntüleyecek ayrı bir liste/filtre YOK (canlı doğrulandı), bu
-        # yüzden UI'dan gözlemlenebilen tek gerçek "aktif listeden kalıcı
-        # olarak kaldırılmış olması".
         target = name or self._deleted_account_name
         detail_url = self.driver.current_url
 
@@ -101,10 +74,6 @@ class BillingAccountDeletePage(BillingAccountCreatePage):
             return False
 
     def attempt_duplicate_delete_with_stale_reference(self, stale_confirm_button):
-        # address_delete_page.py'deki AYNI desen: "aynı istek tekrar
-        # gönderilir" iddiasının UI-seviyesinde en gerçekçi karşılığı,
-        # artık DOM'dan kaldırılmış (stale) bir onay referansıyla TEKRAR
-        # tıklamayı denemek.
         try:
             stale_confirm_button.click()
             return False

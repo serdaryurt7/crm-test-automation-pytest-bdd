@@ -5,11 +5,6 @@ from pages.address_update_page import AddressUpdatePage
 
 
 class AddressAddPage(AddressUpdatePage):
-    # "Yeni Adres Ekle" formu, adres GÜNCELLEME formuyla AYNI DOM/alan
-    # setini kullanıyor (canlı doğrulandı) - bu yüzden locator'lar ve
-    # temel doldurma/kaydetme mekaniği AddressUpdatePage'den miras
-    # alınıyor, sadece bu Feature'a özgü (Ekle akışına özel) davranışlar
-    # burada eklidir.
 
     def fill_new_address_form(self, street, building_no, description, skip_field=None):
         if skip_field != "Şehir":
@@ -49,9 +44,6 @@ class AddressAddPage(AddressUpdatePage):
         )
 
     def is_new_card_last_and_well_formed(self):
-        # Canlı doğrulandı: yeni eklenen adres listenin SONUNA ekleniyor
-        # (mevcut kartların önüne değil) - bu yüzden "son kart" yeni
-        # eklenen kartla eşleştiriliyor.
         titles = self.get_all_card_titles()
         details = self.get_all_card_details()
         last_title = titles[-1]
@@ -66,15 +58,6 @@ class AddressAddPage(AddressUpdatePage):
         )
 
     def wait_for_new_address_persisted_after_reload(self):
-        # Adres Primary-güncelleme senaryosunda öğrenilen desenin devamı:
-        # yeni adresin GERÇEKTEN backend'e kaydedildiğini (sadece iyimser
-        # bir istemci-tarafı UI güncellemesi değil) sayfa yenilendikten
-        # SONRA da kartın hâlâ mevcut olup olmadığını kontrol ederek
-        # doğruluyoruz. Zone.js nedeniyle JS-seviyesi XHR/fetch
-        # interception bu projede güvenilmez olduğu için (bu oturumda
-        # defalarca doğrulandı), ağı doğrudan dinlemek yerine
-        # GÖZLEMLENEBİLİR SONUCU (kalıcılık) WebDriverWait'in dinamik
-        # polling mekanizmasıyla doğruluyoruz - sabit bir bekleme değil.
         detail_url = self.driver.current_url
         expected_street = self._new_street
         expected_building_no = self._new_building_no
@@ -98,13 +81,6 @@ class AddressAddPage(AddressUpdatePage):
         self.wait.until(EC.visibility_of_element_located(self.CITY_LIST))
 
     def is_city_dropdown_restricted_to_defined_provinces(self, expected_count=81):
-        # "Serbest metin girişine izin verilmez" yapısal olarak
-        # doğrulanıyor: Şehir kontrolü bir <button> (aria-controls ile
-        # bir listbox açıyor), <input type="text"> DEĞİL - yani serbest
-        # metin girişi için bir alan yapısal olarak hiç mevcut değil
-        # (canlı DOM incelemesiyle doğrulandı). 81 = Türkiye'nin sabit il
-        # sayısı; bu, uygulamanın değişebilir bir verisi değil, sabit bir
-        # coğrafi gerçek olduğu için burada statik kalması kasıtlı/doğru.
         options = self.driver.find_elements(*self.CITY_OPTIONS)
         city_button_tag = self.driver.find_element(*self.CITY_BUTTON).tag_name.lower()
         return len(options) == expected_count and city_button_tag == "button"

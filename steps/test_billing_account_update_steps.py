@@ -19,22 +19,13 @@ def user_clicks_edit(account_page):
     account_page.click_edit_on_row()
 
 
-@then('"Fatura Hesabını Düzenle" formu mevcut Hesap Adı/Açıklaması/Adres bilgileriyle önceden dolu açılır')
+@then('"Fatura Hesabını Düzenle" formu mevcut Hesap Adı, Açıklaması, Adres bilgileriyle önceden dolu açılır')
 def edit_form_prefilled(account_page):
     assert account_page.is_edit_form_prefilled_correctly()
 
 
 @given("kullanıcı hesap düzenleme formundadır", target_fixture="account_page")
 def user_on_edit_form(disposable_customer):
-    # ÖNEMLİ: 2. adres, hesap formunun KENDİ "Yeni Adres Ekle" alt-
-    # formuyla DEĞİL, Adres sekmesinin kendi (kalıcılığı kanıtlanmış)
-    # akışıyla ekleniyor - UC-EACRML-008-05 kurulumunda keşfedildi ki
-    # hesap formunun alt-formuyla eklenen adresler GERÇEK adres listesine
-    # kalıcı olarak yansımıyor.
-    #
-    # new_customer(extra_addresses=1) de KULLANILMIYOR: o, adresi
-    # create_customer SİHİRBAZI içinde ekler; bu senaryonun doğruladığı
-    # yol ise müşteri oluşturulduktan SONRA Adres sekmesinden eklemektir.
     AddressAddPage(disposable_customer).add_new_address_and_wait_for_card(
         *new_address_args(nb_words=3)
     )
@@ -44,7 +35,7 @@ def user_on_edit_form(disposable_customer):
     return page
 
 
-@when("Hesap Adı ve Adres alanları (geçerli değerlerle) güncellenip Kaydet'e tıklanır")
+@when("Hesap Adı ve Adres alanları geçerli değerlerle güncellenip Kaydet'e tıklanır")
 def user_updates_name_and_address_then_saves(account_page):
     new_name = f"Güncel Hesap {fake.random_number(digits=4, fix_len=True)}"
     account_page.update_name_and_switch_address(new_name)

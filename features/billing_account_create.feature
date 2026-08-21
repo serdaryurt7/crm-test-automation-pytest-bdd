@@ -2,8 +2,8 @@ Feature: Yeni Fatura Hesabı Oluşturma
 
   Scenario: TC-EACRML-010-01 - "Yeni Hesap Oluştur" ile Hesap Adı ve Adres girilip fatura hesabının oluşturulması
     Given kullanıcı bir müşterinin Müşteri Hesabı sekmesindedir
-    When kullanıcı "Yeni Hesap Oluştur" butonuna tıklayıp Hesap Adı ve Adres (hizmet adresi) alanlarını doldurup Oluştur'a tıklar
-    Then sistem fatura hesabını kalıcı olarak oluşturur (sayfa yenilense dahi listede görünür)
+    When kullanıcı "Yeni Hesap Oluştur" butonuna tıklayıp Hesap Adı ve Adres alanlarını doldurup Oluştur'a tıklar
+    Then sistem fatura hesabını kalıcı olarak oluşturur, sayfa yenilense dahi listede görünür
 
   Scenario: TC-EACRML-010-02 - İlk hesap oluşturulmadan önce boş durum mesajının görüntülenmesi
     Given müşterinin hiç kayıtlı fatura hesabı yoktur

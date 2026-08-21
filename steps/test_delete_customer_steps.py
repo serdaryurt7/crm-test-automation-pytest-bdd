@@ -14,13 +14,6 @@ scenarios("delete_customer.feature")
 
 @given("kullanıcı silinecek müşterinin Müşteri Bilgisi ekranındadır", target_fixture="delete_customer_page")
 def user_on_customer_to_delete_info_screen(disposable_customer):
-    # Silme (Evet ile onaylanan) GERİ DÖNÜŞÜ OLMAYAN bir mutasyon -
-    # canlı doğrulandı: müşteri sonrasında hem arama sonuçlarından hem
-    # de doğrudan URL erişiminden tamamen kayboluyor. Sabit bir müşteri
-    # ID'si kullanmak, suite'in İKİNCİ çalıştırmasında "müşteri zaten
-    # silinmiş, bulunamıyor" hatasıyla TÜM senaryoları bozardı - bu
-    # yüzden disposable_customer fixture'ı her senaryo için HER SEFERİNDE
-    # fresh bir müşteri oluşturuyor (bkz. steps/conftest.py).
     return DeleteCustomerPage(disposable_customer)
 
 
@@ -90,13 +83,6 @@ def deleted_customer_direct_url_shows_error(delete_customer_page):
     target_fixture="delete_customer_page",
 )
 def customer_has_active_product(delete_customer_page, driver):
-    # Background zaten boş/disposable bir müşteri oluşturup Müşteri Bilgisi
-    # ekranına yerleştirdi (delete_customer_page fixture'ı) - bu adım ONUN
-    # ÜZERİNE, billing_account_delete_page.py'deki TC-012-03 önkoşuluyla
-    # (account_has_active_product) AYNI minimal satın alma deseniyle bir
-    # fatura hesabı + gerçek aktif ürün ekliyor. Orchestration (birden
-    # fazla page object'in birlikte kullanımı) bilinçli olarak burada,
-    # step katmanında tutuluyor.
     customer_url = delete_customer_page._detail_url
 
     billing_page = BillingAccountDeletePage(driver)
@@ -105,9 +91,6 @@ def customer_has_active_product(delete_customer_page, driver):
     sales_page = SalesSetupPage(driver)
     sales_page.purchase_simple_offer()
 
-    # Sipariş tamamlandığında OTOMATİK olarak Müşteri Bilgisi ekranına
-    # dönülmüyor (başarı ekranında kalınıyor, bkz. order_submission.md
-    # TC-016-05) - müşteri detay URL'ine açıkça geri dönülüyor.
     driver.get(customer_url)
     WebDriverWait(driver, 10).until(
         EC.visibility_of_element_located((By.CSS_SELECTOR, "[data-testid='customer-detail-header']"))
@@ -117,20 +100,9 @@ def customer_has_active_product(delete_customer_page, driver):
 
 @given("kullanıcı arayüz dilini İngilizce olarak ayarlamıştır")
 def user_switches_language_to_english(delete_customer_page, driver):
-    # TEK senaryo, TR/EN'i AYNI ANDA destekler: aşağıdaki Then adımları
-    # literal Türkçe (veya İngilizce) metinle KARŞILAŞTIRMIYOR, yalnızca
-    # yapısal durumu (URL, "değişmedi mi") doğruluyor - bu yüzden akışın
-    # BİLEREK İngilizce arayüzde çalıştırılması, kontrolün gizliden
-    # Türkçe metne bağımlı OLMADIĞININ pratik kanıtı (bağımlı olsaydı bu
-    # çalıştırma kırılırdı). Aynı mekanizma varsayılan (TR) arayüzde de
-    # değişmeden geçerlidir.
     language_page = LanguageSwitcherPage(driver)
     language_page.open_panel()
     language_page.select_language("en")
-    # Silme denemesinden HEMEN ÖNCEKİ durumun (artık İngilizce arayüzde
-    # okunan) anlık görüntüsü alınıyor - "değişmedi mi" karşılaştırması bu
-    # referansa göre yapılacak (bkz. capture_status_snapshot dilden
-    # bağımsızlık gerekçesi, delete_customer_page.py).
     delete_customer_page.capture_status_snapshot()
 
 

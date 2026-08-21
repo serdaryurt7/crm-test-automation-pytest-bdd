@@ -58,7 +58,7 @@ Feature: Müşteri Bilgilerini Güncelleme
 
   Scenario: TC-EACRML-004-08 - Edit Formunda Ad Alanına Script Etiketi Girilmeye Çalışıldığında Zararlı Karakterlerin Alana Hiç Yazılamaması
     Given kullanıcı düzenleme formundadır
-    When Ad alanına "<script>alert(1)</script>" girilmeye çalışılıp kaydedilir
+    When Ad alanına script etiketi içeren bir değer girilmeye çalışılıp kaydedilir
     Then sistem yalnızca izin verilen karakterleri kabul eder, zararlı karakterler alana hiç yazılamaz
     And herhangi bir script çalıştırılmaz
 
@@ -72,11 +72,6 @@ Feature: Müşteri Bilgilerini Güncelleme
       | Ad    |
       | Soyad |
 
-  # NOT (canlı doğrulandı, TC-017-06 keşfinden): identityNumber-error
-  # mesajı dile göre TR'de "Kimlik numarası 11 haneli olmalı..." / EN'de
-  # "The identity number must be exactly 11 digits." oluyor - literal metin
-  # yerine ikisinde de ORTAK olan "11" rakamı doğrulanarak dilden bağımsız
-  # hale getirildi (search_customers.feature'daki AYNI desen).
   Scenario: TC-EACRML-004-10 - Nationality ID Alanına 10 Haneli (Bir Eksik) Değer Girildiğinde Doğrulama Hatasının Gösterilmesi
     Given kullanıcı düzenleme formundadır
     When Nationality ID alanı 10 haneli bir değerle değiştirilir

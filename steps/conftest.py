@@ -1,9 +1,5 @@
 """Tüm step modüllerinin paylaştığı fixture'lar.
-
-pytest-bdd, step tanımlarını ve fixture'ları normal pytest kurallarıyla
-çözer - `steps/` altındaki bu conftest her feature'a otomatik görünür.
-Buradan önce projede hiç paylaşılan fixture yoktu: 16 step dosyası aynı
-login bloğunu satır satır kopyalamıştı.
+ `steps/` altındaki bu conftest her feature'a otomatik görünür.
 """
 import pytest
 
@@ -28,33 +24,14 @@ def authenticated_driver(driver, base_url, credentials):
     login_page = LoginPage(driver)
     login_page.open(base_url)
     login_page.login(*credentials)
-    # Giriş isteğinin gerçekten tamamlanıp yönlendirmenin oluşmasını
-    # bekler - eskiden her dosyada elle kurulan WebDriverWait(driver, 10)
-    # ile aynı zaman aşımı (BasePage.DEFAULT_TIMEOUT).
     login_page.wait_for_url_contains("/customers")
     return driver
 
 
 @pytest.fixture
 def new_customer(authenticated_driver):
-    """Çağrıldıkça YENİ bir tek kullanımlık müşteri oluşturan fabrika.
-
-    Fabrika (düz fixture değil) olmasının sebebi: bazı senaryolar AYNI
-    test içinde İKİNCİ bir müşteriye ihtiyaç duyuyor (email/Nationality ID
-    çakışması gibi "başka bir müşteride zaten kayıtlı" durumları). Bir
-    fixture yalnızca bir kez değer üretebilir, çağrılabilir olması şart.
-
-    "İkinci müşteri için TEKRAR login YAPMA" kuralı burada elle
-    korunmuyor - `authenticated_driver` test başına bir kez çözüldüğü için
-    pytest'in fixture önbelleğinden BEDAVA geliyor. (Zaten oturum açıkken
-    /login'e tekrar gitmek, uygulamanın auth guard'ı yüzünden anında
-    /customers'a yönlendirip login formunun hiç görünmemesine ve zaman
-    aşımına yol açıyordu.)
-
-    Returns:
-        Oluşturulan müşterinin demografik bilgileri:
-        (ad, soyad, doğum tarihi, kimlik no).
-    """
+    """Yeni bir müşteri oluşturur ve Müşteri Bilgisi ekranını açar."""
+    
     def _create(gender="Erkek", extra_addresses=0):
         authenticated_driver.get(config.url("/customers/new"))
         create_page = CreateCustomerPage(authenticated_driver)
@@ -81,10 +58,7 @@ def disposable_customer(authenticated_driver, new_customer):
     """Tek müşteri gerektiren senaryolar için kısayol.
 
     Müşteri oluşturulmuş ve Müşteri Bilgisi ekranı açılmış hâlde sürücüyü
-    döndürür; step yalnızca kendi sayfa nesnesini kurar. Mutasyon içeren
-    senaryoların birbirinden tam bağımsız olması için müşteri HER SENARYO
-    başına yeniden oluşturulur (fonksiyon kapsamı bilinçlidir - modül
-    kapsamına almak süreyi düşürürdü ama senaryo izolasyonunu kırardı).
+    döndürür)
     """
     new_customer()
     return authenticated_driver

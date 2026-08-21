@@ -3,11 +3,11 @@ Feature: Fatura Hesabı Güncelleme
   Scenario: TC-EACRML-011-01 - Hesap satırındaki Edit seçeneğiyle "Fatura Hesabını Düzenle" formunun mevcut bilgilerle açılması
     Given kullanıcı Müşteri Hesabı sekmesinde bir hesap satırı görüntülemektedir
     When kullanıcı Edit butonuna tıklar
-    Then "Fatura Hesabını Düzenle" formu mevcut Hesap Adı/Açıklaması/Adres bilgileriyle önceden dolu açılır
+    Then "Fatura Hesabını Düzenle" formu mevcut Hesap Adı, Açıklaması, Adres bilgileriyle önceden dolu açılır
 
   Scenario: TC-EACRML-011-02 - Hesap Adı ve Adres güncellenip kaydedildiğinde listedeki satırın yeni bilgilerle yenilenmesi
     Given kullanıcı hesap düzenleme formundadır
-    When Hesap Adı ve Adres alanları (geçerli değerlerle) güncellenip Kaydet'e tıklanır
+    When Hesap Adı ve Adres alanları geçerli değerlerle güncellenip Kaydet'e tıklanır
     Then satır listede yeni bilgiyle yenilenir
 
   Scenario: TC-EACRML-011-03 - Güncelleme formunda Hesap Adı boşaltıldığında güncellemenin engellenmesi

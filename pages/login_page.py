@@ -48,21 +48,6 @@ class LoginPage(BasePage):
 
     def click_login_button(self):
         button = self.wait.until(EC.element_to_be_clickable(self.LOGIN_BUTTON))
-        # Giriş isteği sırasındaki pasif (disabled) durum ÇOK KISA sürüyor
-        # (canlı ölçüldü: tıklamadan ~60ms sonra disabled oluyor, ~200ms'de
-        # zaten tekrar enabled'a dönüyor, ~300-500ms'de sayfa /customers'a
-        # yönleniyor) - bu pencere, WebDriverWait'in varsayılan 0.5sn'lik
-        # polling aralığından DAHA DAR, yani DIŞARIDAN periyodik biçimde
-        # (ne kadar sık olursa olsun) yoklamaya (polling) dayalı HER ÇÖZÜM
-        # bu geçişi şansa bağlı olarak kaçırabilir. Bunun yerine tarayıcının
-        # KENDİ DOM mutasyon gözlemcisi (MutationObserver) tıklamadan HEMEN
-        # ÖNCE butona bağlanıp durum değişikliğini POLLING YAPMADAN,
-        # mutasyon anında JS motorunun kendisi tarafından yakalıyor - tam
-        # olay-tabanlı (event-driven), hiçbir dış zamanlama varsayımına
-        # dayanmayan bir çözüm. Angular router'ın client-side (sayfa
-        # yenilemesiz) navigasyonu sayesinde window nesnesi /customers'a
-        # geçildikten SONRA da yaşamaya devam ediyor, bu yüzden sonuç
-        # navigasyon sonrasında da güvenle okunabiliyor (canlı doğrulandı).
         self.driver.execute_script(
             """
             const btn = arguments[0];
@@ -92,9 +77,6 @@ class LoginPage(BasePage):
         return self.driver.find_element(*self.PASSWORD_INPUT).get_attribute("type")
 
     def toggle_password_visibility(self):
-        # Not: normal .click() bu buton icin calismiyor (buton, input alaninin
-        # uzerine mutlak konumlandirilmis, Selenium'un hesapladigi tiklama
-        # noktasi input'a denk geliyor olabilir) - JS click guvenilir calisiyor.
         toggle_button = self.wait.until(EC.presence_of_element_located(self.PASSWORD_TOGGLE))
         self.driver.execute_script("arguments[0].click();", toggle_button)
 
@@ -110,9 +92,6 @@ class LoginPage(BasePage):
         return self.driver.find_element(*self.PASSWORD_INPUT).get_attribute("value")
 
     def has_unexpected_alert(self):
-        # <script> gibi payload'lar innerHTML uzerinden asla calismaz (tarayici
-        # standardi), bu yuzden native alert kontrolu tek basina yeterli degil -
-        # is_last_submitted_value_reflected_unescaped ile birlikte kullanilmali.
         try:
             alert = self.driver.switch_to.alert
             alert.accept()
@@ -124,9 +103,6 @@ class LoginPage(BasePage):
         return bool(self.driver.find_elements(*self.USERNAME_INPUT))
 
     def is_last_submitted_value_reflected_unescaped(self):
-        # Genel "<script>" arama Angular'in kendi bundle <script> etiketlerine
-        # (main.js, runtime.js vb.) her zaman eslesip yanlis-pozitif uretir -
-        # bunun yerine SADECE az once gonderilen degerin kendisini ariyoruz.
         page = self.driver.page_source
         for value in (self._last_username, self._last_password):
             if value and value in page:

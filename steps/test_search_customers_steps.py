@@ -282,7 +282,7 @@ def results_range_matches_row_count(customers_page):
     assert customers_page.is_results_range_consistent_with_row_count()
 
 
-@given("sonuç listesi varsayılan (Customer ID artan) sırada görüntülenmektedir")
+@given("sonuç listesi varsayılan Customer ID artan sırada görüntülenmektedir")
 def default_sort_state_before_column_sort(customers_page):
     assert customers_page.is_customer_id_column_sorted_ascending()
 
@@ -294,7 +294,7 @@ def click_sort_column_first_time(customers_page, column):
     customers_page.click_sort_column(column)
 
 
-@then(parsers.parse('sonuç listesi "{column}" sütununa göre yeniden sıralanır (varsayılan sıradan farklı)'))
+@then(parsers.parse('sonuç listesi "{column}" sütununa göre varsayılan sıradan farklı şekilde yeniden sıralanır'))
 def verify_sort_changed_from_default(customers_page, column):
     customers_page.wait_for_sort_column_values_to_change(column, customers_page._sort_values_before_click)
     customers_page._sort_values_after_first_click = customers_page.capture_sort_column_values(column)
@@ -305,7 +305,7 @@ def click_sort_column_second_time(customers_page, column):
     customers_page.click_sort_column(column)
 
 
-@then("sıralama yönü değişir (ilk tıklamadaki sıradan farklı bir sıraya geçilir)")
+@then("sıralama yönü değişir, ilk tıklamadaki sıradan farklı bir sıraya geçilir")
 def verify_sort_order_changes_again(customers_page):
     column = customers_page._sort_column_label
     customers_page.wait_for_sort_column_values_to_change(column, customers_page._sort_values_after_first_click)

@@ -1,0 +1,1594 @@
+==============================================================================
+  PROJE YORUM SATIRLARI ARSIVI
+==============================================================================
+
+  Bu dosya OTOMATIK URETILDI ve bir ARSIVDIR.
+
+  features/, pages/, steps/ ve utils/ altindaki yorum satirlari kaynak
+  dosyalardan KALDIRILDI; o yorumlarin TEK kopyasi artik burasidir.
+  Satir numaralari, yorumlarin kaldirilmadan ONCEKI konumlarini gosterir.
+
+  conftest.py, pytest.ini, requirements.txt ve .github/workflows altindaki
+  yorumlar kaynak dosyalarda DURUYOR; buraya yalnizca kopyalandilar.
+
+  Dosya sayisi   : 55
+  Yorum satiri   : 1379
+
+  Bicim: <kaynak satir no> | <yorum metni>
+
+==============================================================================
+  conftest.py
+==============================================================================
+
+--- conftest.py  (15 yorum satiri)
+
+   67 | # maximize_window() OS pencere yoneticisine bagli oldugundan
+   68 | # deterministik degil - buyuk, sabit bir viewport garantilemek icin
+   69 | # set_window_size guvenlik agi olarak ekleniyor.
+   71 | # implicitly_wait BILEREK KALDIRILDI: tum sayfa objeleri zaten kendi
+   72 | # WebDriverWait (explicit wait) instance'larini kullaniyor, implicit +
+   73 | # explicit wait'i birlikte kullanmak resmi Selenium dokumantasyonunda
+   74 | # da uyarilan bilinen bir anti-pattern. Canli olarak dogrulandi -
+   75 | # implicitly_wait(10) aktifken EC.invisibility_of_element_located
+   76 | # cagrilari (ornegin yeni combobox/listbox etkilesimlerinde) 20+
+   77 | # saniyeye uzuyor VE formun Angular gecerlilik durumunu bozarak
+   78 | # "Next"/"Create" butonlarinin tum alanlar dolu olsa dahi pasif
+   79 | # kalmasina yol aciyordu.
+   97 | # Tek kaynak: utils/config.py. Eski "https://example.com" varsayilani
+   98 | # yalnizca .env yokken devreye giriyordu ve calisan bir hedef degildi -
+   99 | # artik varsayilan da gercek yerel adres.
+
+==============================================================================
+  pytest.ini
+==============================================================================
+
+--- pytest.ini  (7 yorum satiri)
+
+    9 | # --strict-markers : yazim hatali/tanimsiz bir marker sessizce yok sayilmak
+   10 | #                    yerine HATA verir. Bir marker'in yanlis yazilmasi,
+   11 | #                    "-m not lockout" gibi filtrelerin sessizce etkisiz
+   12 | #                    kalmasina yol acar - bu projede tam olarak bu yasandi.
+   13 | # -ra              : sonda kasitli kirmizi/flaky ozetini gorunur kilar.
+   14 | # --tb=short       : uzun Selenium yigin izlerini kisaltir; asil assert
+   15 | #                    satiri kaybolmaz.
+
+==============================================================================
+  requirements.txt
+==============================================================================
+
+--- requirements.txt  (5 yorum satiri)
+
+    1 | # Sürümler, testlerin yeşil olduğu doğrulanmış kurulumdan sabitlendi
+    2 | # (2026-08-16, Python 3.12.10). Sabitleme olmadan bir bağımlılığın yeni
+    3 | # sürümü, kodda hiçbir değişiklik olmadan suite'i kırabilir - ve bu,
+    4 | # gerçek bir uygulama hatasından ayırt edilmesi en zor başarısızlık
+    5 | # türüdür.
+
+==============================================================================
+  .github/workflows
+==============================================================================
+
+--- .github/workflows/ci.yml  (26 yorum satiri)
+
+    3 | # TASARIM NOTU
+    4 | # ------------
+    5 | # UI suite'i GitHub'ın barındırdığı runner'da ÇALIŞTIRILAMAZ: testler
+    6 | # localhost:4200 (frontend), :8080 (gateway), :8180 (Keycloak) üzerinde
+    7 | # ayakta bir uygulama yığını gerektiriyor ve bu yığın bu repoda yok.
+    8 | # Her PR'da UI suite'i koşturmaya çalışan bir job KALICI OLARAK KIRMIZI
+    9 | # olurdu - bu, CI'ı olmamasından daha kötüdür, çünkü ekibi kırmızıyı
+   10 | # yok saymaya alıştırır.
+   11 | #
+   12 | # Bu yüzden iki job var:
+   13 | #   1) static    - uygulama GEREKTİRMEZ, her PR'da çalışır, bugün yeşil.
+   14 | #   2) ui-tests  - yalnızca ELLE tetiklenir, uygulamaya erişebilen bir
+   15 | #                  runner ister (self-hosted ya da app'in deploy edildiği
+   16 | #                  bir ortam).
+   53 | # pytest-bdd step'leri KOŞUM anında çözer; --collect-only eksik bir
+   54 | # step tanımını YAKALAMAZ (canlı doğrulandı: sahte bir Given ekleyip
+   55 | # denendi, collect exit 0 verdi). --generate-missing bunu yakalar ama
+   56 | # kendisi de exit 0 döndüğü için çıktıyı burada denetliyoruz.
+   67 | # Sözdizimi hatalarını, import hatalarını ve feature <-> step modülü
+   68 | # bağlantısını doğrular.
+  111 | # Testleri 55 dakika boyunca boşuna koşturmak yerine erkenden ve
+  112 | # ANLAŞILIR bir mesajla düşmek için. Faz 0'da canlı yaşandı:
+  113 | # gateway /actuator/health UP dönerken bff-service devre kesici
+  114 | # fallback'i veriyordu ve 5 senaryo bu yüzden başarısız oluyordu.
+  140 | # pytest.ini zaten -m "not lockout" uyguluyor (o senaryo bir hesabi
+  141 | # gercekten 15 dakika kilitliyor).
+
+==============================================================================
+  pages
+==============================================================================
+
+--- pages/address_add_page.py  (24 yorum satiri)
+
+    8 | # "Yeni Adres Ekle" formu, adres GÜNCELLEME formuyla AYNI DOM/alan
+    9 | # setini kullanıyor (canlı doğrulandı) - bu yüzden locator'lar ve
+   10 | # temel doldurma/kaydetme mekaniği AddressUpdatePage'den miras
+   11 | # alınıyor, sadece bu Feature'a özgü (Ekle akışına özel) davranışlar
+   12 | # burada eklidir.
+   52 | # Canlı doğrulandı: yeni eklenen adres listenin SONUNA ekleniyor
+   53 | # (mevcut kartların önüne değil) - bu yüzden "son kart" yeni
+   54 | # eklenen kartla eşleştiriliyor.
+   69 | # Adres Primary-güncelleme senaryosunda öğrenilen desenin devamı:
+   70 | # yeni adresin GERÇEKTEN backend'e kaydedildiğini (sadece iyimser
+   71 | # bir istemci-tarafı UI güncellemesi değil) sayfa yenilendikten
+   72 | # SONRA da kartın hâlâ mevcut olup olmadığını kontrol ederek
+   73 | # doğruluyoruz. Zone.js nedeniyle JS-seviyesi XHR/fetch
+   74 | # interception bu projede güvenilmez olduğu için (bu oturumda
+   75 | # defalarca doğrulandı), ağı doğrudan dinlemek yerine
+   76 | # GÖZLEMLENEBİLİR SONUCU (kalıcılık) WebDriverWait'in dinamik
+   77 | # polling mekanizmasıyla doğruluyoruz - sabit bir bekleme değil.
+  101 | # "Serbest metin girişine izin verilmez" yapısal olarak
+  102 | # doğrulanıyor: Şehir kontrolü bir <button> (aria-controls ile
+  103 | # bir listbox açıyor), <input type="text"> DEĞİL - yani serbest
+  104 | # metin girişi için bir alan yapısal olarak hiç mevcut değil
+  105 | # (canlı DOM incelemesiyle doğrulandı). 81 = Türkiye'nin sabit il
+  106 | # sayısı; bu, uygulamanın değişebilir bir verisi değil, sabit bir
+  107 | # coğrafi gerçek olduğu için burada statik kalması kasıtlı/doğru.
+
+--- pages/address_delete_page.py  (35 yorum satiri)
+
+   14 | # AddressAddPage(AddressUpdatePage) zincirinden miras alınıyor: silme
+   15 | # senaryolarının kurulumu (ör. "müşterinin birden fazla adresi vardır")
+   16 | # AddressAddPage'in add_new_address_and_wait_for_card/get_primary_states
+   17 | # metotlarına doğrudan ihtiyaç duyuyor - bu yüzden burada tekrar
+   18 | # yazılmıyor.
+   28 | # Kart menüsü açıldığında Edit/Delete seçenekleri tek bir ortak
+   29 | # portal/overlay içinde render ediliyor (canlı doğrulandı - HANGİ
+   30 | # kartın menüsü açılırsa açılsın DOM'da her zaman TEK bir Delete
+   31 | # seçeneği bulunuyor). Sabit bir index yerine, seçeneğin GERÇEKTEN
+   32 | # DOM'a render edilip tıklanabilir hale gelmesini WebDriverWait'in
+   33 | # dinamik polling'iyle bekleyip elementi bu şekilde alıyoruz.
+   41 | # Menü zaten açık (is_delete_option_disabled tarafından). Disabled
+   42 | # bir butona tıklama denemesi tarayıcıya/Selenium sürümüne göre
+   43 | # farklı exception türleri fırlatabiliyor - amaç sadece HİÇBİR
+   44 | # silme gerçekleşmediğini doğrulamak olduğundan geniş yakalanıyor.
+   65 | # Canlı doğrulandı (address_add.feature): yeni eklenen kart
+   66 | # listenin SONUNA ekleniyor - bu yüzden "kullanıcı Sil'i seçer"
+   67 | # adımında somut hedef olarak SON kart kullanılıyor.
+   76 | # Canlı doğrulandı: Primary olarak işaretli adres silindiğinde,
+   77 | # kalan TEK adres OTOMATİK olarak Primary'e dönüşüyor (hiçbir
+   78 | # adresin Primary olmadığı bir durum OLUŞMUYOR).
+   82 | # address_add_page.wait_for_new_address_persisted_after_reload'un
+   83 | # SİLME yönündeki karşılığı: silinen kartın sayfa TAMAMEN
+   84 | # yenilendikten SONRA da GERÇEKTEN listede OLMADIĞINI, dinamik
+   85 | # WebDriverWait polling ile doğruluyor (sabit bekleme yok).
+  101 | # "Aynı istek tekrar gönderilir" iddiasının UI-seviyesinde en
+  102 | # gerçekçi karşılığı: artık DOM'dan kaldırılmış (stale) bir Delete
+  103 | # referansıyla TEKRAR tıklamayı denemek - ikinci/mükerrer bir silme
+  104 | # denemesini simüle ediyor. Canlı doğrulandı: bu StaleElement
+  105 | # ReferenceException ile GÜVENLİ şekilde reddediliyor. True =
+  106 | # ikinci deneme güvenli şekilde reddedildi, False = ikinci tıklama
+  107 | # beklenmedik şekilde "başarılı" göründü (şüpheli/incelenmeli).
+  115 | # Uygulamanın gerçekten çökmediğini (crash) ayırt etmek için:
+  116 | # sayfa hâlâ DOM'a sahip mi VE adres sekmesi hâlâ normal
+  117 | # çalışıyor mu (en az 1 kart görüntüleniyor mu) kontrol ediliyor.
+
+--- pages/address_update_page.py  (68 yorum satiri)
+
+   29 | # Metin tabanlı zorunlu alanlar - Şehir bir combobox (dropdown) olduğu
+   30 | # için her zaman bir değere sahip olmak zorunda, "boşaltma" kavramı
+   31 | # metin input'ları için geçerli (canlı doğrulandı).
+  106 | # "Şehir, Sokak, No" formatı + açıklamanın eksiksiz görüntülenmesini
+  107 | # dil/içerikten bağımsız, YAPISAL olarak doğruluyor: başlıkta TAM
+  108 | # OLARAK 2 virgül (3 parça: şehir/sokak/no) olmalı, açıklama boş
+  109 | # olmamalı.
+  123 | # Klavye ile binlerce karakter yazmak çok yavaş olacağından, native
+  124 | # value setter + input event ile JS üzerinden yazılıyor (gerçek
+  125 | # kullanıcı deneyimini DOM/Angular seviyesinde birebir simüle
+  126 | # ediyor - session boyunca doğrulanmış bir teknik).
+  139 | # attempt_to_type_long_description() ile AYNI JS native value-setter
+  140 | # tekniği (klavye ile binlerce karakter yazmak yerine performans
+  141 | # için) - ama STREET_INPUT/BUILDING_INPUT birer <input>
+  142 | # (DESCRIPTION_INPUT'un <textarea> olmasının aksine), bu yüzden
+  143 | # HTMLInputElement prototype kullanılıyor
+  144 | # (billing_account_create_page.py'deki type_long_account_name() ile
+  145 | # AYNI desen). REQUIRED_TEXT_FIELD_LOCATORS dict'i yeniden
+  146 | # kullanılıyor - Sokak/Bina No/Açıklama etiketleri zaten orada
+  147 | # tanımlı (DRY, TC-EACRML-006-03 ile AYNI dinamik eşleme).
+  166 | # before_count'a göre ARTIŞ bekleniyor (sabit ">= 2" değil) -
+  167 | # ikinciden fazla adres eklenen senaryolarda (ör. 3. adres) sabit
+  168 | # ">= 2" koşulu, gerçek ekleme gerçekleşmeden ÖNCE bile zaten
+  169 | # doğru dönüp sahte-PASS'e yol açabilirdi.
+  184 | # Radio görsel olarak gizli (sr-only), yalnızca CSS ile stilize
+  185 | # edilmiş bir gösterge görünür - native .click() elementin
+  186 | # kendisine ulaşamıyor (ElementClickIntercepted, canlı doğrulandı),
+  187 | # bu yüzden JS click kullanılıyor.
+  192 | # DÜZELTME (bugsbunny.txt madde 18 - TC-006-06b flaky'sinin GERÇEK
+  193 | # kök nedeni, Performance API ile canlı ÖLÇÜLDÜ):
+  194 | #   tıklama            -> +0.00sn
+  195 | #   DOM radio checked  -> +0.04sn   (yukarıdaki bekleme burada biter)
+  196 | #   PATCH /v1/addresses/{id} tamamlandı -> +0.33sn
+  197 | # Yani metot, istek daha UÇUŞTAYKEN dönüyordu. Çağıran taraf hemen
+  198 | # driver.get() yapınca navigasyon isteği İPTAL ediyor ve değişiklik
+  199 | # hiç kaydedilmiyordu - reload'ları ne kadar tekrarlarsak
+  200 | # tekrarlayalım durum asla düzelmiyordu (izole koşumda 2/3 FAILED).
+  201 | #
+  202 | # DOM'da radio'nun "checked" olması İSTEMCİ TARAFI bir durumdur ve
+  203 | # sunucuya yazıldığı anlamına GELMEZ. Bu yüzden istek gerçekten
+  204 | # tamamlanana kadar bekleniyor - sabit bir süre değil, olayın
+  205 | # kendisi yoklanıyor (responseEnd, iptal edilen isteklerde 0 kalır).
+  214 | # Canlı doğrulandı: Primary değişikliği backend'e ANINDA değil,
+  215 | # ASENKRON/gecikmeli persist ediliyor - tıklamadan hemen sonra
+  216 | # yapılan bir reload'da HÂLÂ eski durum görünüyor, birkaç saniye
+  217 | # sonraki bir reload'da ise doğru/beklenen durum görünüyor. Bu,
+  218 | # sabit bir time.sleep ile "tahmin edilen" bir süre beklemek
+  219 | # yerine, eylemi (reload) tekrarlayan bir yoklama döngüsüyle durum
+  220 | # GERÇEKTEN beklenen hale gelene kadar bekleniyor - hem gecikmeli
+  221 | # persist'i adil şekilde tolere ediyor hem de GERÇEKTEN hiç
+  222 | # kaydedilmiyorsa (gerçek bug) denemeler tükenince FAIL veriyor.
+  223 | #
+  224 | # DÜZELTME (bugsbunny.txt madde 18 - tam suite koşumunda flaky
+  225 | # olarak yakalandı): eski implementasyon reload'ı WebDriverWait
+  226 | # predicate'inin İÇİNDE yapıyordu, yani ~0.5sn'lik polling
+  227 | # aralığıyla SIKI/hızlı ardışık reload. Bu tam olarak
+  228 | # delete_customer_page.py'de canlı yakalanıp terk edilen desen:
+  229 | # hızlı ardışık reload'lar uygulamanın token-yenileme mantığını
+  230 | # zorluyor ve asenkron persist'e yeterli zaman TANIMIYOR. Çözüm
+  231 | # orada kanıtlanmış olanla aynı: poll_until ile BİLEREK DAHA
+  232 | # SEYREK (varsayılan 2sn arayla, en fazla 6 deneme) yoklamak.
+  246 | # Durum döndürülüyor, iddia step katmanında (bkz. §4.2b) - eşleşme
+  247 | # olmasa dahi SON okunan durum döner, böylece hata mesajı gerçekte
+  248 | # ne görüldüğünü gösterir.
+  253 | # "Değiştirilemez" iddiası teknik bir disabled özniteliği DEĞİL,
+  254 | # mantıksal bir sonuç (canlı doğrulandı: radio disabled değil) -
+  255 | # değiştirilecek İKİNCİ bir adres/radio hiç yok, bu yüzden tek
+  256 | # mevcut seçenek zaten Primary olmak ZORUNDA.
+
+--- pages/base_page.py  (19 yorum satiri)
+
+    9 | # Zaman aşımı artık TEK yerden yönetiliyor. Yavaş bir CI ortamında
+   10 | # DEFAULT_TIMEOUT ortam değişkenini yükseltmek, 13 sayfa dosyasına
+   11 | # dokunmadan tüm beklemeleri etkiler.
+   15 | # StaleElementReferenceException, Angular gibi DOM'u sürekli yeniden çizen
+   16 | # framework'lerde en yaygın flaky kaynağıdır: WebDriverWait bir elemanı
+   17 | # bulur, aradan Angular'ın change detection'ı geçer, eleman DOM'dan
+   18 | # koparılıp yenisiyle değiştirilir ve sonraki erişim patlar.
+   19 | #
+   20 | # Bu koruma daha önce SADECE create_customer_page ve search_customers_page
+   21 | # içinde vardı; diğer 11 sayfada yoktu. offer_selection_page'deki
+   22 | # TC-014-12 flaky'sinin kök nedeni tam olarak buydu. Korumayı tek tek
+   23 | # sayfalara eklemek yerine ortak ataya koymak, yeni eklenen bir sayfada
+   24 | # UNUTULMASINI imkansız kılıyor.
+   71 | # Asenkron backend işlemleri (ör. silme isteğinin arka planda
+   72 | # tamamlanması) için; kısa bekleme yetersiz kaldığında kullanılır.
+  144 | # Tetikleyicinin görünür olması BEKLENİYOR: bazı çağrı yerlerinde
+  145 | # (create_customer'ın adres adımı) alan, "Yeni Adres Ekle"den hemen
+  146 | # sonra henüz çizilmemiş olabiliyor. Zaten görünür bir elemanda bu
+  147 | # bekleme no-op'tur, yani diğer çağrı yerlerinin davranışı değişmez.
+
+--- pages/billing_account_create_page.py  (60 yorum satiri)
+
+   17 | # "Fatura Hesabı Oluştur" formu (panel-heading canlı doğrulandı), Adres
+   18 | # sekmesindeki adres ekleme formuyla AYNI alt-bileşeni ("Yeni Adres
+   19 | # Ekle") gömülü olarak kullanıyor - bu yüzden NEW_ADDRESS_* locator'ları
+   20 | # pages/address_add_page.py'deki karşılıklarıyla BİREBİR aynı CSS
+   21 | # değerlerine sahip (kasıtlı küçük bir tekrar - bu sayfa kavramsal
+   22 | # olarak bir "adres sayfası" DEĞİL, inheritance burada "is-a" ilişkisini
+   23 | # bozacağından tercih edilmedi).
+   37 | # Bu formda ayni radio bileseni "hizmet adresi secimi" anlaminda
+   38 | # kullaniliyor (Adres sekmesindeki "Primary" anlaminin AKSINE - canli
+   39 | # dogrulandi, ayni testid farkli baglamda tekrar kullaniliyor).
+   70 | # Mesaj metni dile göre değişebileceğinden yapısal olarak (mesaj
+   71 | # elementinin görünür VE dolu olması) kontrol ediliyor - projedeki
+   72 | # diğer empty-state kontrolleriyle (search/delete_customer) tutarlı.
+   73 | # Bir silme işleminin HEMEN ardından çağrıldığında Angular'ın
+   74 | # DOM'u yeniden render etmesiyle (boş durum bileşeninin
+   75 | # oluşturulmasıyla) yarışabiliyor (canlı doğrulandı - ara sıra
+   76 | # StaleElementReferenceException) - bu yüzden anlık tek bir
+   77 | # find_elements yerine, stale durumunu KENDİ İÇİNDE tolere edip
+   78 | # yeniden deneyen dinamik bir WebDriverWait predicate'i kullanılıyor.
+  110 | # Adres alanı dışarıda bırakılıyor - müşterinin en az 1 kayıtlı
+  111 | # adresi her zaman olduğundan (create_customer akışının garantisi)
+  112 | # ve formda İLK adres varsayılan olarak zaten seçili geldiğinden
+  113 | # (canlı doğrulandı) ayrıca bir seçim yapmaya gerek yok.
+  148 | # Radio görsel olarak gizli (Adres sekmesindeki Primary radio ile
+  149 | # aynı bileşen/desen) - native .click() ElementClickIntercepted
+  150 | # veriyor, JS click kullanılıyor (canlı doğrulandı).
+  173 | # Canlı doğrulandı: yeni eklenen adres listenin SONUNA ekleniyor
+  174 | # VE otomatik olarak hizmet adresi olarak seçili hale geliyor.
+  191 | # name/description BAĞIMSIZ olarak varsayılana düşer - önceki
+  192 | # sürümde "ikisinden biri eksikse İKİSİNİ DE Faker'a ez" gibi
+  193 | # yanlış bir "or" mantığı vardı: sadece name verilip description
+  194 | # verilmediğinde name'in KENDİSİ de rastgele bir değerle
+  195 | # değiştiriliyordu (canlı çalıştırmada AttributeError/satır
+  196 | # bulunamama olarak ortaya çıktı - gerçek bir bug, sahte-PASS
+  197 | # değil ama sessizce yanlış veri üretiyordu).
+  210 | # Bir silme/oluşturma işleminin HEMEN ardından çağrıldığında,
+  211 | # Angular listeyi yeniden render ederken (satır ekleniyor/
+  212 | # kaldırılıyorken) find_elements ile toplanan satır referansları
+  213 | # ARALARINDA stale kalabiliyor (canlı doğrulandı - ara sıra
+  214 | # StaleElementReferenceException). Bu, "satır bulunamadı" (None)
+  215 | # durumundan YAPISAL OLARAK FARKLI bir durum - bu yüzden sadece
+  216 | # GEÇİCİ stale hatasında taramanın TAMAMI (sabit, küçük bir üst
+  217 | # sınırla) yeniden deneniyor; "gerçekten bulunamadı" sonucu
+  218 | # (None) beklenmeden hemen döndürülüyor (absence testleri için
+  219 | # yanlışlıkla sonsuz beklemeye girmemek adına).
+  236 | # Hesap numarasının GERÇEKTEN otomatik/dinamik üretildiğini (sabit/
+  237 | # hardcoded bir değer olmadığını) doğrulamak için sayısal karakter
+  238 | # içerdiği kontrol ediliyor - "Aktif" gibi dile bağlı bir literal
+  239 | # metinle KARŞILAŞTIRILMIYOR, sadece durum bilgisinin dolu/
+  240 | # görüntüleniyor olması yeterli sayılıyor.
+  244 | # address_add/address_delete'teki reload-tabanlı kalıcılık
+  245 | # deseniyle tutarlı: gerçek bir backend yazımının kanıtı olarak
+  246 | # sayfa TAMAMEN yenilendikten SONRA da hesabın hâlâ listede
+  247 | # olduğu dinamik WebDriverWait polling ile doğrulanıyor.
+  264 | # Adres Açıklaması alanında daha önce kullanılan JS native
+  265 | # value-setter tekniğinin AYNISI - klavye ile binlerce karakter
+  266 | # yazmak yerine performans için tercih ediliyor.
+  279 | # "Sütunlar" yapısal olarak doğrulanıyor (dilden bağımsız): ilgili
+  280 | # satırda Hesap Adı/Numarası/Tipi/Durum alanlarının HEPSİNİN
+  281 | # görüntülenir olması, tablo başlığı metnine bakılmıyor.
+
+--- pages/billing_account_delete_page.py  (31 yorum satiri)
+
+   14 | # Hesap satırı/listesi bileşeni "Fatura Hesabı Oluştur" ile AYNI
+   15 | # sayfa/component - gerçek bir "is-a" ilişkisi olduğundan
+   16 | # BillingAccountCreatePage'den türetildi (AddressUpdatePage/
+   17 | # AddressAddPage/AddressDeletePage zincirindeki AYNI mantık).
+   28 | # ÖNEMLİ (canlı DOM incelemesiyle doğrulandı): "Yeni Satış Başlat"
+   29 | # butonu account-row <tr>'ının İÇİNDE DEĞİL, ayrı/genişletilmiş
+   30 | # bir panel satırında render ediliyor (aria-controls="account-
+   31 | # products-...") - satıra scope'lanmış bir find_element bu yüzden
+   32 | # HİÇBİR ZAMAN bulamıyordu (satır referansı stale değildi, sadece
+   33 | # yanlış DOM alt-ağacında aranıyordu). Bu metodun tek kullanıldığı
+   34 | # senaryoda (TC-012-03) her zaman TEK bir hesap olduğundan global
+   35 | # bir sorgu güvenli - `name` parametresi bu yüzden KALDIRILDI
+   36 | # (YAGNI: hiçbir çağıran zaten kullanmıyordu).
+   63 | # Aktif ürünü olan bir hesap silinmeye çalışıldığında satır sayısı
+   64 | # DEĞİŞMİYOR (canlı doğrulandı: sistem bir hata/uyarı mesajı
+   65 | # gösterip işlemi reddediyor) - bu yüzden "azalma" beklemek yerine
+   66 | # onay penceresinin KAPANMASINI (isteğin işlendiğinin işareti)
+   67 | # bekliyoruz, ardından engelleme durumunu ayrıca doğruluyoruz.
+   80 | # address_add/address_delete/billing_account_update'teki AYNI
+   81 | # reload-tabanlı kalıcılık deseni: gerçek bir backend yazımının
+   82 | # kanıtı olarak sayfa TAMAMEN yenilendikten SONRA da hesabın
+   83 | # listede OLMADIĞI dinamik WebDriverWait polling ile doğrulanıyor.
+   84 | # NOT: Bu, hesabın "Passive" durumuna mı yoksa fiziksel olarak mı
+   85 | # silindiğini AYIRT ETMİYOR - uygulamada Passive hesapları
+   86 | # görüntüleyecek ayrı bir liste/filtre YOK (canlı doğrulandı), bu
+   87 | # yüzden UI'dan gözlemlenebilen tek gerçek "aktif listeden kalıcı
+   88 | # olarak kaldırılmış olması".
+  104 | # address_delete_page.py'deki AYNI desen: "aynı istek tekrar
+  105 | # gönderilir" iddiasının UI-seviyesinde en gerçekçi karşılığı,
+  106 | # artık DOM'dan kaldırılmış (stale) bir onay referansıyla TEKRAR
+  107 | # tıklamayı denemek.
+
+--- pages/billing_account_products_page.py  (35 yorum satiri)
+
+   10 | # Hesap satırı/listesi bileşeni "Fatura Hesabı Sil" ile AYNI sayfa/
+   11 | # component - gerçek bir "is-a" ilişkisi olduğundan BillingAccount
+   12 | # DeletePage'den türetildi (projedeki diğer hesap alt-sayfaları
+   13 | # zincirindeki AYNI mantık). Canlı DOM incelemesiyle doğrulandı:
+   14 | # "Hesap Ürünleri" paneli account-row-toggle ile AÇILAN bir şey
+   15 | # DEĞİL, hesap oluşturulduğunda VARSAYILAN OLARAK ZATEN AÇIK
+   16 | # (aria-expanded="true") - toggle'a tıklamak paneli KAPATIYOR.
+   35 | # Her senaryo fresh, tek kullanımlık bir müşteri/hesapla
+   36 | # çalıştığından (bu projedeki diğer *_delete.feature'larla
+   37 | # tutarlı) her zaman TEK bir account-row/toggle var - global
+   38 | # bir sorgu bu yüzden güvenli.
+   59 | # DÜZELTME (bugsbunny.txt madde 20 - flaky olarak yakalandı, izole
+   60 | # koşumda 3 denemede 1 FAILED): sipariş gönderimi ile ürünün fatura
+   61 | # hesabında GÖRÜNMESİ arasında asenkron bir gecikme var. Eski
+   62 | # implementasyon müşteri detayına dönüp ürün satırlarını HEMEN
+   63 | # sayıyordu; backend henüz yazmamışsa 0 görüyordu.
+   64 | #
+   65 | # Bu, TC-005-03 / TC-012-03 / TC-006-06b ile AYNI aile: "backend
+   66 | # mutasyonu kabul ediliyor ama saniyeler sonra tamamlanıyor".
+   67 | # Çözüm de aynı ve kanıtlanmış: reload'ı tekrarlayan seyrek bir
+   68 | # yoklama döngüsü. Tek bir DOM beklemesi yetmez - veri ancak yeni
+   69 | # bir sayfa yüklemesiyle geliyor.
+   75 | # Global sorgu: her senaryo fresh, tek kullanımlık bir
+   76 | # müşteri/hesapla çalıştığından TEK bir hesap var
+   77 | # (get_products_panel_id'deki AYNI gerekçe). Panel, hesap
+   78 | # oluşturulduğunda varsayılan olarak zaten açık.
+   91 | # Kampanyasız bir üründe kampanya alanlarının dile bağlı bir
+   92 | # literal ("—", "-", "N/A"...) yerine YAPISAL olarak "dolu ama
+   93 | # ürün/kampanya adından FARKLI kısa bir yer tutucu" olduğu
+   94 | # kontrol ediliyor - canlı doğrulandı: em-dash ("—") gösteriliyor.
+  115 | # "Salt okunur" yapısal olarak doğrulanıyor: alanlar <dd>/<p>
+  116 | # metin elemanları (input/textarea DEĞİL) ve hepsi dolu.
+  140 | # Delete ikonu tıklamasının HERHANGİ bir gözlemlenebilir etkisi
+  141 | # olmadığı doğrulanıyor: onay penceresi YOK, satır sayısı/isim
+  142 | # listesi DEĞİŞMEDİ - canlı doğrulandı (013-04, "işlevsiz" davranış).
+
+--- pages/billing_account_update_page.py  (22 yorum satiri)
+
+    8 | # "Fatura Hesabını Düzenle" formu, "Fatura Hesabı Oluştur" formuyla
+    9 | # BİREBİR AYNI bileşeni kullanıyor (canlı doğrulandı: aynı account-name/
+   10 | # -description/address-card* locator'ları, tek fark Kaydet butonunun
+   11 | # metni ve alanların önceden dolu gelmesi) - gerçek bir "is-a" ilişkisi
+   12 | # olduğundan BillingAccountCreatePage'den türetildi (AddressUpdatePage/
+   13 | # AddressAddPage zincirindeki AYNI mantık).
+   26 | # Temel sınıftaki is_create_form_open() ile AYNI DOM kontrolünü
+   27 | # (account-name input varlığı) yapıyor - Create/Edit ayrımı sadece
+   28 | # HANGİ butonla açıldığına bağlı, form bileşeni aynı olduğundan
+   29 | # mantığı TEKRARLAMADAN sadece daha okunur bir isimle sarmalıyor.
+   56 | # Hesap Adı'na DOKUNMUYOR - sadece hizmet adresi değiştiriliyor
+   57 | # (TC-011-04, isim değişikliğinden bağımsız olarak test ediyor).
+   64 | # click_edit_on_row() TEKRAR çağrıldığında (verify_new_address_
+   65 | # persisted içinde, kalıcılığı doğrulamak için) _pre_edit_* alanları
+   66 | # EZİLİYOR - bu yüzden "beklenen" değer AYRI bir isimde (_expected_
+   67 | # service_address_title) saklanıyor, reopen sonrası karşılaştırma
+   68 | # kendi kendiyle değil GERÇEK beklenenle yapılabilsin diye.
+   82 | # Hizmet adresi satırda GÖRÜNTÜLENMİYOR (canlı doğrulandı, UC-010
+   83 | # keşfinde) - bu yüzden kalıcılığı, formu TEKRAR açıp seçili
+   84 | # adresin GERÇEKTEN yeni adres olduğunu kontrol ederek doğruluyoruz
+   85 | # (address_add/address_delete'teki reload-tabanlı kalıcılık
+   86 | # deseniyle AYNI mantık: gözlemlenebilir sonucu doğrula).
+
+--- pages/contact_update_page.py  (43 yorum satiri)
+
+   31 | # Home Phone/Fax bilerek dışarıda bırakıldı - opsiyonel alanlar,
+   32 | # "boşaltıldığında hata verir" beklentisi yapısal olarak geçerli değil.
+   42 | # TC-009-13/009-15 için: 3 telefon alanı (Mobile Phone zorunlu,
+   43 | # Home Phone/Fax opsiyonel) AYNI "en fazla 10 hane" input-seviyesi
+   44 | # kısıtlamasını paylaşıyor - REQUIRED_FIELD_LOCATORS ile AYNI dinamik
+   45 | # eşleme deseni, ama üçüncü (opsiyonel) alanları da kapsıyor.
+   76 | # Dilden/içerikten bağımsız yapısal kontrol: düzenleme alanları
+   77 | # (input) DOM'da yok VE Edit ikonu görünür durumda.
+  128 | # Mesaj metni dile göre değişebileceğinden (gerçek uygulamada
+  129 | # Türkçe "Geçerli bir e-posta girin..." çıkıyor, manuel case'in
+  130 | # beklediği İngilizce metinle birebir aynı değil) yapısal olarak
+  131 | # (hata elementinin görünürlüğü + dolu olması) kontrol ediliyor.
+  132 | # Hata elementi blur sonrası ASENKRON render edildiğinden (canlı
+  133 | # doğrulandı - anlık find_elements() bazen elementi henüz DOM'a
+  134 | # gelmeden yakalayıp yanlışlıkla "yok" sonucu veriyordu), sabit
+  135 | # bir find_elements yerine WebDriverWait'in dinamik polling'i
+  136 | # kullanılıyor.
+  155 | # TC-009-04'teki (8 hane) ile AYNI desen - "bir eksik" sınır
+  156 | # değerin 9 hanelik karşılığı. Türkiye GSM formatı "5 ile başlayan
+  157 | # 10 hane" olduğundan (create_customer_page.py ile aynı kural),
+  158 | # 9 hane de tanımlı formatın DIŞINDA - hata beklenmesi doğru.
+  169 | # "herhangi bir doğrulama hatası gösterilmez" negatif bir durumu
+  170 | # doğrudan/erken kanıtlamaya çalışmak yerine (TC-004-11'de
+  171 | # kaçınılan AYNI tuzak) - önce POZİTİF/nihai durumu (Kaydet
+  172 | # butonunun GERÇEKTEN enabled olması, ki bu zaten Angular'ın form
+  173 | # geçerlilik hesaplamasının hata bulmadığını kanıtlar) bekliyoruz,
+  174 | # sonra o ANDAKİ hata elementinin durumunu ek bir doğrulama olarak
+  175 | # okuyoruz.
+  183 | # ALL_PHONE_FIELD_LOCATORS ile dinamik eşleme - Mobile Phone/Home
+  184 | # Phone/Fax'ın ÜÇÜ de aynı mekanizmayı (native <input> maxlength)
+  185 | # paylaştığından tek bir metotla test edilebiliyor.
+  188 | # 11 hane
+  192 | # Uzun ama FORMATÇA GEÇERLİ bir email (geçerli bir domain ile
+  193 | # bitiyor, "@" öncesi karakter sayısı uzatılarak toplam uzunluk
+  194 | # ayarlanıyor) - HTML seviyesinde bir maxlength olup olmadığını
+  195 | # test etmek için; alanın kendi format doğrulamasını (nokta/@
+  196 | # kuralı) TETİKLEMEDEN yalnızca uzunluk sınırını izole ediyor.
+  210 | # Home Phone / Fax BİLEREK boş bırakılıyor - opsiyonel oldukları
+  211 | # senaryosu için. Email/Mobile zorunlu, geçerli değerlerle
+  212 | # dolduruluyor.
+  226 | # E-posta benzersizliği ANINDA (client-side, blur sonrası) kontrol
+  227 | # ediliyor - canlı doğrulandı: Save'e hiç basmaya gerek kalmadan
+  228 | # hata elementi görünür oluyor ve Save otomatik disabled kalıyor.
+
+--- pages/create_customer_page.py  (153 yorum satiri)
+
+   16 | # --- Adım 1: Demografik Bilgi ---
+   21 | # kullanılıyor mu ?
+   29 | # --- Adım 2: Adres ---
+   49 | # --- Adım 3: İletişim Kanalı ---
+   62 | # --- Oluşturma sonrası: Customer Info ekranı ---
+   72 | # Gender ve Adres Şehir alanları uygulama tarafında native <select>'ten
+   73 | # role="combobox" olan <button> + açılır <ul role="listbox"> ikilisine
+   74 | # geçirildi (bu oturum sırasında canlı doğrulandı - eski Select() tabanlı
+   75 | # kod artık gerçek uygulamayla uyuşmuyordu). GENDER_VALUE_MAP görünen
+   76 | # Türkçe metni listbox'taki data-value'ya çeviriyor.
+   79 | # UpdateCustomerPage.REQUIRED_FIELD_LOCATORS ile AYNI desen - Gherkin
+   80 | # Examples'taki okunabilir alan adını gerçek locator'a eşliyor, dinamik/
+   81 | # tek bir Scenario Outline'ın 3 alanı da (Second/Father/Mother Name)
+   82 | # kod tekrarı olmadan test edebilmesini sağlıyor.
+   90 | # Not: BasePage zaten ignored_exceptions=(StaleElementReferenceException,)
+   91 | # kuruyor - bu sayfada ELDE EDİLEN davranış birebir aynı, yalnızca
+   92 | # tanım tek yere taşındı.
+   97 | # --- Adım 1: Demografik Bilgi ---
+  114 | # value: "DD/MM/YYYY". Alan artık native <input type="date"> DEĞİL,
+  115 | # maskeli bir metin input'u (type="text", placeholder="gg/aa/yyyy") -
+  116 | # rakamlar sırayla (GGAAYYYY) yazılınca "/" otomatik ekleniyor
+  117 | # (ampirik doğrulandı: "15061990" -> "15/06/1990"). Önceki MM/DD/YYYY
+  118 | # tuş sırası dönüşümüne artık gerek yok.
+  125 | # Birth Date bu oturum sırasında native <input type="date">'den
+  126 | # (tarayıcı/OS takvimi açan) gg/aa/yyyy formatında maskeli bir
+  127 | # <input type="text">'e geçirildi (canlı doğrulandı) - bu artık bir
+  128 | # bug değil, kasıtlı bir tasarım değişikliği. Eski
+  129 | # is_birth_date_native_date_picker() ismi yanıltıcı olacağından
+  130 | # gerçek davranışı yansıtacak şekilde yeniden adlandırıldı.
+  141 | # Artık native <input type="date"> olmadığı için değer ISO formatında
+  142 | # (yyyy-mm-dd) DEĞİL, ekranda görünen gg/aa/yyyy formatında geliyor.
+  157 | # Bu metod hem liste ZATEN AÇIKKEN (ör. "kullanıcı Gender alanını
+  158 | # açar" adımından hemen sonra) hem KAPALIYKEN çağrılabiliyor - her
+  159 | # iki durumda da güvenli çalışması için önce açık olup olmadığı
+  160 | # kontrol ediliyor.
+  173 | # Secimden hemen sonra devam etmek (ör. form validity kontrolu)
+  174 | # yuk altinda kacan bir race condition'a yol acabiliyordu - liste
+  175 | # gercekten kapanip Angular'in secimi islemesini bekliyoruz.
+  189 | # UpdateCustomerPage.attempt_to_type_long_value() ile AYNI desen:
+  190 | # .clear() Angular'ın reaktif form durumunu güvenilir tetiklemediği
+  191 | # için CTRL+A + BACKSPACE ile gerçek kullanıcı tuş vuruşu simüle
+  192 | # edilerek alan önce temizleniyor.
+  198 | # Canlı doğrulandı: Birth Date maskesi basit "ilk N rakamı al"
+  199 | # mekanizması DEĞİL - gün/ay geçerliliğini ANLIK doğrulayan daha
+  200 | # karmaşık bir maske (ör. "123456789" yazılınca ay basamağı
+  201 | # geçersiz kaldığından bazı rakamlar sessizce filtreleniyor, sonuç
+  202 | # girilen rakamların birebir ilk 8'i OLMUYOR). Bu yüzden GERÇEKTEN
+  203 | # geçerli, belirsizlik yaratmayan bir tarih (15/06/1990) kasıtlı
+  204 | # olarak sabit kullanılıyor - amaç maskenin gün/ay doğrulama
+  205 | # detaylarını değil, yalnızca 10 karakterlik üst sınır kapasitesini
+  206 | # test etmek.
+  220 | # Identity Number genelde demografik doldurma akışının SON alanı
+  221 | # oluyor. Canlı olarak doğrulandı: TAB/blur sonrası bile DOM'daki
+  222 | # değerler zaten doğruyken "Next" butonu ANLIK olarak hâlâ disabled
+  223 | # dönebiliyor - Angular'ın form validity durumunu yeniden hesaplayıp
+  224 | # butonu güncellemesi ayrı bir change-detection cycle'ında (~200ms)
+  225 | # gerçekleşiyor. WebDriverWait ile "ne" bekleneceği duruma göre
+  226 | # değiştiğinden (bazen disabled KALMALI) kısa sabit bir bekleme
+  227 | # kullanılıyor.
+  243 | # Gender parametre olarak dışarıdan (Scenario Outline Examples'tan)
+  244 | # veriliyor, Faker ile rastgele SEÇİLMİYOR. GEÇMİŞ NOT: burada uzun
+  245 | # süre gerçek bir bug vardı (ne seçilirse seçilsin sistem her zaman
+  246 | # "Erkek" kaydediyordu) - Kadın/Erkek AYRI AYRI çalıştırılarak bu
+  247 | # asimetrik davranış kanıtlanıyordu. Bu oturum sırasında (Gender/
+  248 | # Birth Date alanlarının native kontrollerden özel widget'lara
+  249 | # geçirildiği güncellemeyle birlikte) canlı olarak yeniden
+  250 | # doğrulandı: bug artık YOK, "Kadın" seçilince gerçekten "Kadın"
+  251 | # kaydediliyor. Senaryo hâlâ iki cinsiyeti de ayrı ayrı çalıştırıyor
+  252 | # (regresyon guard'ı olarak DEĞERLİ), ama artık kasıtlı kırmızı
+  253 | # değil - ikisi de PASS etmesi beklenen normal bir doğrulama.
+  262 | # fill_demographic_step_with_faker()'dan farklı olarak, OPSİYONEL
+  263 | # alanları (Second Name, Father Name, Mother Name) da dolduruyor -
+  264 | # "tüm alanlar (opsiyonel dahil) doldurulduğunda müşterinin
+  265 | # eksiksiz oluşturulması" senaryosu için. Diğer tüm senaryoların
+  266 | # kullandığı minimal disposable-customer akışı (fill_demographic_
+  267 | # step_with_faker) BİLEREK değiştirilmedi - bu ayrı bir metot,
+  268 | # sadece bu senaryoya özel.
+  298 | # Last Name (Soyad) BİLEREK boş bırakılıyor - "Next butonu pasif
+  299 | # kalmalı" senaryosu için diğer tüm zorunlu alanlar (First Name,
+  300 | # Birth Date, Gender, Nationality ID) doldurulup sadece Soyad
+  301 | # atlanıyor.
+  314 | # enter_identity_number()'daki aynı blur/change-detection gerekçesi
+  315 | # - burada Soyad akışın son alanı oluyor.
+  362 | # --- Adım 2: Adres ---
+  367 | # Şehir alanı native <select>'ten role="combobox" olan <button> +
+  368 | # açılır <ul id="address-city-list" role="listbox"> ikilisine
+  369 | # geçirildi (Gender ile aynı desen, bu oturumda canlı doğrulandı).
+  407 | # add_address()'ten farklı olarak Save'e TIKLAMIYOR - manuel case'in
+  408 | # "form doldurulmuştur" (Given) ile "Save'e tıklar" (When) adımlarını
+  409 | # ayrı ayrı test edebilmesi için doldurma ve kaydetme birbirinden
+  410 | # ayrıştırıldı.
+  420 | # Var olan bir adresi Edit formunda güncellerken kullanılıyor - Save'e
+  421 | # basılınca save_address_form() bunun YENİ bir adres değil, MEVCUT
+  422 | # kaydın güncellemesi olduğunu self._pending_address_is_edit ile
+  423 | # ayırt edip listeye APPEND etmek yerine son elemanı DEĞİŞTİRİYOR.
+  437 | # Şehir Faker'dan DEĞİL, ekrandaki gerçek listbox seçeneklerinden
+  438 | # rastgele seçiliyor: address-city alanı yalnızca kendi option
+  439 | # listesindeki 81 il adından biriyle TAM eşleşirse kabul ediyor,
+  440 | # Faker'ın ürettiği bir şehir adının bu listeyle birebir eşleşeceği
+  441 | # garanti edilemez (örn. ilçe/kısaltma farkı).
+  461 | # Şehir (City) BİLEREK boş bırakılıyor - "Save butonu pasif kalmalı"
+  462 | # senaryosu için diğer tüm zorunlu adres alanları (Street, Building
+  463 | # No, Description) doldurulup sadece Şehir atlanıyor.
+  490 | # Edit formu açılırken Şehir butonu (Angular render) hemen DOM'da
+  491 | # olmayabiliyor - canlı olarak doğrulandı (NoSuchElementException).
+  531 | # --- Adım 3: İletişim Kanalı ---
+  538 | # Hata mesajı sadece BLUR sonrası görünüyor (gerçek uygulamada
+  539 | # doğrulandı) - Tab ile başka alana odak kaydırılarak blur
+  540 | # tetikleniyor.
+  549 | # Mesaj metni dile göre değişebileceğinden (gerçek uygulamada
+  550 | # "Geçerli bir e-posta girin; adres .com ile bitmelidir." çıkıyor,
+  551 | # manuel case'in paraphrase'i "Geçersiz email formatı" ile birebir
+  552 | # aynı değil) yapısal olarak (hata elementinin görünürlüğü) kontrol
+  553 | # ediliyor, literal metin karşılaştırılmıyor.
+  561 | # Sabit bir sleep süresi güvenilir değildi (canlı ölçümde gecikme
+  562 | # ~0.3-0.6s arasında değişiyordu) - bunun yerine önceki hata
+  563 | # elementinin GERÇEKTEN kaybolmasını bekliyoruz. Hiç hata
+  564 | # gösterilmiyorsa (element DOM'da yok) EC.invisibility_of_element_
+  565 | # located zaten anında True döner, bu yüzden "temiz" email girişini
+  566 | # de güvenle kapsıyor.
+  576 | # 8 haneli değer BİLEREK kullanılıyor: gerçek uygulamada doğrulama
+  577 | # kuralı "tam 10 hane olmalı" (hata: "Türkiye (+90) için telefon
+  578 | # numarası 10 haneli olmalıdır.") ama 8 hanede GERÇEK BİR BUG var -
+  579 | # bu tek uzunlukta hata gösterilmiyor ve Create aktif kalıyor
+  580 | # (1/2/6/7/9 hane doğru şekilde reddediliyor). Bu senaryo BİLEREK
+  581 | # doğru/beklenen davranışı iddia ediyor, bug düzelene kadar
+  582 | # kasıtlı kırmızı kalacak.
+  603 | # Mobile Phone genelde İletişim Kanalı adımının SON alanı oluyor -
+  604 | # enter_identity_number()'daki aynı gecikmeli form-validity
+  605 | # gerekçesiyle blur + kısa bekleme ekleniyor.
+  624 | # Email için domain BİLEREK "example.com" olarak sabitleniyor: gerçek
+  625 | # uygulamada denendi, form validasyonu email'in ".com" ile bitmesini
+  626 | # zorunlu kılıyor ("Geçerli bir e-posta girin; adres .com ile
+  627 | # bitmelidir.") - fake.email()'in varsayılanı bazen .org/.net gibi
+  628 | # başka TLD'ler üretip bu validasyona takılıyordu. Ayrıca backend
+  629 | # email'in benzersiz olmasını zorunlu kılıyor (bkz. "Uçtan Uca Müşteri
+  630 | # Yaratma" senaryosundaki 400 "already registered" bulgusu), bu yüzden
+  631 | # rastgele bir sayı eklenerek çalıştırmalar arası çakışma riski
+  632 | # azaltılıyor. Mobile Phone alanı yalnızca rakam kabul ediyor ve
+  633 | # Türkiye GSM formatına (5 ile başlayan 10 hane) uygun olması
+  634 | # gerekiyor - Faker'ın genel phone_number() sağlayıcısı boşluk/
+  635 | # parantez içerdiğinden kullanılmıyor, bunun yerine numerify ile
+  636 | # format zorlanıyor.
+  646 | # fill_contact_step_with_faker()'dan farklı olarak, OPSİYONEL
+  647 | # alanları (Home Phone, Fax) da dolduruyor - "tüm alanlar
+  648 | # (opsiyonel dahil) doldurulduğunda müşterinin eksiksiz
+  649 | # oluşturulması" senaryosuna özel.
+  702 | # Telefon değerleri görüntüleme modunda sabit "+90" öneki ile
+  703 | # gösterildiğinden (canlı doğrulandı) tam eşitlik yerine substring
+  704 | # kontrolü yapılıyor - address_update/contact_update'teki AYNI
+  705 | # desen. Home Phone/Fax "İletişim Kanalı" sekmesinde olduğundan
+  706 | # (varsayılan/iniş sekmesi "Müşteri Bilgisi") önce o sekmeye
+  707 | # geçiliyor.
+
+--- pages/delete_customer_page.py  (65 yorum satiri)
+
+   36 | # Mesaj metni dile göre değişebileceğinden (TR/EN) literal metin
+   37 | # karşılaştırılmıyor - yapısal olarak mesaj elementinin görünür VE
+   38 | # boş olmadığı (gerçekten bir mesaj içerdiği) doğrulanıyor.
+   60 | # Dialog acikken arka plandaki bir navigasyon elementine tiklamayi
+   61 | # DENIYORUZ - gercek modal davranisinda tarayici bunu
+   62 | # ElementClickInterceptedException ile engelliyor (canli
+   63 | # dogrulandi), native "is_enabled()" kontrolu bunu YAKALAMAZ.
+   80 | # Silinen musterinin eski detay URL'sine dogrudan tekrar gitmek
+   81 | # icin - fresh bir navigasyon (driver.get), sayfanin GERCEKTEN
+   82 | # sunucudan yeniden yuklendigini garantiler.
+   86 | # Aynı dil-bağımsızlık gerekçesi: mesaj metni değil, mesaj
+   87 | # elementinin görünür ve dolu olması (gerçekten bir "bulunamadı"
+   88 | # durumu içermesi) kontrol ediliyor.
+   93 | # DÜZELTME (canlı olarak yakalanan bir yarış durumu, tam suite
+   94 | # koşumunda bulundu): silme işlemi HER müşteri için (aktif ürünü
+   95 | # olmasa dahi) ASENKRON tamamlanıyor - yönlendirme HEMEN oluyor
+   96 | # ama backend'deki gerçek silme birkaç saniye sürebiliyor (bkz.
+   97 | # TC-005-03'teki "fatura hesapları kontrol edildikten sonra
+   98 | # tamamlanacak" toast'ı ile AYNI kök neden). Tek bir reload'a
+   99 | # dayanan eski implementasyon bu gecikmeyi kaçırıp HENÜZ silinmemiş
+  100 | # müşteriyi normal şekilde gösterebiliyordu.
+  101 | #
+  102 | # İLK DÜZELTME DENEMESİ BAŞARISIZ OLDU (canlı olarak yakalandı):
+  103 | # WebDriverWait'in kendi ~0.5sn'lik polling'i İÇİNDE driver.get()
+  104 | # ile SIKI/hızlı ardışık reload denemek (billing_account_create_
+  105 | # page.py'deki wait_for_account_persisted_after_reload() ile AYNI
+  106 | # desen), BEKLENMEYEN bir yan etkiye yol açtı: ekran görüntüsü
+  107 | # kanıtladı ki hızlı ardışık reload'lar oturumu düşürdü (login
+  108 | # ekranına ?redirectTo=... ile yönlendirildik) - muhtemelen
+  109 | # uygulamanın kendi token-yenileme mantığında hızlı ardışık
+  110 | # isteklerin tetiklediği ayrı bir sorun. Bu yüzden burada BİLEREK
+  111 | # DAHA SEYREK (varsayılan: 2sn arayla, en fazla 6 deneme = ~12sn)
+  112 | # ve WebDriverWait yerine açık bir döngü kullanılıyor - hem
+  113 | # asenkron silme gecikmesini (canlı ölçümde ~3sn) tolere ediyor
+  114 | # hem de sıkı-reload yan etkisinden kaçınıyor. Beklenmedik şekilde
+  115 | # login ekranına düşülürse bu AYRICA ve AÇIKÇA raporlanıyor (farklı
+  116 | # bir bulgu olarak karışmasın diye sessizce yutulmuyor).
+  138 | # KASITLI KIRMIZI (canlı doğrulandı, bkz. bugsbunny.txt madde 17 -
+  139 | # customer 854 ile uçtan uca test edildi): sistem şu an "aktif
+  140 | # ürünü olan müşteri silinemez" kuralını UYGULAMIYOR - silme
+  141 | # engellenmeden gerçekleşiyor, kullanıcı Müşteri Arama ekranına
+  142 | # yönlendiriliyor. Bilinen defekt düzelene kadar bu metodun
+  143 | # AssertionError ile FAILED vermesi beklenen/istenen sonuçtur.
+  144 | #
+  145 | # ÖNEMLİ (canlı olarak yakalanan bir tasarım hatası düzeltildi):
+  146 | # "current_url hâlâ detay sayfasında mı" şeklinde DOĞRUDAN bir
+  147 | # wait.until kontrolü ERKEN/YARIŞ DURUMUNA açıktı - silme isteği
+  148 | # asenkron işlenirken, yönlendirme henüz BAŞLAMADAN önceki İLK
+  149 | # polling anında "URL değişmedi" durumu YANLIŞLIKLA true dönüp
+  150 | # sahte-PASS üretebiliyordu (negatif bir durumu erken kanıtlamaya
+  151 | # çalışmanın TC-004-11'de bilinçli olarak kaçınılan AYNI tuzağı).
+  152 | # Düzeltme: zaten var olan, kanıtlanmış wait_for_redirect_to_search()
+  153 | # metodu (TAM 10 saniyelik standart timeout ile) yönlendirmenin
+  154 | # GERÇEKTEN olup olmadığını sonuna kadar bekleyip doğruluyor -
+  155 | # yönlendirme olursa (mevcut/bilinen bug) TimeoutException YERİNE
+  156 | # bilinçli bir AssertionError'a çevriliyor; yönlendirme GERÇEKTEN
+  157 | # hiç olmazsa (düzeltilmiş/beklenen davranış) TimeoutException
+  158 | # yutuluyor ve metod sessizce başarıyla dönüyor.
+  170 | # Dilden bağımsız "değişmedi mi" karşılaştırması için - "Aktif"
+  171 | # (TR) / "Active" (EN) gibi literal bir değerle KARŞILAŞTIRMIYORUZ
+  172 | # (bu, arayüz dili İngilizce'yken kırılırdı). Bunun yerine, silme
+  173 | # denemesinden HEMEN ÖNCEKİ (o an aktif olan dilde okunan) durum
+  174 | # metninin birebir AYNISI, denemeden SONRA da hâlâ görüntülenip
+  175 | # görüntülenmediği doğrulanıyor - hangi dilde çalıştırılırsa
+  176 | # çalıştırılsın aynı mantık geçerli.
+
+--- pages/language_switcher_page.py  (11 yorum satiri)
+
+    8 | # Sayfa başlığı/nav gibi HER ekranda ortak görünen bir topbar bileşeni
+    9 | # (app-language-switcher) - belirli bir sayfaya/akışa ait DEĞİL, bu
+   10 | # yüzden projedeki diğer standalone sayfalarla (OfferSelectionPage vb.)
+   11 | # AYNI "has-a, is-a değil" tasarım kararı: başka HİÇBİR SAYFADAN
+   12 | # inherit ETMİYOR, herhangi bir authenticated ekranda kullanılabilir.
+   13 | #
+   14 | # BasePage bu karara aykırı değil: o bir sayfa değil, tüm page
+   15 | # object'lerin paylaştığı ALTYAPI (driver + wait kurulumu). Sayfalar
+   16 | # arası "is-a" ilişkisi kurmuyor.
+   39 | # "language-option-tr" -> "tr" - dilden bağımsız, testid'in kendi
+   40 | # yapısından çıkarılıyor (görünen metne bakılmıyor).
+
+--- pages/login_page.py  (24 yorum satiri)
+
+   51 | # Giriş isteği sırasındaki pasif (disabled) durum ÇOK KISA sürüyor
+   52 | # (canlı ölçüldü: tıklamadan ~60ms sonra disabled oluyor, ~200ms'de
+   53 | # zaten tekrar enabled'a dönüyor, ~300-500ms'de sayfa /customers'a
+   54 | # yönleniyor) - bu pencere, WebDriverWait'in varsayılan 0.5sn'lik
+   55 | # polling aralığından DAHA DAR, yani DIŞARIDAN periyodik biçimde
+   56 | # (ne kadar sık olursa olsun) yoklamaya (polling) dayalı HER ÇÖZÜM
+   57 | # bu geçişi şansa bağlı olarak kaçırabilir. Bunun yerine tarayıcının
+   58 | # KENDİ DOM mutasyon gözlemcisi (MutationObserver) tıklamadan HEMEN
+   59 | # ÖNCE butona bağlanıp durum değişikliğini POLLING YAPMADAN,
+   60 | # mutasyon anında JS motorunun kendisi tarafından yakalıyor - tam
+   61 | # olay-tabanlı (event-driven), hiçbir dış zamanlama varsayımına
+   62 | # dayanmayan bir çözüm. Angular router'ın client-side (sayfa
+   63 | # yenilemesiz) navigasyonu sayesinde window nesnesi /customers'a
+   64 | # geçildikten SONRA da yaşamaya devam ediyor, bu yüzden sonuç
+   65 | # navigasyon sonrasında da güvenle okunabiliyor (canlı doğrulandı).
+   95 | # Not: normal .click() bu buton icin calismiyor (buton, input alaninin
+   96 | # uzerine mutlak konumlandirilmis, Selenium'un hesapladigi tiklama
+   97 | # noktasi input'a denk geliyor olabilir) - JS click guvenilir calisiyor.
+  113 | # <script> gibi payload'lar innerHTML uzerinden asla calismaz (tarayici
+  114 | # standardi), bu yuzden native alert kontrolu tek basina yeterli degil -
+  115 | # is_last_submitted_value_reflected_unescaped ile birlikte kullanilmali.
+  127 | # Genel "<script>" arama Angular'in kendi bundle <script> etiketlerine
+  128 | # (main.js, runtime.js vb.) her zaman eslesip yanlis-pozitif uretir -
+  129 | # bunun yerine SADECE az once gonderilen degerin kendisini ariyoruz.
+
+--- pages/offer_selection_page.py  (22 yorum satiri)
+
+   10 | # "Yeni Satış Başlat" ile ulaşılan "Teklif Seçimi" ekranı - hesap
+   11 | # satırı bileşenleriyle "is-a" DEĞİL "has-a" ilişkisinde (SalesSetupPage
+   12 | # için de daha önce alınan AYNI karar): kavramsal olarak tamamen ayrı
+   13 | # bir ekran/özellik alanı, inheritance burada ilişkiyi bozar.
+   49 | # Kampanya sekmesinden sepete eklenen bir kampanya, ürün başına ayrı
+   50 | # satırlar OLARAK DEĞİL, kampanyanın kendisini temsil eden TEK bir
+   51 | # sepet satırı olarak ekleniyor (canlı doğrulandı) - toplam tutar
+   52 | # kampanyanın indirimli fiyatını yansıtıyor.
+   55 | # BasePage, StaleElementReferenceException korumasını da beraberinde
+   56 | # getiriyor. Bu sayfada daha önce YOKTU ve TC-014-12'nin flaky
+   57 | # olmasının kök nedeniydi (teklif listesi Angular tarafından
+   58 | # yeniden çizilirken satır referansları kopuyordu).
+   62 | # --- Katalog / Kampanya sekmesi ---
+   80 | # --- Katalog filtreleme ---
+  105 | # turkish_fold, düz .lower() yerine: teklif kataloğunda "Ev
+  106 | # İnterneti Fiber 1000" gibi Türkçe'ye özgü harf içeren adlar var
+  107 | # ve Python'da "İ".lower() İKİ karakter üretiyor (i + U+0307
+  108 | # birleşen nokta). Bu yüzden "internet" araması bu satırda düz
+  109 | # .lower() ile EŞLEŞMEZ. search_customers_page.py'de aynı sınıf
+  110 | # hata canlı yakalanmıştı (bkz. bugsbunny.txt madde 10-14).
+  119 | # --- Teklif listesi / satır seçimi ---
+  143 | # --- Sepet ---
+
+--- pages/order_submission_page.py  (13 yorum satiri)
+
+   11 | # "İleri" ile Ürün Konfigürasyonu'ndan ulaşılan "Sipariş Gönder" ekranı
+   12 | # (özet + gönderim + başarı/hata durumları) - OfferSelectionPage/
+   13 | # ProductConfigurationPage/SalesSetupPage ile AYNI "has-a, is-a değil"
+   14 | # standalone tasarım kararı.
+   36 | # --- Özet ---
+   52 | # --- Navigasyon / gönderim ---
+   69 | # "yanlış bir başarı yönlendirmesi yapılmaz" - başarı ekranına ait
+   70 | # HİÇBİR işaretin (sipariş numarası) mevcut OLMADIĞI, hâlâ özet/
+   71 | # gönderim ekranında kalındığı yapısal olarak doğrulanıyor.
+   74 | # --- Başarı ekranı ---
+   79 | # "Sipariş ID: 87147419" gibi bir metinden dilden bağımsız olarak
+   80 | # SADECE rakamlar çıkarılıyor (literal "Sipariş ID:" ön ekine
+   81 | # bağımlı kalınmıyor).
+
+--- pages/product_configuration_page.py  (20 yorum satiri)
+
+    9 | # "İleri" ile Teklif Seçimi'nden ulaşılan "Ürün Konfigürasyonu" ekranı -
+   10 | # OfferSelectionPage/SalesSetupPage ile AYNI "has-a, is-a değil"
+   11 | # tasarım kararı: kavramsal olarak ayrı bir ekran, inheritance ilişkiyi
+   12 | # bozar. Yeni adres formu alt-bileşeni billing_account_create_page.py
+   13 | # ile AYNI CSS testid'lerini kullanıyor (canlı doğrulandı - aynı
+   14 | # paylaşılan "Yeni Adres Ekle" bileşeni) - kasıtlı küçük bir tekrar,
+   15 | # bu sayfa kavramsal olarak bir "adres sayfası" DEĞİL.
+   42 | # --- Konfigürasyon kartları ---
+   53 | # Canlı doğrulandı: hiçbir config alanında GERÇEK bir format/regex
+   54 | # validasyonu yok (bkz. TC-015-06 bulgusu) - bu yüzden herhangi bir
+   55 | # dolu değer yeterli. Yalnızca <input> etiketli alanlar dolduruluyor
+   56 | # (bazı şablonlarda - ör. "Ev İnterneti Fiber 1000" - bir <app-select>
+   57 | # bant genişliği alanı da olabiliyor, o zaten varsayılan bir değerle
+   58 | # geliyor - bu metod SADECE bu projede kullanılan basit, tek-tip
+   59 | # (yalnızca <input>) şablonlu teklifler için tasarlandı - YAGNI).
+   68 | # --- Hizmet adresi ---
+  105 | # billing_account_create_page.py'deki AYNI "yeni adres listenin
+  106 | # SONUNA eklenir VE otomatik seçilir" davranışı (canlı doğrulandı -
+  107 | # PAYLAŞILAN bileşen, aynı davranış).
+  117 | # --- Navigasyon ---
+
+--- pages/sales_setup_page.py  (16 yorum satiri)
+
+   12 | # Bu sayfa BİLEREK test EDİLMİYOR - "Yeni Satış" akışının kendisi
+   13 | # (Katalog -> Teklif Seçimi -> Ürün Konfigürasyonu -> Sipariş Gönder)
+   14 | # UC-EACRML 012'nin kapsamı dışında, kendi başına büyük ayrı bir
+   15 | # özellik alanı. Burada SADECE TC-EACRML-012-03'ün "hesaba bağlı en
+   16 | # az bir aktif ürün vardır" önkoşulunu karşılamak için MİNİMAL bir
+   17 | # satın alma akışı sağlanıyor - canlı olarak uçtan uca doğrulandı.
+   18 | #
+   19 | # "Teklif Seçimi" ekranının kendisi artık UC-EACRML 014 kapsamında
+   20 | # AYRICA ve DERİNLEMESİNE test edildiğinden (bkz. OfferSelectionPage),
+   21 | # buradaki seçim/sepet mantığı KOD TEKRARI olmasın diye o sayfayla
+   22 | # COMPOSE ediliyor - bu sınıf sadece KENDİNE ÖZGÜ olan Konfigürasyon/
+   23 | # Gönder adımlarına odaklanıyor (SRP).
+   32 | # "Mobil 20GB Paket" bilerek seçiliyor - donanım gerektiren
+   33 | # tekliflerin (ör. "Ev İnterneti Fiber 100") aksine zorunlu bir
+   34 | # tamamlayıcı ürün istemiyor, bu yüzden minimal kurulum için en
+   35 | # az adım gerektiren teklif (canlı doğrulandı).
+
+--- pages/search_customers_page.py  (84 yorum satiri)
+
+   16 | # Sayfa başlığı
+   20 | # Arama formu (gerçek HTML id'si olanlar By.ID, olmayanlar data-testid CSS selector)
+   45 | # Sonuç tablosu
+   59 | # Sayfalama (sayfa numarası butonları sonuç sayısına göre değiştiği için
+   60 | # sabit locator yerine page_button(n) metoduyla dinamik üretiliyor)
+   65 | # Satır şablonu: DOM'da her biri sayfadaki satır sayısı kadar (15x) tekrar
+   66 | # ediyor, TEK BAŞINA unique DEĞİL - find_elements ile veya bir <tr>
+   67 | # WebElement'i üzerinden relative aramada kullanılmalı.
+   76 | # Sıralanabilir sütun etiketi -> (sort header locator / satır değeri
+   77 | # locator) eşlemesi. Etiketler ekrandaki o an aktif dilin metnine değil
+   78 | # sabit bir Python sözlüğüne bağlı (create_customer_page.py'deki
+   79 | # GENDER_VALUE_MAP ile aynı desen) - hangi UI dili aktifken koşulursa
+   80 | # koşulsun aynı data-testid'ler tıklanır/okunur, dilden bağımsız.
+   81 | # "Rol" kasıtlı olarak dahil edilmedi - bkz. search_customers.feature
+   82 | # üst yorumu (mevcut veride tüm kayıtların Role'ü aynı, sıra değişikliği
+   83 | # gözlemlenemez).
+   99 | # Müşteri Detayı (Customer Info) ekranı
+  103 | # Not: BasePage zaten ignored_exceptions=(StaleElementReferenceException,)
+  104 | # kuruyor - bu sayfada ELDE EDİLEN davranış birebir aynı, yalnızca
+  105 | # tanım tek yere taşındı.
+  162 | # Dilden bağımsız: TR ("...11 haneli...") ve EN (muhtemelen
+  163 | # "...11-digit...") mesaj metinleri farklı kelimelerle yazılsa da
+  164 | # İKİSİNDE DE ORTAK olan tek değişmez unsur "11" rakamının kendisi -
+  165 | # literal kelime karşılaştırması yerine bu doğrulanıyor. Aynı
+  166 | # EMPTY_STATE_MESSAGE elementi "sonuç bulunamadı" durumuyla da
+  167 | # paylaşıldığından ("Arama kriterlerine uygun müşteri bulunamadı."
+  168 | # mesajında "11" GEÇMİYOR), yalnızca "boş değil" kontrolü yeterince
+  169 | # ayırt edici olmazdı - "11" içeriği bu iki durumu güvenle ayırıyor.
+  170 | # Not: EC.visibility_of_element_located() ile elementi BULUP sonra
+  171 | # ayrı bir adımda .text okumak, Angular'ın ilk render'dan hemen
+  172 | # sonra elementi yeniden oluşturması durumunda StaleElementReference
+  173 | # Exception'a yakalanabiliyor (canlı olarak görüldü) - find_element +
+  174 | # .text okumasının TAMAMI, self.wait'in zaten ignore ettiği
+  175 | # StaleElementReferenceException'ı her pollingde TAZE bir sorguyla
+  176 | # otomatik yeniden deneyecek şekilde TEK BİR lambda içine alındı
+  177 | # (wait_for_empty_state_message ile aynı desen).
+  185 | # DÜZELTME (canlı olarak yakalanan bir yarış durumu -
+  186 | # delete_customer_page.py'deki wait_for_deleted_customer_not_
+  187 | # found_after_reload() ile AYNI kök neden): silme işlemi HER
+  188 | # müşteri için ASENKRON tamamlanıyor - yönlendirme HEMEN oluyor
+  189 | # ama backend'deki gerçek silme birkaç saniye sürebiliyor. TEK
+  190 | # BİR arama denemesi bu gecikmeyi kaçırıp az önce silinen
+  191 | # müşteriyi HÂLÂ sonuçlarda gösterebiliyordu. Bu yüzden arama
+  192 | # BİLEREK SEYREK aralıklarla (varsayılan 2sn, en fazla 6 deneme)
+  193 | # tekrar deneniyor - delete_customer_page.py'de hızlı ardışık
+  194 | # driver.get() denemesinin oturumu düşürdüğü (ayrı bir yan etki)
+  195 | # keşfedildiğinden, burada da AYNI temkinli/seyrek kadans tercih
+  196 | # edildi.
+  318 | # Satırların yüklenmesini bekle - beklemeden hemen okunursa DOM
+  319 | # henüz boşken kontrol edilebilir, bu da BOŞ liste için
+  320 | # "ids == sorted(ids)" her zaman True döndüğünden testi
+  321 | # SESSİZCE ve YANLIŞLIKLA PASS ettirir (hiçbir şeyi
+  322 | # doğrulamadan). Boş liste EXPLICIT olarak reddediliyor.
+  340 | # Not: sayfa gecisi sirasinda Angular DOM'u ANLIK olarak
+  341 | # bosaltabiliyor (*ngFor yeniden render edilirken) - "kume eskisinden
+  342 | # FARKLI mi" kontrolu tek basina BOS kumeyi de "farkli" say(iyord)u,
+  343 | # bu da wait.until'in yeni sayfa GERCEKTEN yuklenmeden ERKEN
+  344 | # tatmin olmasina ve testin BOS bir sayfayla YANLIS-POZITIF/gecici
+  345 | # FAIL vermesine yol aciyordu (canli olarak yakalandi). Artik hem
+  346 | # BOS OLMAMASI hem eskisinden FARKLI OLMASI birlikte bekleniyor.
+  352 | # İddia BİLEREK burada yapılmıyor: page object durumu döndürür,
+  353 | # step katmanı iddia eder. Böylece bu metot "kayıtlar tekrarlanMALI"
+  354 | # gibi ters bir senaryoda da yeniden kullanılabilir.
+  368 | # Not: sticky topbar (position: sticky, top: 0) satırın üzerine
+  369 | # binip normal .click()'i ElementClickIntercepted ile engelliyor -
+  370 | # elementi viewport ortasına kaydırıp (topbar'ın arkasından çıkararak)
+  371 | # sonra normal .click() ile tıklıyoruz.
+  395 | # identityNumber
+  396 | # customerId
+  397 | # accountNumber
+  398 | # gsm-country butonu - metin girilmiyor
+  399 | # gsm
+  400 | # firstName
+  401 | # lastName
+  402 | # orderNumber
+  419 | # "822 kayıt" / olası "822 records" gibi dile göre değişen bir
+  420 | # metinden SADECE sayıyı çıkarıyor - literal kelime karşılaştırması
+  421 | # yok, dilden bağımsız.
+  428 | # "822 kayıttan 1–15 arası" / olası EN karşılığı "1-15 of 822
+  429 | # records" gibi FARKLI kelime/sayı sırasına sahip olabilecek bir
+  430 | # metinden, sayıların METİNDEKİ POZİSYONUNA güvenmeden (dilden
+  431 | # bağımsız) alt/üst sınırı çıkarıyor: toplam sayı zaten
+  432 | # get_results_count_number()'dan biliniyor, metindeki sayılardan ona
+  433 | # eşit OLMAYAN ikisinin küçüğü=alt, büyüğü=üst sınırdır.
+
+--- pages/update_customer_page.py  (60 yorum satiri)
+
+   51 | # driver.get ile baska bir sayfaya (ör. yeni bir musteri
+   52 | # olusturma akisina) gidip geri donuldukten sonra duzenleme
+   53 | # formunu tekrar acmak icin kullaniliyor - navigasyon, devam eden
+   54 | # herhangi bir edit-mode durumunu sifirladigindan Edit'e tekrar
+   55 | # tiklanmasi gerekiyor.
+   79 | # Gender ve Birth Date bu oturum sirasinda native <select>/<input
+   80 | # type="date">'den role="combobox" olan <button> ve gg/aa/yyyy
+   81 | # formatinda maskeli <input type="text">'e gecirildi (canli
+   82 | # dogrulandi) - goruntuleme modu ile ayni format/metni kullaniyorlar,
+   83 | # ayrica bir format donusumune gerek yok.
+  122 | # Canli dogrulandi: Nationality ID baska bir musteriye ait bir
+  123 | # degerle degistirildiginde sistem ANLIK (client-side) bir
+  124 | # benzersizlik hatasi gosteriyor ve Kaydet butonu bu yuzden hic
+  125 | # enabled olmuyor - Save'e basmaya/backend'e istek gitmesine hic
+  126 | # gerek kalmiyor. Mesaj metni dile gore degisebilecegi icin
+  127 | # (TR/EN) yapisal olarak (hata elementinin gorunurlugu) kontrol
+  128 | # ediliyor, literal metin karsilastirilmiyor.
+  136 | # Dilden bağımsız: TR ("...11 haneli olmalı...") ve EN ("...exactly
+  137 | # 11 digits...") mesajları farklı kelimelerle yazılsa da İKİSİNDE DE
+  138 | # ORTAK olan tek değişmez unsur "11" rakamının kendisi (bu iki dil
+  139 | # metni UC-017/TC-017-06 keşfinde canlı doğrulanmıştı - bkz.
+  140 | # search_customers_page.py'deki wait_for_identity_number_length_
+  141 | # validation_error() ile AYNI desen). is_identity_number_error_
+  142 | # displayed()'ten farkı: yalnızca "bir hata var mı" değil,
+  143 | # SPESİFİK OLARAK 11-hane uzunluk hatası mı olduğunu doğruluyor -
+  144 | # aynı hata elementi TC-004-03'teki benzersizlik hatası için de
+  145 | # kullanılıyor, "boş değil" kontrolü tek başına ayırt edici olmazdı.
+  149 | # "herhangi bir doğrulama hatası gösterilmez" negatif bir durumu
+  150 | # doğrudan kanıtlamaya çalışmak (erken/yarış durumuna açık) yerine -
+  151 | # TC-004-03b'deki AYNI desen: önce POZİTİF/nihai durumu (Kaydet
+  152 | # butonunun GERÇEKTEN enabled olması, ki bu zaten Angular'ın form
+  153 | # geçerlilik hesaplamasının hata bulmadığını kanıtlar) bekliyoruz,
+  154 | # sonra o ANDAKİ hata elementinin durumunu ek bir doğrulama olarak
+  155 | # okuyoruz.
+  163 | # Faker ile rastgele 11 haneli bir TC no üretiliyor - collision
+  164 | # riski ihmal edilebilir (create_customer_page.py'deki fill_
+  165 | # demographic_step_with_faker() ile AYNI yöntem, projenin genelinde
+  166 | # "pratikte eşsiz" Faker değerlerine güvenme konvansiyonuyla
+  167 | # tutarlı - ör. contact_update'teki email benzersizliği testleri).
+  173 | # maxlength=11 gerçek bir HTML özniteliği (Birth Date maskesinin
+  174 | # aksine JS ile gün/ay geçerliliği filtrelemiyor - canlı doğrulandı,
+  175 | # bkz. create_customer.md notları) - bu yüzden hangi rakamla
+  176 | # doldurulursa doldurulsun tarayıcı tarafından güvenilir şekilde
+  177 | # ilk 11 karaktere kesilmesi beklenir.
+  188 | # Not: login.feature'daki SQL Injection/XSS senaryosunda oldugu gibi
+  189 | # native alert() gorulmesi tek basina yeterli degil - bu alanda
+  190 | # gozlenen ASIL davranis input'un ozel karakterleri (< > ( ) / 1 vb.)
+  191 | # yaziliken FILTRELEMESI, HTML kacislama degil.
+  204 | # Not: .clear() Angular'in reaktif form durumunu (ve dolayisiyla
+  205 | # Kaydet butonunun disabled durumunu) guvenilir tetiklemiyor -
+  206 | # gercek kullanici tus vurusunu simule etmek icin CTRL+A + BACKSPACE
+  207 | # kullaniliyor (projenin genel .clear() pitfall konvansiyonuyla tutarli).
+  228 | # Zone.js, Angular'in kendi XHR/fetch sarmalayicisini bizim
+  229 | # execute_script ile enjekte ettigimiz interceptor'dan ONCE
+  230 | # kuruyor - bu yuzden PUT isteginin govdesini/URL'ini dogrudan
+  231 | # yakalamak guvenilir calismiyor. Bunun yerine gercek backend
+  232 | # kalicilik kaniti olarak TAMAMEN YENI bir navigasyonla (hard
+  233 | # reload) sayfayi yeniden yukleyip degerin hala orada olup
+  234 | # olmadigini kontrol ediyoruz - sadece client-side state olsaydi
+  235 | # bu reload'da kaybolurdu.
+
+==============================================================================
+  steps
+==============================================================================
+
+--- steps/conftest.py  (3 yorum satiri)
+
+   31 | # Giriş isteğinin gerçekten tamamlanıp yönlendirmenin oluşmasını
+   32 | # bekler - eskiden her dosyada elle kurulan WebDriverWait(driver, 10)
+   33 | # ile aynı zaman aşımı (BasePage.DEFAULT_TIMEOUT).
+
+--- steps/test_address_add_steps.py  (2 yorum satiri)
+
+   16 | # Fresh müşteri create_customer wizard'ı sırasında zaten TAM OLARAK
+   17 | # 1 adresle oluşturuluyor - ek bir adım gerekmiyor.
+
+--- steps/test_address_delete_steps.py  (19 yorum satiri)
+
+   48 | # Fresh müşteri create_customer wizard'ı sırasında zaten TAM OLARAK
+   49 | # 1 adresle oluşturuluyor - ek bir adım gerekmiyor.
+  111 | # ÖNEMLİ: hizmet adresi olarak billing-account formunun KENDİ "Yeni
+  112 | # Adres Ekle" alt-formuyla eklenen bir adres KULLANILMIYOR - canlı
+  113 | # keşifte bulundu ki O YOL üzerinden eklenen adres, sayfa tamamen
+  114 | # yenilendikten sonra bile Adres sekmesinin gerçek listesinde HİÇ
+  115 | # görünmüyor (kalıcı olarak persist edilmiyor). Bu yüzden Adres
+  116 | # sekmesinin KENDİ (address_add.feature'da doğrulanmış) "Yeni Adres
+  117 | # Ekle" akışıyla GERÇEK, kalıcı bir 2. adres oluşturulup, fatura
+  118 | # hesabı formunda BU adres hizmet adresi olarak seçiliyor.
+  146 | # Canlı doğrulandı: sistem şu an bu ilişkiyi (adres <-> aktif Fatura
+  147 | # Hesabı'nın hizmet adresi) HİÇBİR şekilde korumuyor - engelleme
+  148 | # diyaloğu/uyarı mesajı YOK, silme sessizce ve tamamen başarılı
+  149 | # oluyor. Bu, olası bir veri bütünlüğü açığı (hesap artık var olmayan
+  150 | # bir adrese referans veriyor olabilir) olarak dev ekibine/PO'ya
+  151 | # AYRICA bildirilmesi gereken bir bulgu - ama manuel case'in kendisi
+  152 | # "sistemin davranışı doğrulanır" diyerek üç olası dalı (engelleme/
+  153 | # uyarı/serbest silme) GÖZLEMLEMEYİ istediğinden, bu test GERÇEK
+  154 | # (gözlemlenen) davranışı doğruluyor, kasıtlı kırmızı DEĞİL.
+
+--- steps/test_address_update_steps.py  (4 yorum satiri)
+
+   11 | # Adres güncelleme/silme geri dönüşü zor mutasyonlar barındırdığından
+   12 | # (Primary değişikliği, silme vb.) HER SENARYO için fresh, tek
+   13 | # kullanımlık bir disposable müşteri gerekiyor - bunu artık
+   14 | # disposable_customer fixture'ı sağlıyor (bkz. steps/conftest.py).
+
+--- steps/test_billing_account_create_steps.py  (9 yorum satiri)
+
+    7 | # Canlı doğrulandı: fatura hesapları sayfa başına 4 kayıt gösteriyor -
+    8 | # sayfalama kontrollerini tetiklemek için bu limiti aşan bir sayı gerekiyor.
+   29 | # Fresh müşteri hiçbir fatura hesabı OLMADAN oluşturuluyor - ek bir
+   30 | # adım gerekmiyor.
+   37 | # BillingAccountCreatePage.__init__ zaten sekmeyi açıyor - bu adımda
+   38 | # ek bir aksiyon gerekmiyor, sadece durum doğrulanıyor. Fixture'a
+   39 | # kasıtlı olarak bağlanmıyor - farklı senaryolarda Given adımı
+   40 | # farklı fixture'lar üretiyor (account_page / account_context), bu
+   41 | # adım her ikisiyle de uyumlu kalması için parametresiz bırakıldı.
+
+--- steps/test_billing_account_delete_steps.py  (17 yorum satiri)
+
+   62 | # Canlı doğrulandı: sipariş tamamlandığında OTOMATİK olarak Müşteri
+   63 | # Hesabı sekmesine DÖNÜLMÜYOR - kullanıcı "Sipariş oluşturuldu!"
+   64 | # başarı ekranında (sadece "Müşteri Aramaya Dön" linkiyle) kalıyor.
+   65 | # Bu yüzden müşteri detay URL'ine AÇIKÇA geri navigasyon gerekiyor -
+   66 | # BillingAccountDeletePage.__init__ tab-account'a hemen tıklamaya
+   67 | # çalıştığından, önce sayfanın (hard navigasyon sonrası) GERÇEKTEN
+   68 | # yüklendiği (customer-detail-header görünür) dinamik olarak
+   69 | # bekleniyor.
+   90 | # Canlı doğrulandı: "The billing account cannot be deleted because it
+   91 | # has active products." mesajı bir toast olarak gösteriliyor - ama bu
+   92 | # toast'ın kendi bir data-testid'i YOK (dilden bağımsız/güvenilir bir
+   93 | # locator ile yakalanamıyor). Bu yüzden dil-bağımsız, GÜVENİLİR olan
+   94 | # yapısal sonuç doğrulanıyor: hesap silinmedi/Aktif kaldı - toast'ın
+   95 | # kendisi doğrulanamıyor olsa da işlemin GERÇEKTEN reddedildiği
+   96 | # (bir önceki Then adımında zaten) kanıtlanmış durumda.
+  112 | # Given adımı zaten Müşteri Hesabı sekmesinde - bu adımda ek bir
+  113 | # aksiyon gerekmiyor, sadece durum doğrulanıyor.
+
+--- steps/test_billing_account_products_steps.py  (13 yorum satiri)
+
+   15 | # Canlı doğrulandı (UC-013 keşfi): satış akışı "Sipariş oluşturuldu!"
+   16 | # ile BAŞARIYLA tamamlansa bile ürün hesabın panelinde ARA SIRA hiç
+   17 | # yansımıyor (ortam/zaman kaynaklı - UC-012/TC-012-03'te belgelenen
+   18 | # AYNI tutarsızlık deseni). Bu yüzden her teklif için, panelde
+   19 | # BEKLENEN sayıya GERÇEKTEN ulaşıldığı dinamik olarak doğrulanana
+   20 | # kadar (sabit, küçük bir üst sınırla) satın alma tekrarlanıyor -
+   21 | # sadece "satır var mı" değil, "satır sayısı ARTTI mı" kontrol
+   22 | # edilerek önceki bir satının satırını yanlışlıkla "yeni satın alma
+   23 | # başarılı" sanmanın önüne geçiliyor.
+   83 | # Given adımı zaten ürün listesini görüntüler durumda bırakıyor -
+   84 | # bu adımda ek bir aksiyon gerekmiyor, sadece durum doğrulanıyor.
+  164 | # Given adımı zaten hesap satırını görüntüler durumda - ek bir
+  165 | # aksiyon gerekmiyor, sadece durum doğrulanıyor.
+
+--- steps/test_billing_account_update_steps.py  (9 yorum satiri)
+
+   29 | # ÖNEMLİ: 2. adres, hesap formunun KENDİ "Yeni Adres Ekle" alt-
+   30 | # formuyla DEĞİL, Adres sekmesinin kendi (kalıcılığı kanıtlanmış)
+   31 | # akışıyla ekleniyor - UC-EACRML-008-05 kurulumunda keşfedildi ki
+   32 | # hesap formunun alt-formuyla eklenen adresler GERÇEK adres listesine
+   33 | # kalıcı olarak yansımıyor.
+   34 | #
+   35 | # new_customer(extra_addresses=1) de KULLANILMIYOR: o, adresi
+   36 | # create_customer SİHİRBAZI içinde ekler; bu senaryonun doğruladığı
+   37 | # yol ise müşteri oluşturulduktan SONRA Adres sekmesinden eklemektir.
+
+--- steps/test_contact_update_steps.py  (30 yorum satiri)
+
+   51 | # Bu Then step'i hangi alanın boşaltıldığını bilmiyor (önceki @when'in
+   52 | # parsers.parse parametresi pytest-bdd'de step'ler arası fixture
+   53 | # olarak taşınmıyor) - bu yüzden Email/Mobile Phone'un HER İKİSİ için
+   54 | # de (hangisi boşaltıldıysa yalnızca O görünür olacağından) OR
+   55 | # mantığıyla kontrol ediliyor.
+   73 | # Canlı doğrulandı: Contact Update formunda 8 haneli değer DOĞRU
+   74 | # şekilde reddediliyor (hata + Save disabled) - UC-003-14'teki
+   75 | # (yalnızca CREATE sihirbazının Contact adımına özgü) 8-hane
+   76 | # doğrulama-atlama bug'ı BU ekranda tekrarlanmıyor.
+   88 | # ContactUpdatePage.__init__ zaten sekmeyi açıp view moduna geçiyor -
+   89 | # bu adımda ek bir aksiyon gerekmiyor, sadece durum doğrulanıyor.
+  115 | # Not: manuel case'in "Contact Medium Update ekranını açar" ifadesi
+  116 | # ayrı bir ROUTE/URL değişimini ima ediyor gibi görünüyor - canlı
+  117 | # doğrulandı: URL DEĞİŞMİYOR, aynı sayfa AYNI sekmede düzenleme
+  118 | # formuna (inline) geçiyor. Bu yüzden assertion yapısal olarak
+  119 | # (düzenleme alanlarının görünür hale gelmesi) kontrol ediliyor,
+  120 | # URL/route değişimi İDDİA EDİLMİYOR.
+  139 | # Not: Save'in enabled olmasını burada ayrıca senkron kontrol etmiyoruz -
+  140 | # click_save() zaten EC.element_to_be_clickable ile (görünür VE enabled
+  141 | # olana kadar) dinamik olarak bekliyor. Doldurma sonrası Angular'ın form
+  142 | # validity durumunu güncellemesi ile Save'in enabled olması arasında
+  143 | # kısa bir gecikme olabiliyor (canlı doğrulandı) - erken/senkron bir
+  144 | # is_save_button_disabled() kontrolü bu gecikmeyi yarış durumuna
+  145 | # çeviriyordu.
+  162 | # İki AYRI disposable müşteri: biri email'in "zaten kayıtlı" olduğu
+  163 | # taraf (other_page), diğeri bu email'i KENDİ formuna girmeyi
+  164 | # deneyecek olan taraf (contact_page) - update_customer.feature'daki
+  165 | # Nationality ID çakışma senaryosunda kurulan "ikinci disposable
+  166 | # müşteri" deseniyle tutarlı. İkincisi new_customer fabrikasıyla AYNI
+  167 | # oturumda oluşturuluyor (fixture önbelleği sayesinde re-login yok).
+
+--- steps/test_create_customer_steps.py  (19 yorum satiri)
+
+   13 | # Manuel test case'in 1. adımıyla birebir: "No customer found" mesajının
+   14 | # altındaki Create Customer butonuna tıklanarak gerçek kullanıcı yolculuğu
+   15 | # ile ulaşılıyor (var olan search_customers.feature'daki "No Customer
+   16 | # Found" senaryosuyla aynı, doğrulanmış page object metotları tekrar
+   17 | # kullanılıyor).
+   65 | # Form-level gecerlilik durumu (Angular change-detection) DOM'daki
+   66 | # deger degisikliginden hemen sonra degil, kisa bir gecikmeyle
+   67 | # guncelleniyor (canli olcumde ~0.3-0.6s arasi degisken cikti) - bu
+   68 | # yuzden sabit bir sleep yerine "aktif olana kadar" bekleniyor. Bu
+   69 | # step yalnizca aktif OLMASI beklenen yerlerde kullanildigindan
+   70 | # (pasif kalmasi beklenen durumlar icin ayri bir step var) guvenli.
+  226 | # Create butonunun diğer zorunlu alanın kontrolünden BAĞIMSIZ olarak
+  227 | # pasif kalmaması için hem Email hem Mobile Phone önceden geçerli
+  228 | # değerlerle dolduruluyor - her senaryo kendi test ettiği alanı
+  229 | # (email veya mobile) sonradan geçersiz bir değerle EZİYOR.
+  429 | # Dilden bağımsız: format ayraçlarının POZİSYONUNU (2. ve 5. index'te
+  430 | # "/") ve TOPLAM uzunluğu doğruluyor - placeholder metni (gg/aa/yyyy
+  431 | # veya dd/mm/yyyy) hangi dilde olursa olsun aynı maske/uzunluk kuralı
+  432 | # geçerli (canlı doğrulandı).
+
+--- steps/test_delete_customer_steps.py  (28 yorum satiri)
+
+   17 | # Silme (Evet ile onaylanan) GERİ DÖNÜŞÜ OLMAYAN bir mutasyon -
+   18 | # canlı doğrulandı: müşteri sonrasında hem arama sonuçlarından hem
+   19 | # de doğrudan URL erişiminden tamamen kayboluyor. Sabit bir müşteri
+   20 | # ID'si kullanmak, suite'in İKİNCİ çalıştırmasında "müşteri zaten
+   21 | # silinmiş, bulunamıyor" hatasıyla TÜM senaryoları bozardı - bu
+   22 | # yüzden disposable_customer fixture'ı her senaryo için HER SEFERİNDE
+   23 | # fresh bir müşteri oluşturuyor (bkz. steps/conftest.py).
+   93 | # Background zaten boş/disposable bir müşteri oluşturup Müşteri Bilgisi
+   94 | # ekranına yerleştirdi (delete_customer_page fixture'ı) - bu adım ONUN
+   95 | # ÜZERİNE, billing_account_delete_page.py'deki TC-012-03 önkoşuluyla
+   96 | # (account_has_active_product) AYNI minimal satın alma deseniyle bir
+   97 | # fatura hesabı + gerçek aktif ürün ekliyor. Orchestration (birden
+   98 | # fazla page object'in birlikte kullanımı) bilinçli olarak burada,
+   99 | # step katmanında tutuluyor.
+  108 | # Sipariş tamamlandığında OTOMATİK olarak Müşteri Bilgisi ekranına
+  109 | # dönülmüyor (başarı ekranında kalınıyor, bkz. order_submission.md
+  110 | # TC-016-05) - müşteri detay URL'ine açıkça geri dönülüyor.
+  120 | # TEK senaryo, TR/EN'i AYNI ANDA destekler: aşağıdaki Then adımları
+  121 | # literal Türkçe (veya İngilizce) metinle KARŞILAŞTIRMIYOR, yalnızca
+  122 | # yapısal durumu (URL, "değişmedi mi") doğruluyor - bu yüzden akışın
+  123 | # BİLEREK İngilizce arayüzde çalıştırılması, kontrolün gizliden
+  124 | # Türkçe metne bağımlı OLMADIĞININ pratik kanıtı (bağımlı olsaydı bu
+  125 | # çalıştırma kırılırdı). Aynı mekanizma varsayılan (TR) arayüzde de
+  126 | # değişmeden geçerlidir.
+  130 | # Silme denemesinden HEMEN ÖNCEKİ durumun (artık İngilizce arayüzde
+  131 | # okunan) anlık görüntüsü alınıyor - "değişmedi mi" karşılaştırması bu
+  132 | # referansa göre yapılacak (bkz. capture_status_snapshot dilden
+  133 | # bağımsızlık gerekçesi, delete_customer_page.py).
+
+--- steps/test_language_support_steps.py  (20 yorum satiri)
+
+   14 | # DİL BAŞLANGIÇ DURUMU: her test YENİ bir tarayıcı profiliyle başladığından
+   15 | # (conftest.py'deki driver fixture'ı) localStorage HER ZAMAN boş - dil
+   16 | # varsayılan olarak TR ile başlıyor (canlı doğrulandı, testler arası
+   17 | # kirlenme riski yok). authenticated_driver bu garantiyi değiştirmez:
+   18 | # yalnızca giriş yapar, profil yine testin kendi profilidir.
+   22 | # Sayfa navigasyon/dil değişimi sonrası Angular bazı elemanları
+   23 | # YENİDEN OLUŞTURABİLİYOR (özellikle ilk yüklemede) - find_elements ile
+   24 | # toplanan referanslardan biri, set comprehension TAMAMLANMADAN
+   25 | # ARADA stale kalabiliyor (canlı doğrulandı). billing_account_create_
+   26 | # page.py'deki find_account_row_by_name() ile AYNI desen: sadece
+   27 | # GEÇİCİ stale hatasında (gerçek bir "eksik/hatalı" sonuçtan YAPISAL
+   28 | # OLARAK ayrı tutularak) tüm tarama sabit, küçük bir üst sınırla
+   29 | # yeniden deneniyor.
+  140 | # Canlı doğrulandı: dil tercihi localStorage tabanlı, oturum
+  141 | # kapatma/açmadan BAĞIMSIZ olarak kalıcı - spesifikasyonun "TR'ye
+  142 | # döner" varsayımı gerçek davranışla çelişiyordu, kullanıcı kararıyla
+  143 | # gerçek/çalışan davranışı doğrulayacak şekilde uyarlandı.
+  170 | # Karşılaştırmalı (dilden bağımsız) doğrulama için TR mesajı ÖNCE,
+  171 | # EN'e geçmeden hemen önce yakalanıyor - "mesaj değişti mi" kontrolü
+  172 | # literal bir dile (ne TR ne EN) bağımlı kalmadan yapılabiliyor.
+
+--- steps/test_login_steps.py  (11 yorum satiri)
+
+   49 | # Bu, zorunlu alan boş bırakıldığında oluşan KALICI/durağan bir pasif
+   50 | # durum (form geçersiz kaldığı sürece değişmez) - senkron kontrol
+   51 | # güvenli, herhangi bir yarış durumu riski yok.
+   57 | # Bu ise login isteği sırasındaki ÇOK KISA SÜRELİ (~150ms, canlı
+   58 | # ölçüldü) GEÇİCİ bir durum - click_login_button() tıklamayla AYNI ANDA
+   59 | # bir MutationObserver bağlayıp bu geçişi olay-tabanlı (polling
+   60 | # olmadan) zaten yakalamıştı; burada sadece o sonucu okuyoruz.
+   71 | # Diğer benzer "X aktif hale gelir" step'leriyle tutarlı olarak:
+   72 | # ağır/uzun suite koşumlarında form geçerlilik durumunun anlık
+   73 | # okumadan hemen sonra güncellenmesi garanti değil - gerçekten
+   74 | # aktif olana kadar bekleniyor, sabit sleep yerine.
+
+--- steps/test_offer_selection_steps.py  (18 yorum satiri)
+
+   25 | # SalesSetupPage'deki AYNI konfigürasyon doldurma mantığı - burada
+   26 | # BİLEREK tekrarlanıyor, çünkü SalesSetupPage.purchase_simple_offer()
+   27 | # hem teklif SEÇİMİNİ (bu senaryoda Given adımında ZATEN yapılmış)
+   28 | # hem de NİHAİ gönderimi (bu senaryo göndermeden ÖNCEKİ Sipariş
+   29 | # Özeti ekranını doğrulamak istiyor) tek bir akışta yapıyor - o
+   30 | # metodu burada çağırmak teklifi İKİNCİ KEZ seçmeye çalışır ve
+   31 | # nihai gönderimi de istemeden tetikler (KISS: zorla yeniden
+   32 | # kullanmak yerine küçük, kendine özgü bir adım tekrarı tercih
+   33 | # edildi).
+   91 | # Karşılaştırma, uygulamanın kendi eşleştirme toleransıyla AYNI
+   92 | # olmalı: düz .lower() Türkçe'ye özgü harflerde ("Ev İnterneti Fiber
+   93 | # 1000") yanlış NEGATİF üretir - bkz. utils/text.py.
+  215 | # Kasıtlı kırmızı (TC-014-13, canlı doğrulandı): mükerrer ekleme ŞU AN
+  216 | # engellenmiyor - bu adım "değişiklik olmamalı" beklentisiyle KÖR bir
+  217 | # sleep KULLANMIYOR, bunun yerine olası (buggy) bir satır artışını
+  218 | # KISA bir üst sınırla dinamik olarak bekliyor; artış GERÇEKLEŞMEZSE
+  219 | # (doğru davranışta olması gerektiği gibi) TimeoutException güvenle
+  220 | # yutuluyor - "değişmedi" sonucunu Then adımı ayrıca doğruluyor.
+
+--- steps/test_order_submission_steps.py  (15 yorum satiri)
+
+   35 | # UC-014/UC-015'te kurulan AYNI akış - hesap sayfasından başlayıp
+   36 | # tam bir sipariş tamamlıyor, benzersizlik gibi tekrarlı senaryolar
+   37 | # (TC-016-08) için DRY bir yapı taşı.
+   82 | # Canlı doğrulandı (UC-014-08 keşfi + bu UC'de 2 ayrı tekrar): "Mobil
+   83 | # 20GB Paket" TEK BİR kez sepete eklenip Sipariş Gönder ekranına
+   84 | # ilerlendiğinde her seferinde doğru şekilde tek satır/199.90 TL
+   85 | # görüntüleniyor - kullanıcının belgelediği "3 kez tekrarlanma" bug'ı
+   86 | # bu ortamda 5 denemede de yeniden üretilemedi. Spesifikasyonun DOĞRU/
+   87 | # beklenen davranışını assert ediyor - regresyon net'i.
+  151 | # Uygulamanın gerçek bir 500 yanıtını taklit etmek yerine (CDP Fetch
+  152 | # domain ile request interception bu proje için gereksiz bir karmaşıklık
+  153 | # eklerdi - YAGNI), Chrome DevTools Protocol ile ağ bağlantısı GEÇİCİ
+  154 | # olarak kesiliyor - canlı doğrulandı: uygulama bunu da bir gönderim
+  155 | # hatası olarak ele alıyor ve "Sipariş gönderilemedi. Lütfen tekrar
+  156 | # deneyin." mesajını gösteriyor (sales-submit-error testid'i).
+
+--- steps/test_product_configuration_steps.py  (12 yorum satiri)
+
+   15 | # Müşterinin ZATEN oluşturulmuş olduğunu varsayar (disposable_customer
+   16 | # ya da new_customer fixture'ı ile) - yalnızca hesap + teklif seçimi
+   17 | # adımlarını yürütür.
+   18 | #
+   19 | # "Mobil 20GB Paket" / "Superbox 50GB" gibi yalnızca <input> alanları
+   20 | # içeren (dropdown/select alanı OLMAYAN) basit şablonlu teklifler
+   21 | # kasıtlı seçiliyor - canlı doğrulandı (bkz. project_brain.txt UC-015
+   22 | # keşfi): "Ev İnterneti Fiber 1000" gibi tekliflerde ek bir <app-select>
+   23 | # bant genişliği alanı var, bu senaryoların kapsamı dışında (YAGNI).
+   55 | # Given adımı zaten alanları BOŞ bırakıyor - ek bir aksiyon gerekmiyor.
+   66 | # Bu senaryo BİRDEN FAZLA kayıtlı adres gerektiriyor - ikinci adres
+   67 | # create_customer sihirbazının kendi adres adımında ekleniyor.
+
+--- steps/test_update_customer_steps.py  (25 yorum satiri)
+
+   11 | # Sabit bir müşteri ID'sine (paylaşılan, kalıcı bir disposable kayıt)
+   12 | # bağımlı olmak yerine, her senaryo için HER SEFERİNDE fresh bir
+   13 | # disposable müşteri kullanılıyor (disposable_customer fixture'ı,
+   14 | # bkz. steps/conftest.py). Bu, testleri birbirinden ve önceki
+   15 | # çalıştırmalarda oluşabilecek herhangi bir yan etkiden tamamen
+   16 | # bağımsız kılıyor.
+   59 | # Seed veriye (paylaşılan müşteri 1'in TC no'su) bağımlı kalmak
+   60 | # yerine, testin KENDİSİ ikinci, bağımsız bir disposable müşteri (B)
+   61 | # oluşturup GERÇEK/GÜNCEL bir "zaten kayıtlı" TC numarası elde
+   62 | # ediyor - bu, çakışma senaryosunu seed veri değişse/silinse dahi
+   63 | # her çalıştırmada güvenilir şekilde tekrarlanabilir kılıyor.
+   64 | # Orchestration (iki page object'in birlikte kullanımı) bilinçli
+   65 | # olarak burada, step katmanında tutuluyor - page object'lerin
+   66 | # birbirini çağırmaması için.
+   69 | # gender="Kadın": ikinci müşterinin ilkinden ayırt edilebilir olması
+   70 | # için (orijinal implementasyondaki tercih korunuyor).
+   89 | # Kaydet sonrası gerçek bir PUT isteği + görüntüleme moduna dönüş
+   90 | # asenkron - implicitly_wait kaldırıldıktan sonra kontrol çok daha
+   91 | # hızlı çalıştığından, API yanıtı gelmeden anlık okuma yapmak
+   92 | # yarış durumuna yol açıyordu. Görüntüleme moduna dönülene kadar
+   93 | # bekleniyor.
+  106 | # İptal sonrası görüntüleme moduna dönüş Angular'ın DOM'u güncellemesi
+  107 | # için kısa bir change-detection cycle'ı gerektirebiliyor (diğer
+  108 | # benzer asenkron durumlarla tutarlı olarak anlık kontrol yerine
+  109 | # bekleniyor).
+
+==============================================================================
+  utils
+==============================================================================
+
+--- utils/config.py  (9 yorum satiri)
+
+   15 | # BASE_URL geri uyumluluk için OLDUĞU GİBİ korunuyor - .env'de login
+   16 | # yolunu da içeriyor (http://localhost:4200/login) ve LoginPage.open()
+   17 | # ile test_login_steps.py bu davranışa bağlı.
+   29 | # DAVRANIŞ NOTU (bilinçli, küçük bir değişiklik): eskiden origin, login
+   30 | # SONRASINDAKİ canlı `driver.current_url`den türetiliyordu. Bu, BASE_URL'in
+   31 | # login yolunu da içermesinin yan etkisiydi - tasarım tercihi değil. Artık
+   32 | # origin yapılandırmadan DETERMİNİSTİK olarak türetiliyor; uygulama testi
+   33 | # beklenmedik bir host'a yönlendirse dahi istekler yapılandırılan origin'e
+   34 | # gider. localhost:4200 kurulumunda iki yol da aynı sonucu verir.
+
+--- utils/test_data.py  (45 yorum satiri)
+
+   15 | # --- ALAN SINIRLARI ---
+   16 | # Uygulamanın kabul ettiği azami uzunluklar (canlı doğrulandı).
+   17 | #
+   18 | # NEDEN ÇIPLAK SAYI DEĞİL DE ALAN ADIYLA: bugün username, first_name ve
+   19 | # last_name'in üçü de 50. Tek bir MAX_50 sabitine bağlamak, ilgisiz
+   20 | # alanları birbirine kenetlerdi - biri değişince diğerleri de sessizce
+   21 | # değişirdi (SOLID/tek sorumluluk).
+   22 | #
+   23 | # NEDEN ÖNEMLİ: sınır testleri "limit" ve "limit+1" değerlerini BİRLİKTE
+   24 | # kullanıyor. Bu ikisi ayrı ayrı yazıldığında (50 ve 51) biri güncellenip
+   25 | # diğeri unutulabilir; o durumda test kırılmaz, sessizce YANLIŞ sınırı
+   26 | # doğrulamaya başlar. Artık "limit+1" ifadesi FIELD_LIMITS'ten türetiliyor.
+   32 | # İkinci Ad / Baba Adı / Anne Adı - create_customer'ın opsiyonel alanları
+   37 | # Biçimlendirilmiş doğum tarihi uzunluğu (gg/aa/yyyy) - azami sınır
+   38 | # DEĞİL, beklenen tam uzunluk.
+   43 | # --- KATALOG VERİSİ ---
+   44 | # Bu adlar uygulamanın teklif kataloğundan gelir; testler onları
+   45 | # üretmez, VAR OLDUKLARINI varsayar. Katalog değişirse burası tek
+   46 | # güncelleme noktasıdır. Her sabitin YANINDA neden o teklifin seçildiği
+   47 | # yazıyor - yoksa bir sonraki kişi rastgele başka bir teklifle değiştirir
+   48 | # ve senaryo sessizce farklı bir şey test etmeye başlar.
+   50 | # Zorunlu tamamlayıcı ürün İSTEMEYEN, en az adımda satın alınabilen
+   51 | # teklif (canlı doğrulandı). Kurulum amaçlı senaryoların varsayılanı.
+   54 | # SIMPLE_OFFER'ın arama filtresinde kullanılan ÖN EKİ. Tam ad DEĞİL:
+   55 | # "içeren" aramasının çalıştığı test edildiği için bilinçli olarak kısa.
+   58 | # Yalnızca <input> alanı içeren (dropdown İÇERMEYEN) ikinci basit
+   59 | # şablonlu teklif - "sepette birden fazla teklif" senaryolarında
+   60 | # SIMPLE_OFFER ile birlikte kullanılıyor.
+   63 | # Fatura hesabı ürün listesinde ikinci ürün olarak kullanılıyor.
+   66 | # Mükerrer sepete ekleme senaryosunun (TC-014-13) teklifi.
+   69 | # Tek paylaşılan örnek. Faker örnekleri birbirinden bağımsız rastgele
+   70 | # akışlardır; tek bir örneği paylaşmak davranışı değiştirmez (hiçbiri
+   71 | # seed'lenmiyordu) ama iki örneğin aynı diziyi üretme ihtimalini de
+   72 | # tamamen ortadan kaldırır.
+   76 | # --- TEST VERİSİNİN İZLENEBİLİRLİĞİ ---
+   77 | # Testler her koşumda gerçek müşteri kaydı oluşturuyor ve bunlar
+   78 | # SİLİNMİYOR (bkz. mimari.md K4b - otomatik temizlik api_client'a bağlı).
+   79 | # Faker gerçekçi Türkçe adlar ürettiği için bu kayıtlar bugüne kadar
+   80 | # gerçek müşterilerden AYIRT EDİLEMİYORDU: elle temizlemek isteyen biri
+   81 | # bile hangilerinin test artığı olduğunu bulamazdı.
+   82 | #
+   83 | # Bu işaret, üretilen her e-postaya konuyor. Taşıyıcı olarak e-posta
+   84 | # ÖLÇÜLEREK seçildi: (a) zaten sentetik ("example.com"), (b) hiçbir
+   85 | # assertion biçimine bağlı değil, (c) ad/soyad gibi arama testlerinin
+   86 | # kullandığı alanlara dokunmuyor.
+
+--- utils/text.py  (13 yorum satiri)
+
+   15 | # Türkçe alfabeye özgü büyük/küçük harf ve aksan farklarını (İ/I/ı/i,
+   16 | # ğ/Ğ, ş/Ş, ç/Ç, ö/Ö, ü/Ü) normalize eden dönüşüm tablosu. Canlı olarak
+   17 | # doğrulandı: uygulamanın kendi arama motoru ZATEN bu şekilde aksan/harf
+   18 | # duyarsız eşleştiriyor (ör. "Yılmaz" araması hem "Yılmaz" hem "Yilmaz"
+   19 | # yazılışını döndürüyor - gerçek veride, muhtemelen Faker'ın tr_TR
+   20 | # sağlayıcısının ara sıra üreteceği ASCII-transliterasyonlu bir kayıttan
+   21 | # ötürü) - testin karşılaştırması bunu YAKALAYAMADIĞINDA (Python'ın
+   22 | # varsayılan str eşitliği/`.startswith()` aksan DUYARLI) sonuç kümesi
+   23 | # içeriğinde hiçbir gerçek hata yokken TimeoutException ile FAILED
+   24 | # veriyordu (bkz. bugsbunny.txt madde 10-14). Kök neden veri SAYISI drifti
+   25 | # değil, karşılaştırmanın uygulamanın kendi eşleştirme toleransından DAHA
+   26 | # KATI olmasıydı - düzeltme test verisini değiştirmek değil, karşılaştırmayı
+   27 | # uygulamayla AYNI toleransa getirmek.
+
+==============================================================================
+  features
+==============================================================================
+
+--- features/address_update.feature  (7 yorum satiri)
+
+   41 | # Canlı doğrulandı: address-street/address-building input'larının HTML
+   42 | # maxlength özniteliği yok - 500 karakterlik bir değer (native
+   43 | # value-setter ile) tam olarak kabul ediliyor. Bina No'nun ayrıca
+   44 | # serbest biçimli (alfanümerik + özel karakter) olduğu TC-EACRML-007-04
+   45 | # ile zaten doğrulanmış durumda. Dilden bağımsız: kontrol yapısal
+   46 | # (girilen değerin uzunluğu), literal metin/mesaj karşılaştırmıyor - TR
+   47 | # veya EN arayüzde aynı şekilde çalışır.
+
+--- features/billing_account_products.feature  (28 yorum satiri)
+
+    3 | # NOT (canlı doğrulandı): "Hesap Ürünleri" paneli, hesap satırının
+    4 | # account-row-toggle'ına TIKLANARAK açılan bir şey DEĞİL - hesap
+    5 | # oluşturulduğunda VARSAYILAN OLARAK ZATEN AÇIK durumda geliyor
+    6 | # (aria-expanded="true"). Bu yüzden aşağıdaki senaryolarda ayrı bir
+    7 | # "genişlet" aksiyonuna gerek yok; 013-09 özel olarak tam tersini
+    8 | # (kapatma/tekrar açma) test ediyor.
+    9 | #
+   10 | # KAPSAM DIŞI BIRAKILAN 2 SENARYO (canlı bulgularla netleştirildi):
+   11 | #
+   12 | # TC-EACRML-013-02 (kampanya kapsamındaki bir ürünün kampanya adı/ID'si
+   13 | # ile görüntülenmesi): Satış kataloğundaki 11 teklifin HİÇBİRİ bir
+   14 | # kampanyaya bağlı değil (canlı doğrulandı - kampanya seçimi/etiketi
+   15 | # içeren tek bir akış yok), bu yüzden UI üzerinden kampanyalı bir ürün
+   16 | # OLUŞTURMANIN bir yolu yok. Kampanya alanlarının kendisi GERÇEK ve
+   17 | # doğru render ediliyor (bkz. 013-03) - eksik olan, bu alanı DOLU
+   18 | # olarak test edecek bir veri kurulum yolu. BA/dev'e iletilmesi
+   19 | # gereken bir madde: mock veride kampanyalı bir teklif/ürün olmalı.
+   20 | #
+   21 | # TC-EACRML-013-05 (kampanya kapsamındaki bir ürünün tek başına
+   22 | # silinmeye çalışılması): Bu senaryonun önkoşulu "silmenin mümkün
+   23 | # olduğu" varsayımına dayanıyordu. TC-013-04'te canlı olarak KESİN
+   24 | # kanıtlandı: Delete ikonu tıklaması HİÇBİR etkisi olmayan, tamamen
+   25 | # işlevsiz bir aksiyon (onay penceresi yok, satır sayısı/verisi
+   26 | # değişmiyor, reload sonrası da aynı). Kampanyalı olsun ya da olmasın
+   27 | # HİÇBİR ürün UI üzerinden silinemediğinden, "kampanya bütünlüğünün
+   28 | # korunması" senaryosu şu an anlamsız/test edilemez - TC-011-05'te
+   29 | # (durum değiştirme kontrolü, expand/collapse çıktı) yapılan aynı
+   30 | # karar: canlı davranışla çelişen senaryo suite'e alınmadı.
+
+--- features/contact_update.feature  (6 yorum satiri)
+
+   70 | # DİNAMİK + DİLDEN BAĞIMSIZ: 3 farklı telefon alanı (Mobile Phone
+   71 | # zorunlu, Home Phone/Fax opsiyonel) AYNI "en fazla 10 hane" input-
+   72 | # seviyesi kısıtlamasını paylaşıyor - tek bir Scenario Outline'da
+   73 | # konsolide edildi (TC-009-13 + TC-009-15, INVEST/DRY - üç ayrı, neredeyse
+   74 | # birebir aynı senaryo yazmak yerine). Kontrol tamamen yapısal (girilen
+   75 | # değerin uzunluğu), literal metin/mesaj karşılaştırmıyor.
+
+--- features/create_customer.feature  (11 yorum satiri)
+
+  149 | # NOT (canlı doğrulandı): Birth Date maskesi basit "ilk N rakamı al"
+  150 | # mekanizması DEĞİL - gün/ay geçerliliğini ANLIK doğrulayan daha karmaşık
+  151 | # bir maske (ör. "123456789" yazılınca ay basamağı geçersiz kaldığından
+  152 | # bazı rakamlar sessizce filtreleniyor, sonuç girilen rakamların birebir
+  153 | # ilk 8'i OLMUYOR - "12/03/4567" gibi beklenmedik bir değer çıkıyor). Bu
+  154 | # yüzden senaryo GERÇEKTEN geçerli, belirsizlik yaratmayan bir tarihle
+  155 | # (15/06/1990) test ediliyor - kesin ara rakam dizisini değil, yalnızca
+  156 | # 10 karakterlik (8 rakam + 2 ayraç) üst sınırın korunduğunu ve fazla
+  157 | # rakamın hiçbir etkisi olmadığını doğruluyor. Dilden bağımsız: EN dilinde
+  158 | # placeholder "gg/aa/yyyy" -> "dd/mm/yyyy" değişse de (canlı doğrulandı)
+  159 | # maskenin kendisi ve 10 karakterlik sınır AYNI kalıyor.
+
+--- features/delete_customer.feature  (17 yorum satiri)
+
+   36 | # KASITLI KIRMIZI (canlı doğrulandı, bkz. bugsbunny.txt madde 17): sistem
+   37 | # şu an bu kuralı UYGULAMIYOR - aktif ürünü olan bir müşteri hiçbir
+   38 | # engelleme olmadan silinebiliyor (customer 854 ile uçtan uca test
+   39 | # edildi: silme başarıyla gerçekleşti, Müşteri Arama ekranına
+   40 | # yönlendirildi). Bu senaryo spesifikasyonun DOĞRU davranışını izliyor;
+   41 | # bilinen defekt düzelene kadar FAILED kalması beklenen sonuçtur - AYNI
+   42 | # kök nedenin fatura-hesabı seviyesindeki (TC-012-03) tezahürüyle
+   43 | # tutarlı bir karar (bkz. billing_account_delete.feature).
+   44 | #
+   45 | # DİLDEN BAĞIMSIZ (tek senaryo, TR/EN'i AYNI anda destekler): Then
+   46 | # adımlarının hiçbiri literal TR/EN metin karşılaştırmıyor (yapısal -
+   47 | # URL/durum kontrolü). Bunu SADECE teoride değil pratikte de kanıtlamak
+   48 | # için akış BİLEREK arayüz dili İngilizce'ye çevrilmiş şekilde
+   49 | # çalıştırılıyor - eğer kontrol gizliden Türkçe metne bağımlı olsaydı bu
+   50 | # EN çalıştırmada kırılırdı. Aynı mekanizma varsayılan (TR) dilde de
+   51 | # değişmeden çalışır - bu yüzden ayrı bir TR örneğine (Outline'a) gerek
+   52 | # yok, tek senaryo her iki dili de kapsıyor.
+
+--- features/language_support.feature  (10 yorum satiri)
+
+    3 | # TC-EACRML-017-04 ÜZERİNE NOT: Spesifikasyon, oturum kapatılıp tekrar
+    4 | # giriş yapıldığında dilin varsayılan TR'ye DÖNMESİNİ bekliyordu -
+    5 | # kullanıcının kendi notu bunun "hesaba değil oturuma bağlı" bir tasarım
+    6 | # varsayımına dayandığını ve BA/UX ile teyit edilmesi gerektiğini
+    7 | # belirtiyordu. Canlı doğrulandı: dil tercihi localStorage'da
+    8 | # (`etiya.language`) saklanıyor - bu TAM bir çıkış/giriş döngüsünden
+    9 | # BAĞIMSIZ olarak kalıcı, yani EN seçilip çıkış yapılıp tekrar giriş
+   10 | # yapıldığında arayüz TR'ye DÖNMÜYOR, EN kalmaya devam ediyor. Kullanıcı
+   11 | # kararıyla senaryo GERÇEK/çalışan davranışı doğrulayacak şekilde
+   12 | # uyarlandı (aşağıda).
+
+--- features/login.feature  (3 yorum satiri)
+
+   32 | # Bu senaryo "admin-crm" hesabını GERÇEKTEN 15 dakika kilitler.
+   33 | # pytest.ini'deki `-m "not lockout"` sayesinde varsayılan koşumdan
+   34 | # hariç tutulur; bilinçli olarak çalıştırmak için: pytest -m lockout
+
+--- features/offer_selection.feature  (28 yorum satiri)
+
+    3 | # KAPSAM DIŞI BIRAKILAN 2 SENARYO (kullanıcının kendi spesifikasyonunda
+    4 | # [ASKIDA] olarak işaretlenmişti - dokümanın 8 UC-014 test case'inde bu
+    5 | # özelliklerden hiç bahsedilmiyor, PM/BA onayı gelene kadar suite'e
+    6 | # ALINMADI):
+    7 | #   TC-EACRML-014-06 - Tamamlayıcı ürün gereken teklif seçildiğinde uyarı
+    8 | #   TC-EACRML-014-07 - "Birlikte alınması önerilenler" çapraz satış önerisi
+    9 | #
+   10 | # TC-EACRML-014-08 NOTU: Kullanıcı bunu "DEFEKT ADAYI" (sipariş özetinde
+   11 | # teklifin 3 kez tekrarlanıp 899.70 TL çıktığı) olarak işaretlemişti.
+   12 | # Canlı olarak 3 AYRI denemede DE yeniden üretilemedi - "Ev İnterneti
+   13 | # Fiber 100" TAM 1 KEZ eklenip Sipariş Özeti'ne kadar ilerlendiğinde her
+   14 | # seferinde doğru şekilde TEK satır/299.90 TL görüntülendi. Kullanıcı
+   15 | # kararıyla senaryo DOĞRU/beklenen davranışı assert edecek şekilde
+   16 | # (şu an PASS veren, bug geri gelirse otomatik regresyon yakalayacak bir
+   17 | # test olarak) implemente edildi.
+   18 | #
+   19 | # TC-EACRML-014-13 NOTU: Canlı doğrulandı - sepete mükerrer ekleme ŞU AN
+   20 | # HİÇ ENGELLENMİYOR (2. ekleme ayrı bir satır olarak ekleniyor, toplam
+   21 | # 2 katına çıkıyor). Kullanıcı kararıyla KASITLI KIRMIZI olarak
+   22 | # implemente edildi - TC-014-08'in tarif ettiği "veri bütünlüğü" bug
+   23 | # sınıfıyla aynı kök nedene işaret ediyor olabilir.
+   24 | #
+   25 | # TC-EACRML-014-12 NOTU: "Alan yalnızca sayısal değer kabul eder" ifadesi
+   26 | # canlıda INPUT SEVİYESİNDE bir kısıtlama olarak doğrulanamadı (harf
+   27 | # yazılabiliyor, type="text"). Kullanıcı kararıyla İŞLEVSEL olarak
+   28 | # uyarlandı: harfli bir ID ile arama yapıldığında sonuç bulunamaz -
+   29 | # spec'in arkasındaki niyet (ID alanı sayısal eşleştirme içindir) hâlâ
+   30 | # doğrulanıyor, gerçek/çalışan davranışla uyumlu.
+
+--- features/order_submission.feature  (31 yorum satiri)
+
+    3 | # KAPSAM DIŞI BIRAKILAN SENARYO:
+    4 | #
+    5 | # TC-EACRML-016-07 [ASKIDA]: "Tamamlayıcı ürün" (complementary product)
+    6 | # kavramı UC-EACRML 014'te (TC-014-06/07) zaten [ASKIDA] olarak
+    7 | # işaretlenmiş ve kullanıcı kararıyla suite dışı bırakılmıştı - dokümanda
+    8 | # hiç geçmeyen, PM/BA onayı bekleyen bir özellik. Bu senaryo AYNI
+    9 | # onaylanmamış önkoşula bağımlı olduğundan suite'e alınmadı.
+   10 | #
+   11 | # TC-EACRML-016-02 ve TC-EACRML-016-05 ÜZERİNE NOTLAR:
+   12 | #
+   13 | # TC-EACRML-016-02 [DEFEKT ADAYI]: Kullanıcının işaret ettiği "aynı kök
+   14 | # neden UC-014-08" iddiası - "Sipariş Gönder" ekranı, TC-014-08'in test
+   15 | # ettiği ekranla AYNI ekran (sales-summary-line/sales-summary-total).
+   16 | # Canlı olarak 5 AYRI denemede DE (3'ü UC-014 keşfinde, 2'si bu UC'de)
+   17 | # yeniden üretilemedi - teklif her seferinde TAM 1 kez, doğru toplamla
+   18 | # görüntülendi. TC-014-08'deki AYNI kullanıcı kararına göre (spesifikasyonu
+   19 | # olduğu gibi/doğru davranış olarak implemente et) burada da UYGULANDI -
+   20 | # şu an PASS veren, ortam davranışı tekrar bozulursa otomatik regresyon
+   21 | # yakalayacak bir test. UC-014-08 ile YAPISAL OLARAK aynı kontrolü
+   22 | # tekrarlıyor olması BİLİNÇLİ bir tercih: her UC'nin kendi feature
+   23 | # dosyasında bağımsız/eksiksiz doğrulanabilir olması (INVEST -
+   24 | # Independent) her iki dokümanın da kendi başına ayrı bir kanıt
+   25 | # sunmasını sağlıyor.
+   26 | #
+   27 | # TC-EACRML-016-05: Dokümanın kendisi "Adım 8'den sonra ne olduğu
+   28 | # belirtilmemiş" diyerek bu davranışı teyit edemiyordu. Canlı keşifle
+   29 | # KESİN olarak netleşti: sipariş başarıyla gönderildiğinde kullanıcı
+   30 | # Müşteri Hesabı'na OTOMATİK yönlendirilmiyor - "Sipariş oluşturuldu!"
+   31 | # başlıklı AYRI bir başarı ekranında kalıyor, orada bir Sipariş ID'si
+   32 | # ve "Müşteri Aramaya Dön" bağlantısı gösteriliyor. Artık kesin bir Then
+   33 | # ifadesiyle otomasyona alınabilir hale geldi.
+
+--- features/product_configuration.feature  (31 yorum satiri)
+
+    3 | # KAPSAM DIŞI BIRAKILAN 3 SENARYO (kullanıcının kendi spesifikasyonunda
+    4 | # zaten belirsiz/şablon olarak işaretlenmişti - canlı keşifle netleştirildi):
+    5 | #
+    6 | # TC-EACRML-015-06 [ŞABLON]: 11 katalog teklifi + 3 kampanya taranarak 6
+    7 | # GERÇEK config template'i bulundu (Fiber: Fiber No/ONT Seri No, Mobil:
+    8 | # MSISDN/SIM No, Superbox: Cihaz Seri No/SIM No, TV: STB Seri No/Akıllı
+    9 | # Kart No, Sabit Hat: Hat No/Port No, Fiber Modem: yalnızca ONT Seri No).
+   10 | # AMA hiçbirinde GERÇEK bir format/regex doğrulaması yok - MSISDN alanına
+   11 | # "abcXYZ!!!" gibi tamamen geçersiz bir değer yazılıp diğer alanlar
+   12 | # doldurulduğunda sistem hiçbir uyarı göstermeden kabul etti, İleri aktif
+   13 | # oldu (sadece "boş olmama" kontrol ediliyor). Dokümanın kendisi bu
+   14 | # senaryonun bir şablon olduğunu ve gerçek validasyon tablosuna erişimin
+   15 | # olmadığını zaten belirtiyordu - kullanıcı kararıyla suite'e alınmadı,
+   16 | # BA/dev'e iletilmesi gereken bir madde olarak belgelendi.
+   17 | #
+   18 | # TC-EACRML-015-07 (CT-06, konfigürasyon gerektirmeyen ürün): 11 katalog
+   19 | # teklifinin VE 3 kampanyanın TAMAMI canlı tarandı - hiçbiri sıfır
+   20 | # konfigürasyon alanıyla gelmiyor, hepsi en az 1 alan istiyor. Önkoşulu
+   21 | # karşılayacak gerçek bir ürün bu ortamda yok (TC-013-02'deki kampanyasız
+   22 | # ürün eksikliğiyle aynı kapsam boşluğu) - kullanıcı kararıyla suite'e
+   23 | # alınmadı.
+   24 | #
+   25 | # TC-EACRML-015-08 (servis adresi seçilmeden Next'e basılması): Canlı
+   26 | # doğrulandı - müşterinin kayıtlı adresi her zaman en az 1 tane var (bu
+   27 | # framework'ün kendi kuralı) VE Config ekranına girildiğinde adres HER
+   28 | # ZAMAN otomatik olarak ön-seçili geliyor (ilk adres varsayılan seçili
+   29 | # radio buton). Kullanıcı hiçbir aksiyon almadan bile bir adres zaten
+   30 | # seçili olduğundan, "servis adresi seçilmemiş" durumu normal kullanıcı
+   31 | # akışıyla hiç oluşturulamıyor (TC-011-05/TC-013-05'teki gibi önkoşulu
+   32 | # gerçek uygulamada kurulamayan bir senaryo) - kullanıcı kararıyla
+   33 | # suite'e alınmadı.
+
+--- features/search_customers.feature  (23 yorum satiri)
+
+   34 | # DÜZELTİLDİ (canlı doğrulandı): önceki hâli hardcoded İngilizce
+   35 | # ("Please enter a valid 11-digit ID number.") metniyle karşılaştırıyordu
+   36 | # - uygulama VARSAYILAN olarak Türkçe çalıştığından gerçek mesaj
+   37 | # "Lütfen geçerli 11 haneli bir kimlik numarası giriniz." oluyor ve
+   38 | # eşleşme hiç sağlanamıyordu (bkz. bugsbunny.txt madde 19). Artık dilden
+   39 | # bağımsız: TR/EN metinlerinde ORTAK olan tek değişmez unsur (11 rakamı)
+   40 | # doğrulanıyor, literal kelime karşılaştırması yapılmıyor.
+  161 | # Dilden bağımsız: sayı, metnin ("822 kayıt" / olası "822 records" gibi)
+  162 | # kelimelerinden değil regex ile çıkarılıyor; aralık üst/alt sınırı da
+  163 | # sayıların METİN İÇİNDEKİ SIRASINA değil, toplam sayıyla eşleşip
+  164 | # eşleşmemesine göre ayrıştırılıyor (dile göre kelime/sayı sırası
+  165 | # değişse bile kırılmaz).
+  170 | # NOT (canlı doğrulandı): "Rol" sütunu Outline'a BİLEREK dahil edilmedi -
+  171 | # mevcut test verisinde TÜM müşterilerin Role değeri aynı ("Müşteri"),
+  172 | # bu yüzden o sütuna göre sıralamanın gözlemlenebilir hiçbir etkisi yok
+  173 | # (veri homojenliği - sıralama mekanizmasının kendisiyle ilgili bir sorun
+  174 | # değil, "sıra değişti mi" assertion'ı bu sütunda anlamsız/test edilemez
+  175 | # olurdu). Diğer 5 sütun (Customer ID, Ad, İkinci Ad, Soyad, Kimlik No)
+  176 | # canlı olarak TEK TEK doğrulandı: tıklama GERÇEKTEN sırayı değiştiriyor,
+  177 | # ikinci tıklama farklı bir sıraya geçiyor. Sütun etiketleri (ör. "Ad")
+  178 | # ekrandaki o an aktif dilin metnine değil, sabit bir Python sözlüğü
+  179 | # üzerinden data-testid'e eşleniyor (create_customer_page.py'deki
+  180 | # GENDER_VALUE_MAP ile aynı desen) - test dilden bağımsız çalışır.
+
+--- features/update_customer.feature  (5 yorum satiri)
+
+   75 | # NOT (canlı doğrulandı, TC-017-06 keşfinden): identityNumber-error
+   76 | # mesajı dile göre TR'de "Kimlik numarası 11 haneli olmalı..." / EN'de
+   77 | # "The identity number must be exactly 11 digits." oluyor - literal metin
+   78 | # yerine ikisinde de ORTAK olan "11" rakamı doğrulanarak dilden bağımsız
+   79 | # hale getirildi (search_customers.feature'daki AYNI desen).
+

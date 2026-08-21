@@ -90,7 +90,7 @@ Feature: Müşteri Oluşturma
     And listede başka kayıtlı adres kalmadığı için İleri butonu tekrar pasif hale gelir
 
   Scenario: Kaydedilen Adresin "City, Street Name..." Formatında Kart Olarak Görüntülenmesi
-    Given kullanıcı "Adres Bilgi" ekranında Şehir "İstanbul", Sokak "Bağdat Caddesi", No "45/2" ile bir adres formu doldurmuştur
+    Given kullanıcı "Adres Bilgi" ekranında Şehir, Sokak ve No alanlarını doldurmuştur
     When kullanıcı "Save" butonuna tıklar
     Then adres kart olarak listelenir ve tamamı bina-daire no dahil okunabilir şekilde görüntülenir
 
@@ -146,19 +146,8 @@ Feature: Müşteri Oluşturma
       | Father Name |
       | Mother Name |
 
-  # NOT (canlı doğrulandı): Birth Date maskesi basit "ilk N rakamı al"
-  # mekanizması DEĞİL - gün/ay geçerliliğini ANLIK doğrulayan daha karmaşık
-  # bir maske (ör. "123456789" yazılınca ay basamağı geçersiz kaldığından
-  # bazı rakamlar sessizce filtreleniyor, sonuç girilen rakamların birebir
-  # ilk 8'i OLMUYOR - "12/03/4567" gibi beklenmedik bir değer çıkıyor). Bu
-  # yüzden senaryo GERÇEKTEN geçerli, belirsizlik yaratmayan bir tarihle
-  # (15/06/1990) test ediliyor - kesin ara rakam dizisini değil, yalnızca
-  # 10 karakterlik (8 rakam + 2 ayraç) üst sınırın korunduğunu ve fazla
-  # rakamın hiçbir etkisi olmadığını doğruluyor. Dilden bağımsız: EN dilinde
-  # placeholder "gg/aa/yyyy" -> "dd/mm/yyyy" değişse de (canlı doğrulandı)
-  # maskenin kendisi ve 10 karakterlik sınır AYNI kalıyor.
   Scenario: Birth Date Alanının Maskeli Giriş Kapasitesinin (8 Rakam / gg/aa/yyyy) Sınırını Koruması
     When "Birth Date" alanına geçerli 8 rakamlık bir tarih yazılır
-    Then alan "gg/aa/yyyy" formatında, tam 10 karakter uzunluğunda bir değer gösterir
+    Then alan gün, ay, yıl biçiminde tam 10 karakter uzunluğunda bir değer gösterir
     When aynı alana 9. bir rakam yazılmaya çalışılır
     Then alanın değeri değişmeden kalır, fazla rakamın hiçbir etkisi olmaz

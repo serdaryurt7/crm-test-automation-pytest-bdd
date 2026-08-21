@@ -31,13 +31,6 @@ Feature: Müşteri Arama
     Then ID Number alanı yalnızca ilk 11 haneyi kabul eder
 
   Scenario: ID Number Alanına 11 Haneden Az Rakam Girildiğinde Validasyon Hatası Gösterilmesi
-    # DÜZELTİLDİ (canlı doğrulandı): önceki hâli hardcoded İngilizce
-    # ("Please enter a valid 11-digit ID number.") metniyle karşılaştırıyordu
-    # - uygulama VARSAYILAN olarak Türkçe çalıştığından gerçek mesaj
-    # "Lütfen geçerli 11 haneli bir kimlik numarası giriniz." oluyor ve
-    # eşleşme hiç sağlanamıyordu (bkz. bugsbunny.txt madde 19). Artık dilden
-    # bağımsız: TR/EN metinlerinde ORTAK olan tek değişmez unsur (11 rakamı)
-    # doğrulanıyor, literal kelime karşılaştırması yapılmıyor.
     When kullanıcı ID Number alanına "1000000014" değerini girer
     Then ID Number alanında "1000000014" değeri görüntülenir
     When kullanıcı Search butonuna tıklar
@@ -158,32 +151,16 @@ Feature: Müşteri Arama
     Then tüm arama alanları boşalır ve sonuç listesi varsayılan hale döner
 
   Scenario: Toplam Kayıt Sayısı ve Görüntülenen Aralığın Doğru Gösterilmesi
-    # Dilden bağımsız: sayı, metnin ("822 kayıt" / olası "822 records" gibi)
-    # kelimelerinden değil regex ile çıkarılıyor; aralık üst/alt sınırı da
-    # sayıların METİN İÇİNDEKİ SIRASINA değil, toplam sayıyla eşleşip
-    # eşleşmemesine göre ayrıştırılıyor (dile göre kelime/sayı sırası
-    # değişse bile kırılmaz).
     Then toplam kayıt sayısı bilgisi görüntülenir
     And görüntülenen aralık bilgisi görüntülenir
     And aralık bilgisindeki üst değer o sayfadaki gerçek satır sayısıyla tutarlıdır
 
-  # NOT (canlı doğrulandı): "Rol" sütunu Outline'a BİLEREK dahil edilmedi -
-  # mevcut test verisinde TÜM müşterilerin Role değeri aynı ("Müşteri"),
-  # bu yüzden o sütuna göre sıralamanın gözlemlenebilir hiçbir etkisi yok
-  # (veri homojenliği - sıralama mekanizmasının kendisiyle ilgili bir sorun
-  # değil, "sıra değişti mi" assertion'ı bu sütunda anlamsız/test edilemez
-  # olurdu). Diğer 5 sütun (Customer ID, Ad, İkinci Ad, Soyad, Kimlik No)
-  # canlı olarak TEK TEK doğrulandı: tıklama GERÇEKTEN sırayı değiştiriyor,
-  # ikinci tıklama farklı bir sıraya geçiyor. Sütun etiketleri (ör. "Ad")
-  # ekrandaki o an aktif dilin metnine değil, sabit bir Python sözlüğü
-  # üzerinden data-testid'e eşleniyor (create_customer_page.py'deki
-  # GENDER_VALUE_MAP ile aynı desen) - test dilden bağımsız çalışır.
   Scenario Outline: Sütun Başlığına Tıklanarak Sonuçların O Sütuna Göre Sıralanabilmesi ve Sıra Yönünün Değişmesi
-    Given sonuç listesi varsayılan (Customer ID artan) sırada görüntülenmektedir
+    Given sonuç listesi varsayılan Customer ID artan sırada görüntülenmektedir
     When kullanıcı "<sütun>" sütun başlığına tıklar
-    Then sonuç listesi "<sütun>" sütununa göre yeniden sıralanır (varsayılan sıradan farklı)
+    Then sonuç listesi "<sütun>" sütununa göre varsayılan sıradan farklı şekilde yeniden sıralanır
     When kullanıcı "<sütun>" sütun başlığına tekrar tıklar
-    Then sıralama yönü değişir (ilk tıklamadaki sıradan farklı bir sıraya geçilir)
+    Then sıralama yönü değişir, ilk tıklamadaki sıradan farklı bir sıraya geçilir
 
     Examples:
       | sütun       |
@@ -192,4 +169,3 @@ Feature: Müşteri Arama
       | İkinci Ad   |
       | Soyad       |
       | Kimlik No   |
-
